@@ -104,7 +104,7 @@ pub fn install(app: &tauri::AppHandle, state: &Shared) -> Result<(), Box<dyn std
         None::<&str>,
     )?;
     let settings =
-        tauri::menu::MenuItem::with_id(app, "settings", "설정 열기", true, None::<&str>)?;
+        tauri::menu::MenuItem::with_id(app, "settings", "앱 열기", true, None::<&str>)?;
     let quit = tauri::menu::MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
     let menu = tauri::menu::Menu::with_items(app, &[&visible, &own_only, &settings, &quit])?;
     app.manage(TrayControls { visible, own_only });
