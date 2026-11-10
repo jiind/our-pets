@@ -61,7 +61,7 @@ export const recruitmentOptions: Record<RecruitmentKind, { icon: string; label: 
   coffee: { icon: '☕', label: '커피', invitation: '커피 같이 마실 사람!' },
   smoke: { icon: '🚬', label: '담배', invitation: '담배 같이 피울 사람!' },
   meal: { icon: '🍚', label: '밥', invitation: '밥 같이 먹을 사람!' },
-  chat: { icon: '🧑💬', label: '수다', invitation: '같이 수다 떨 사람!' },
+  chat: { icon: '💬', label: '수다', invitation: '같이 수다 떨 사람!' },
   walk: { icon: '🚶', label: '산책', invitation: '같이 산책할 사람!' },
 };
 
