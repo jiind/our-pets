@@ -3,7 +3,6 @@ import type { Animation, Manifest } from './types';
 
 interface EditorOptions {
   onChange(): void;
-  onPreview(id: string): void;
 }
 
 // 이름·프레임·속도를 가진 자유 애니메이션 목록과 자동 대기·걷기 연결을 편집한다.
@@ -43,7 +42,7 @@ export function mountAnimationEditor(root: HTMLElement, options: EditorOptions) 
     const row = document.createElement('section');
     row.className = 'pet-upload-animation';
     row.dataset.animationRow = id;
-    row.innerHTML = `<div class="pet-upload-animation-heading"><label>애니메이션 이름<input data-animation-name maxlength="80" placeholder="예: 춤추기"></label><div class="pet-upload-animation-actions"><button type="button" data-animation-preview>미리보기</button><button type="button" class="icon-button icon-button-compact" data-animation-remove>${icon('trash')}</button></div></div><div class="pet-upload-two-col"><label>칸 번호·재생 순서<input data-animation-frames placeholder="예: 0,1,2,3" pattern="[0-9, ]*"></label><label>재생 속도 (장/초)<input data-animation-fps type="number" min="1" max="24" step="1"></label></div>`;
+    row.innerHTML = `<div class="pet-upload-animation-heading"><label>애니메이션 이름<input data-animation-name maxlength="80" placeholder="예: 춤추기"></label><div class="pet-upload-animation-actions"><button type="button" class="icon-button" data-animation-remove>${icon('trash')}</button></div></div><div class="pet-upload-two-col"><label>칸 번호·재생 순서<input data-animation-frames placeholder="예: 0,1,2,3" pattern="[0-9, ]*"></label><label>재생 속도 (장/초)<input data-animation-fps type="number" min="1" max="24" step="1"></label></div>`;
     const name = row.querySelector<HTMLInputElement>('[data-animation-name]')!;
     name.name = `${id}Name`;
     name.value = animation.name || ({ idle: '대기', walk: '걷기', react: '반응' } as Record<string, string>)[id] || id;
@@ -53,9 +52,6 @@ export function mountAnimationEditor(root: HTMLElement, options: EditorOptions) 
     const fps = row.querySelector<HTMLInputElement>('[data-animation-fps]')!;
     fps.name = `${id}FPS`;
     fps.value = String(animation.fps);
-    const preview = row.querySelector<HTMLButtonElement>('[data-animation-preview]')!;
-    preview.dataset.previewMode = id;
-    preview.onclick = () => options.onPreview(id);
     const remove = row.querySelector<HTMLButtonElement>('[data-animation-remove]')!;
     remove.setAttribute('aria-label', `${name.value} 애니메이션 삭제`);
 
