@@ -118,6 +118,22 @@ dialog.pet-upload-dialog[open] {
 .pet-upload-dialog .pet-upload-animation-heading > div {
   min-width: 0;
 }
+.pet-upload-dialog .pet-upload-animation-heading h3 {
+  margin: 0;
+  font-size: var(--text-subheading);
+}
+.pet-upload-dialog .pet-upload-animation-heading > label {
+  min-width: 0;
+  flex: 1;
+}
+.pet-upload-dialog .pet-upload-animation-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.pet-upload-dialog [data-animation-roles] {
+  margin-top: var(--space-4);
+}
 .pet-upload-dialog .pet-upload-animation-heading p {
   margin: var(--space-1) 0 0;
 }

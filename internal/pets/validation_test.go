@@ -3,6 +3,7 @@ package pets
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"hash/crc32"
 	"image"
 	"image/png"
@@ -96,7 +97,7 @@ func TestValidatePNGAndManifestBoundaries(t *testing.T) {
 		{"APNG", apng, base(), false},
 		{"256 frames", sheet, model.Manifest{SchemaVersion: 1, DisplaySize: 48, FrameWidth: 1, FrameHeight: 1, Animations: map[string]model.FrameAnimation{"idle": {Frames: frames, FPS: 24}}}, true},
 		{"257 frames", encode(257, 1), base(), false},
-		{"schema unsupported", sheet, model.Manifest{SchemaVersion: 2, DisplaySize: 160, FrameWidth: 1, FrameHeight: 1}, false},
+		{"schema unsupported", sheet, model.Manifest{SchemaVersion: 3, DisplaySize: 160, FrameWidth: 1, FrameHeight: 1}, false},
 		{"uneven frame", sheet, model.Manifest{SchemaVersion: 1, DisplaySize: 160, FrameWidth: 3, FrameHeight: 1}, false},
 		{"minimum FPS", sheet, model.Manifest{DisplaySize: 200, FrameWidth: 1, FrameHeight: 1, Animations: map[string]model.FrameAnimation{"walk": {Frames: []int{255}, FPS: 1}}}, true},
 		{"zero FPS", sheet, model.Manifest{DisplaySize: 160, FrameWidth: 1, FrameHeight: 1, Animations: map[string]model.FrameAnimation{"idle": {Frames: []int{0}, FPS: 0}}}, false},
@@ -118,5 +119,64 @@ func TestValidatePNGAndManifestBoundaries(t *testing.T) {
 	m := model.Manifest{DisplaySize: 160}
 	if err := Validate(encode(7, 9), &m); err != nil || m.SchemaVersion != 1 || m.FrameWidth != 7 || m.FrameHeight != 9 || len(m.Animations) != 0 {
 		t.Fatalf("단일 이미지 기본값: %+v, %v", m, err)
+	}
+}
+
+// TestNamedAnimations는 자유 목록의 이름·역할·개수와 프레임 범위를 검증한다.
+func TestNamedAnimations(t *testing.T) {
+	// 1. 네 동작을 가진 시트와 대기·이동 역할을 만든다.
+	var raw bytes.Buffer
+	if err := png.Encode(&raw, image.NewNRGBA(image.Rect(0, 0, 64, 64))); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name   string
+		change func(*model.Manifest)
+		valid  bool
+	}{
+		{"four animations", nil, true},
+		{"missing role", func(m *model.Manifest) {
+			m.WalkAnimation = "missing"
+		}, false},
+		{"blank name", func(m *model.Manifest) {
+			a := m.Animations["dance"]
+			a.Name = " "
+			m.Animations["dance"] = a
+		}, false},
+		{"outside frame", func(m *model.Manifest) {
+			a := m.Animations["dance"]
+			a.Frames = []int{4}
+			m.Animations["dance"] = a
+		}, false},
+		{"reserved key", func(m *model.Manifest) {
+			m.Animations["__proto__"] = m.Animations["dance"]
+		}, false},
+		{"legacy names only", func(m *model.Manifest) {
+			m.SchemaVersion = 1
+		}, false},
+		{"32 animations", func(m *model.Manifest) {
+			for i := 0; i < 28; i++ {
+				m.Animations[fmt.Sprintf("extra-%d", i)] = m.Animations["dance"]
+			}
+		}, true},
+		{"33 animations", func(m *model.Manifest) {
+			for i := 0; i < 29; i++ {
+				m.Animations[fmt.Sprintf("extra-%d", i)] = m.Animations["dance"]
+			}
+		}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// 2. 각 입력은 독립된 맵으로 검증해 다른 경우를 덮어쓰지 않는다.
+			m := model.Manifest{SchemaVersion: 2, DisplaySize: 160, FrameWidth: 32, FrameHeight: 32, IdleAnimation: "rest", WalkAnimation: "stride", Animations: map[string]model.FrameAnimation{}}
+			for _, id := range []string{"rest", "stride", "dance", "jump"} {
+				m.Animations[id] = model.FrameAnimation{Name: "사용자 동작", Frames: []int{0, 1, 2, 3}, FPS: 8}
+			}
+			if tc.change != nil {
+				tc.change(&m)
+			}
+			if err := Validate(raw.Bytes(), &m); (err == nil) != tc.valid {
+				t.Fatalf("검증 오류: %v, 허용 여부: %v", err, tc.valid)
+			}
+		})
 	}
 }

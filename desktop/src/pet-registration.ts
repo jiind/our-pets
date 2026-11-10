@@ -9,6 +9,7 @@ import { mountPetUpload } from './pet-upload';
 import { petMotion, type Gesture } from './motion';
 import { mountPetPreviewMenu, type PetPreviewAction } from './pet-preview-menu';
 import { builtinPets, builtinID, petSelection, builtinCredits } from './builtin-pets';
+import { animationKey, randomClickAnimation } from './pet-animations';
 
 export interface PetRegistrationOptions {
   onRegistered: (pet: RegisteredPet) => void | Promise<void>;
@@ -41,6 +42,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
   let previewReady = true;
   let actionStarted = Date.now();
   let previewGesture: Gesture = 'wave';
+  let previewAnimationId: string | undefined;
   let previewEndsAt = 0;
   let unwatch = (): void => {};
   const urls = new Set<string>();
@@ -428,8 +430,10 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     previewMotion.stop();
     actionStarted = Date.now();
     const reacting = next !== 'idle' && next !== 'walk';
+    const selected = next === 'pat' && previewDesign ? randomClickAnimation(previewDesign.manifest) : undefined;
+    previewAnimationId = selected?.id;
     action.value = reacting ? 'react' : next;
-    previewEndsAt = reacting ? actionStarted + 3300 : 0;
+    previewEndsAt = reacting ? actionStarted + (selected ? selected.animation.frames.length / selected.animation.fps * 1000 : 3300) : 0;
 
     // 2. 실제 펫과 같은 인사·하이파이브·쓰다듬기 자세를 미리보기 Canvas에만 적용한다.
     if (reacting) {
@@ -453,11 +457,11 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     }
     const mode = action.value as PreviewAction;
     const reduced = reducedMotion.matches;
-    drawPet(canvas, previewImage, previewDesign, mode, reduced ? 0 : now, { walking: mode === 'walk', gesture: mode === 'react' ? previewGesture : undefined, elapsed: reduced ? 0 : now - actionStarted, reduced, pose: previewMotion.pose, builtin: builtinID(selectedDesignID) });
+    drawPet(canvas, previewImage, previewDesign, mode, reduced ? 0 : now, { animationId: mode === 'react' ? previewAnimationId : undefined, walking: mode === 'walk', gesture: mode === 'react' ? previewGesture : undefined, elapsed: reduced ? 0 : now - actionStarted, reduced, pose: previewMotion.pose, builtin: builtinID(selectedDesignID) });
 
     // 2. 발밑 이름표와 누락된 동작 등 필요한 안내만 표시한다.
     root.querySelector<HTMLElement>('[data-preview-name]')!.textContent = draftName() || '내 펫';
-    previewNote.textContent = reduced ? '동작 줄이기 설정에 따라 정지 상태로 표시해요.' : previewDesign && !previewDesign.manifest.animations[mode] ? '이 동작의 프레임이 없어 대기 프레임이나 첫 이미지로 표시해요.' : '';
+    previewNote.textContent = reduced ? '동작 줄이기 설정에 따라 정지 상태로 표시해요.' : previewDesign && !animationKey(previewDesign.manifest, mode, mode === 'react' ? previewAnimationId : undefined) ? '이 동작의 프레임이 없어 첫 이미지로 표시해요.' : '';
     previewNote.hidden = !previewNote.textContent;
   }
 

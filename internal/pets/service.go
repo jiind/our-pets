@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ import (
 )
 
 const MaxUpload = 8 << 20
+
+var animationIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,80}$`)
 
 type Service struct {
 	DB        *sql.DB
@@ -217,20 +220,36 @@ func Validate(data []byte, m *model.Manifest) error {
 	if m.FrameWidth == 0 && m.FrameHeight == 0 {
 		m.FrameWidth, m.FrameHeight = cfg.Width, cfg.Height
 	}
-	if m.SchemaVersion != 1 || m.DisplaySize < 48 || m.DisplaySize > 200 || m.FrameWidth < 1 || m.FrameHeight < 1 || cfg.Width%m.FrameWidth != 0 || cfg.Height%m.FrameHeight != 0 {
+	if (m.SchemaVersion != 1 && m.SchemaVersion != 2) || m.DisplaySize < 48 || m.DisplaySize > 200 || m.FrameWidth < 1 || m.FrameHeight < 1 || cfg.Width%m.FrameWidth != 0 || cfg.Height%m.FrameHeight != 0 {
 		return model.Bad(400, "표시 크기 48~200과 PNG를 나누어 떨어지는 프레임 크기를 확인하세요")
 	}
 	count := (cfg.Width / m.FrameWidth) * (cfg.Height / m.FrameHeight)
-	if count > 256 || len(m.Animations) > 3 {
-		return model.Bad(400, "프레임은 최대 256개, 동작은 idle·walk·react만 지원합니다")
+	limit := 3
+	if m.SchemaVersion == 2 {
+		limit = 32
+	}
+	if count > 256 || len(m.Animations) > limit {
+		return model.Bad(400, "프레임은 최대 256개, 애니메이션은 최대 32개까지 등록할 수 있습니다")
 	}
 	for name, a := range m.Animations {
-		if (name != "idle" && name != "walk" && name != "react") || a.FPS < 1 || a.FPS > 24 || len(a.Frames) < 1 || len(a.Frames) > 256 {
+		validName := name == "idle" || name == "walk" || name == "react"
+		if m.SchemaVersion == 2 {
+			validName = animationIDPattern.MatchString(name) && name != "__proto__" && name != "constructor" && name != "prototype" && len(strings.TrimSpace(a.Name)) > 0 && len(a.Name) <= 80
+		}
+		if !validName || a.FPS < 1 || a.FPS > 24 || len(a.Frames) < 1 || len(a.Frames) > 256 {
 			return model.Bad(400, "동작 이름과 FPS(1~24)를 확인하세요")
 		}
 		for _, frame := range a.Frames {
 			if frame < 0 || frame >= count {
 				return model.Bad(400, "이미지 범위를 벗어난 프레임입니다")
+			}
+		}
+	}
+	// 3. 자유 애니메이션의 자동 대기·이동 역할은 실제로 존재하는 항목에만 연결한다.
+	if m.SchemaVersion == 2 && len(m.Animations) > 0 {
+		for _, id := range []string{m.IdleAnimation, m.WalkAnimation} {
+			if _, exists := m.Animations[id]; !exists {
+				return model.Bad(400, "대기·걷기에 사용할 애니메이션을 선택하세요")
 			}
 		}
 	}

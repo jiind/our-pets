@@ -61,7 +61,7 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
   await file.setInputFiles(path.resolve('src-tauri/icons/icon.png'));
   await expect(dialog.locator('[data-empty]')).toBeHidden();
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('');
-  await expect(dialog.locator('[name=idleFrames]')).toHaveValue('');
+  await expect(dialog.locator('[name=idleFrames]')).toHaveCount(0);
   await dialog.locator('[data-animation-settings] > summary').click();
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('128');
   await expect(dialog.locator('[name=frameHeight]')).toHaveValue('128');
@@ -119,7 +119,9 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
   await expect(dialog).toBeHidden();
   expect(uploads).toBe(2);
   expect(requestBody).toContain('"frameWidth":128');
-  expect(requestBody).toContain('"walk":{"frames":[4,5,6,7],"fps":6}');
+  const manifestPart = requestBody.match(/name="manifest"\r\n\r\n([^\r]+)/);
+  expect(manifestPart).not.toBeNull();
+  expect(JSON.parse(manifestPart![1])).toMatchObject({ schemaVersion: 2, idleAnimation: 'idle', walkAnimation: 'walk', animations: { walk: { name: '걷기', frames: [4,5,6,7], fps: 6 } } });
 });
 
 test('펫 추가 모달은 네 모서리를 유지하고 헤더 아래 내용만 스크롤한다', async ({ page }) => {
@@ -164,6 +166,7 @@ test('펫 추가 모달은 네 모서리를 유지하고 헤더 아래 내용만
 test('직접 등록한 펫은 원본 PNG를 고정한 채 수정·삭제하고 기본 펫은 보호한다', async ({ page }) => {
   // 1. 실제 등록 폼으로 PNG와 애니메이션을 저장하고 기본 펫의 관리 아이콘은 숨긴다.
   await createWorkspace(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.getByRole('button', { name: '고양이 삭제', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '강아지 수정', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '펫 추가', exact: true }).click();
@@ -172,11 +175,33 @@ test('직접 등록한 펫은 원본 PNG를 고정한 채 수정·삭제하고 �
   await add.locator('input[type=file]').setInputFiles(path.resolve('src-tauri/icons/icon.png'));
   await add.locator('[data-animation-settings] > summary').click();
   await add.locator('[name=walkFPS]').fill('6');
+  await add.getByRole('button', { name: '애니메이션 추가', exact: true }).click();
+  const custom = add.locator('[data-animation-row]').last();
+  await custom.getByRole('textbox', { name: '애니메이션 이름', exact: true }).fill('춤추기');
+  await custom.locator('[data-animation-frames]').fill('5,6');
+  await custom.locator('[data-animation-fps]').fill('1');
+  const customID = await custom.getAttribute('data-animation-row') || '';
+  await custom.getByRole('button', { name: '미리보기', exact: true }).click();
+  await expect(add.locator('[data-action]')).toHaveValue(customID);
+  const customImage = await add.locator('canvas[aria-label="추가할 펫의 모습"]').evaluate((element: HTMLCanvasElement) => element.toDataURL());
   await add.getByRole('button', { name: '추가', exact: true }).click();
   await expect(add).toBeHidden();
   const editButton = page.getByRole('button', { name: '수정할 펫 수정', exact: true });
   await expect(editButton).toBeEnabled();
   await expect(page.getByRole('radio', { name: '수정할 펫', exact: true })).toBeChecked();
+  // 서버가 ID순으로 반환한 목록의 첫 추가 동작을 고정 난수로 골라 실제 클릭 그림을 비교한다.
+  const livePreview = page.locator('.pet-registration-preview canvas');
+  await expect(livePreview).toBeVisible();
+  expect(await livePreview.evaluate((element: HTMLCanvasElement) => element.toDataURL())).not.toBe(customImage);
+  await page.evaluate(() => {
+    Object.assign(window, { animationTestRandom: Math.random });
+    Math.random = () => 0;
+  });
+  await livePreview.click();
+  await expect.poll(() => livePreview.evaluate((element: HTMLCanvasElement) => element.toDataURL())).toBe(customImage);
+  await page.evaluate(() => {
+    Math.random = (window as unknown as { animationTestRandom: typeof Math.random }).animationTestRandom;
+  });
 
   // 2. 수정 폼은 저장된 설정으로 열리고 PNG 교체 없이 실패 후에도 입력을 유지한다.
   await editButton.click();
@@ -185,6 +210,10 @@ test('직접 등록한 펫은 원본 PNG를 고정한 채 수정·삭제하고 �
   await expect(edit.locator('[name=frameWidth]')).toHaveValue('128');
   await expect(edit.locator('[name=walkFrames]')).toHaveValue('4,5,6,7,8,9,10,11');
   await expect(edit.locator('[name=walkFPS]')).toHaveValue('6');
+  await expect(edit.locator('[data-animation-row]')).toHaveCount(4);
+  await expect(edit.locator('[data-animation-name]').filter({ visible: true })).toHaveCount(4);
+  await expect(edit.locator(`[data-animation-row="${customID}"] [data-animation-name]`)).toHaveValue('춤추기');
+  await edit.getByRole('combobox', { name: '걷기 애니메이션', exact: true }).selectOption(customID);
   await expect(edit.locator('input[type=file]')).toBeDisabled();
   await expect(edit.locator('input[type=file]')).toBeHidden();
   await expect(edit.locator('[data-empty]')).toBeHidden();
@@ -218,7 +247,15 @@ test('직접 등록한 펫은 원본 PNG를 고정한 채 수정·삭제하고 �
   await expect(savedEdit).toBeEnabled();
   await savedEdit.click();
   await expect(page.getByRole('dialog', { name: '펫 수정', exact: true }).locator('[name=walkFPS]')).toHaveValue('10');
-  await page.getByRole('dialog', { name: '펫 수정', exact: true }).getByRole('button', { name: '취소', exact: true }).click();
+  const reopened = page.getByRole('dialog', { name: '펫 수정', exact: true });
+  await expect(reopened.getByRole('combobox', { name: '걷기 애니메이션', exact: true })).toHaveValue(customID);
+  await reopened.getByRole('button', { name: '춤추기 애니메이션 삭제', exact: true }).click();
+  await reopened.getByRole('combobox', { name: '걷기 애니메이션', exact: true }).selectOption('walk');
+  await reopened.getByRole('button', { name: '저장', exact: true }).click();
+  await expect(reopened).toBeHidden();
+  await savedEdit.click();
+  await expect(reopened.locator('[data-animation-row]')).toHaveCount(3);
+  await reopened.getByRole('button', { name: '취소', exact: true }).click();
   await page.getByRole('button', { name: '수정한 펫 삭제', exact: true }).click();
   await expect(page.getByRole('radio', { name: '수정한 펫', exact: true })).toHaveCount(0);
   await expect(page.getByRole('radio', { name: '고양이', exact: true })).toBeChecked();

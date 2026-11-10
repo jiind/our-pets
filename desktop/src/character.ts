@@ -6,6 +6,7 @@ export interface CharacterPose {
   scaleY: number;
 }
 export interface CharacterState {
+  animationId?: string;
   builtin?: string;
   walking?: boolean;
   direction?: number;

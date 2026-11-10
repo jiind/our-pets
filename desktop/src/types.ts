@@ -6,6 +6,7 @@ export interface Principal {
   petRegistered?: boolean;
 }
 export interface Animation {
+  name?: string;
   frames: number[];
   fps: number;
 }
@@ -14,7 +15,9 @@ export interface Manifest {
   displaySize: number;
   frameWidth: number;
   frameHeight: number;
-  animations: Partial<Record<'idle' | 'walk' | 'react', Animation>>;
+  animations: Partial<Record<string, Animation>>;
+  idleAnimation?: string;
+  walkAnimation?: string;
 }
 export interface Design {
   id: string;

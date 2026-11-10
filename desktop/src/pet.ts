@@ -14,6 +14,7 @@ import { mountRecruitment } from './recruitment';
 import { recruitmentOptions, type Design, type Gathering, type Pet, type PetEvent, type RegisteredPet } from './types';
 import { externalNotificationTitle, notifyReceivedMessage, notifyGatheringActivity } from './system-notifications';
 import { connectedAlertsMuted } from './notification-preferences';
+import { animationKey, randomClickAnimation } from './pet-animations';
 
 type Rect = { x: number; y: number; width: number; height: number };
 
@@ -138,6 +139,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   let stopped = false;
   let reactUntil = 0;
   let reactionStart = 0;
+  let clickedAnimationId: string | undefined;
   let gesture: Gesture = 'wave';
   let mirroredGesture = false;
   let pairedReaction = false;
@@ -420,11 +422,13 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     }
   }
   root.addEventListener('keydown', escapeMenu);
-  // 소유자와 무관하게 직접 클릭한 펫만 쓰다듬고 친구끼리 인사 동작과 분리한다.
+  // 직접 클릭한 펫의 추가 동작을 한 번 뽑고 없으면 기존 쓰다듬기 표현을 사용한다.
   function patPet(): void {
     pairedReaction = false;
+    const selected = design ? randomClickAnimation(design.manifest) : undefined;
+    clickedAnimationId = selected?.id;
     reactionStart = Date.now();
-    reactUntil = reactionStart + 3300;
+    reactUntil = reactionStart + (selected ? selected.animation.frames.length / selected.animation.fps * 1000 : 3300);
     gesture = 'pat';
     reaction.textContent = '💕 기분 좋아요!';
     reaction.hidden = false;
@@ -547,6 +551,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         reactionStart = Date.now();
         reactUntil = reactionStart + 3300;
         gesture = 'pat';
+        clickedAnimationId = undefined;
       }).finally(() => {
         button.disabled = false;
         canvas.setAttribute('aria-expanded', String(!menu.hidden || composer.visible() || recruitment.visible()));
@@ -795,7 +800,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const displayedID = targetID || session()?.principal.petId;
     const grouped = groups.some(group => group.hostPetId === displayedID || group.members.some(member => member.petId === displayedID));
     const movingNow = !carried && liftHeight === 0 && !landing && !offline && menu.hidden && !composer.visible() && !recruitment.visible() && !motionPreference.matches && (isTauri() ? walking : !grouped && preview && Math.floor(now / 4000) % 2 === 0);
-    const visualHeight = drawPet(canvas, image, design, reacting ? 'react' : movingNow ? 'walk' : 'idle', motionPreference.matches ? 0 : now, { walking: movingNow, direction, gesture: reacting ? gesture : undefined, elapsed: now - reactionStart, reduced: motionPreference.matches, mirrored: mirroredGesture, pose: motion.pose, resting: offline || (grouped && !movingNow), distance: nativeDistance, speed: nativeSpeed, paired: pairedReaction, elevation: liftHeight, carried, builtin });
+    const visualHeight = drawPet(canvas, image, design, reacting ? 'react' : movingNow ? 'walk' : 'idle', motionPreference.matches ? 0 : now, { animationId: reacting && gesture === 'pat' ? clickedAnimationId : undefined, walking: movingNow, direction, gesture: reacting ? gesture : undefined, elapsed: now - reactionStart, reduced: motionPreference.matches, mirrored: mirroredGesture, pose: motion.pose, resting: offline || (grouped && !movingNow), distance: nativeDistance, speed: nativeSpeed, paired: pairedReaction, elevation: liftHeight, carried, builtin });
     const anchors = petAnchors(canvas, image, design);
     root.style.setProperty('--pet-visual-height', `${anchors.headHeight}px`);
     root.style.setProperty('--pet-overlay-space', `${Math.max(48, root.clientHeight - 30 - liftHeight - anchors.headHeight - 20 - topInset)}px`);
@@ -873,7 +878,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     }
     root.dataset.overlayBusy = String(!menu.hidden || composer.visible() || recruitment.visible() || !bubble.hidden || !connectionNotice.hidden);
     canvas.setAttribute('aria-expanded', String(!menu.hidden || composer.visible() || recruitment.visible()));
-    setTimeout(() => void tick(), carried || liftHeight > 0 || landing ? 1000 / 30 : motionPreference.matches ? 150 : (!image && walking) || design?.manifest.animations.walk || reacting ? 1000 / 30 : 100);
+    setTimeout(() => void tick(), carried || liftHeight > 0 || landing ? 1000 / 30 : motionPreference.matches ? 150 : (!image && walking) || (design && animationKey(design.manifest, 'walk')) || reacting ? 1000 / 30 : 100);
   }
   void refresh().catch(console.error);
   void tick();

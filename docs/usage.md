@@ -18,7 +18,7 @@ Open the account menu to view your username and edit your nickname or password. 
 
 | Action | Behavior |
 | --- | --- |
-| Left-click | Pet any character, regardless of ownership |
+| Left-click | For uploaded artwork, randomly play one registered animation except the entries assigned to idle and walking; otherwise use the existing petting expression |
 | Left-drag | Move or lift it; release to land on the ground |
 | Right-click | Open that pet's messaging, gathering, and interaction menu |
 | Hover | Show its nickname below its feet |

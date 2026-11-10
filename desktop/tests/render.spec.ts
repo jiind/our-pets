@@ -55,6 +55,17 @@ test('실제 drawPet 캔버스 색상으로 sprite frame·보행 거리·누락 
     const still = { ...fallback, id: 'synthetic-still', manifest: { ...fallback.manifest, animations: {} } };
     drawPet(canvas, image, still, 'idle', 1000);
     result.missingAnimationUsesFirstFrame = pixel();
+    const named = { ...design, id: 'synthetic-named', manifest: { ...design.manifest, schemaVersion: 2, idleAnimation: 'rest', walkAnimation: 'stride', animations: {
+      rest: { name: '쉬기', frames: [1], fps: 4 },
+      stride: { name: '이동하기', frames: [2], fps: 8 },
+      dance: { name: '춤추기', frames: [3], fps: 6 },
+    } } };
+    drawPet(canvas, image, named, 'idle', 1000);
+    result.namedIdle = pixel();
+    drawPet(canvas, image, named, 'walk', 1000, { distance: 0 });
+    result.namedWalk = pixel();
+    drawPet(canvas, image, named, 'react', 1000, { animationId: 'dance', gesture: 'pat', elapsed: 0 });
+    result.namedClick = pixel();
     return result;
   });
 
@@ -65,6 +76,9 @@ test('실제 drawPet 캔버스 색상으로 sprite frame·보행 거리·누락 
   expect(frames.reactFirst).not.toBe(frames.reactNext);
   expect(frames.missingWalkUsesIdle).toBe(frames.reactNext);
   expect(frames.missingAnimationUsesFirstFrame).toBe(frames.idleFirst);
+  expect(frames.namedIdle).toBe(frames.walkStart);
+  expect(frames.namedWalk).toBe(frames.reactFirst);
+  expect(frames.namedClick).toBe(frames.reactNext);
 });
 
 test('등록 PNG와 스프라이트는 이동·상호작용 방향으로 반전하고 다음 그리기에 영향을 주지 않는다', async ({ page }) => {

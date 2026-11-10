@@ -4,6 +4,7 @@ import { watchDisplay } from './preferences';
 import type { Design, Manifest } from './types';
 import './pet-upload.css';
 import { mountCharacterPrompts } from './character-prompts';
+import { mountAnimationEditor } from './animation-editor';
 
 export interface PetUploadOptions {
   onAdded: (design: Design) => void | Promise<void>;
@@ -43,7 +44,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     <form id="${id}-form"><div class="pet-upload-layout"><fieldset class="pet-upload-fields" aria-label="추가할 펫 정보"><label for="${id}-name">이름<input id="${id}-name" name="name" maxlength="80" placeholder="예: 고양이" required></label><label for="${id}-file">PNG 파일<input id="${id}-file" name="image" class="file-input-compact" type="file" accept="image/png" aria-describedby="${id}-png-limits ${id}-png-guide" required></label><p class="fine pet-upload-file-hint" id="${id}-png-limits">최대 8 MiB · 2048 × 2048px · 투명 배경 권장</p><div class="pet-upload-png-guide fine" id="${id}-png-guide"><p>두 경우 모두 <strong>PNG 파일 하나</strong>를 선택해요.</p><ul><li><strong>일반 PNG</strong>: 펫 그림 하나가 들어 있어요. 애니메이션 설정 없이 추가할 수 있어요.</li><li><strong>스프라이트 시트 PNG</strong>: 여러 동작 그림이 한 이미지 안에 격자로 들어 있어요. 아래 애니메이션 설정에서 칸 크기와 재생 순서를 지정해요.</li></ul></div>
       <details class="character-prompts"><summary class="field-label">캐릭터 프롬프트</summary><div class="character-prompt-content"><p class="fine">먼저 일반 PNG로 캐릭터 한 자세를 만든 뒤, 그 이미지를 첨부해 스프라이트 시트로 확장하세요.</p><div class="character-prompt-toolbar"><label>이미지 종류<select data-character-prompt-kind><option value="single">일반 PNG 한 장</option><option value="animated">스프라이트 시트 PNG</option></select></label><button type="button" class="quiet" data-copy-character-prompt>프롬프트 복사</button></div><textarea data-character-prompt-text rows="12" readonly aria-label="캐릭터 생성 프롬프트" spellcheck="false"></textarea><p class="fine" data-character-prompt-hint></p><p class="fine" data-character-prompt-status role="status" aria-live="polite"></p></div></details>
       <details data-animation-settings><summary class="field-label">애니메이션 설정 · 스프라이트 시트</summary><p class="fine">스프라이트 시트 PNG를 선택했을 때 설정해요<br>일반 PNG는 이 항목을 비워 두면 돼요.</p><h3 class="pet-upload-frame-heading" id="${id}-frame-size">그림 한 칸 크기</h3><div class="pet-upload-two-col" role="group" aria-labelledby="${id}-frame-size"><label>너비<input name="frameWidth" type="number" min="1" max="2048" step="1" placeholder="px"></label><label>높이<input name="frameHeight" type="number" min="1" max="2048" step="1" placeholder="px"></label></div><p class="fine">예: 256 × 128px PNG에 64 × 64px 그림이 들어 있다면 너비·높이에 각각 64를 입력해요.</p><p class="fine" data-frame-guide role="status">PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.</p><figure class="pet-upload-frame-map" data-frame-map hidden><figcaption>왼쪽 위부터 가로로 세는 칸 번호</figcaption><div class="pet-upload-frame-scroll"><div class="pet-upload-frame-grid" data-frame-grid></div></div></figure>
-      ${[['idle', '대기', '가만히 있을 때 재생해요.'], ['walk', '걷기', '펫이 이동할 때 재생해요.'], ['react', '반응', '인사·쓰다듬기 같은 상호작용 때 재생해요.']].map(([key, label, help]) => `<section class="pet-upload-animation"><div class="pet-upload-animation-heading"><div><strong>${label}</strong><p class="fine">${help}</p></div><button type="button" data-preview-mode="${key}">미리보기</button></div><div class="pet-upload-two-col"><label>칸 번호·재생 순서<input name="${key}Frames" placeholder="예: 0,1,2,3" pattern="[0-9, ]*"></label><label>재생 속도 (장/초)<input name="${key}FPS" type="number" min="1" max="24" step="1" value="8"></label></div></section>`).join('')}<p class="fine">0,1,2,3은 네 칸을 순서대로 반복해요. 속도 8은 1초에 8장을 넘겨요. 비워 둔 동작은 대기 그림이나 첫 칸으로 표시해요.</p></details>
+      <div data-animation-editor></div><p class="fine">0,1,2,3은 네 칸을 순서대로 반복해요. 속도 8은 1초에 8장을 넘겨요.</p></details>
     </fieldset><section class="pet-upload-preview" aria-label="추가할 펫 미리보기"><h3>화면 미리보기</h3><div class="pet-upload-preview-stage"><p class="muted" data-empty>PNG를 고르면 이곳에서 미리 볼 수 있어요.</p><div class="pet-name-anchor"><canvas width="160" height="160" role="img" aria-label="추가할 펫의 모습" hidden></canvas><span class="pet-nameplate" data-preview-name></span></div></div><p class="fine" data-size-note></p><label for="${id}-action">미리보기 동작<select id="${id}-action" data-action><option value="idle">대기</option><option value="walk">걷기</option><option value="react">반응</option></select></label><p class="fine" data-preview-note role="status"></p></section></div>
     <p class="pet-upload-status" data-status role="status" aria-live="polite"></p></form>`;
   root.append(dialog);
@@ -62,6 +63,28 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   const frameGuide = dialog.querySelector<HTMLElement>('[data-frame-guide]')!;
   const frameMap = dialog.querySelector<HTMLElement>('[data-frame-map]')!;
   const frameGrid = dialog.querySelector<HTMLElement>('[data-frame-grid]')!;
+  const animationEditor = mountAnimationEditor(dialog.querySelector<HTMLElement>('[data-animation-editor]')!, {
+    onChange: () => {
+      syncAnimationPreviewChoices();
+      void refreshPreview();
+    },
+    onPreview: key => {
+      action.value = key;
+      actionStarted = Date.now();
+      void refreshPreview();
+    },
+  });
+
+  // 등록한 이름과 내부 ID를 미리보기 선택지에 함께 반영한다.
+  function syncAnimationPreviewChoices(): void {
+    const current = action.value;
+    const entries = animationEditor.choices();
+    action.replaceChildren(...(entries.length ? entries : [{ id: 'idle', name: '대기' }, { id: 'walk', name: '걷기' }, { id: 'react', name: '반응' }]).map(entry => new Option(entry.name, entry.id)));
+    if (Array.from(action.options).some(option => option.value === current)) {
+      action.value = current;
+    }
+  }
+
 
   // 2. 현재 로그인과 미리보기 범위를 확인한 뒤 초안만 서버에 추가한다.
 
@@ -102,25 +125,8 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   function manifestFor(image: HTMLImageElement): Manifest {
     // 1. 안내에 표시한 것과 같은 분할 결과로 저장할 프레임 크기를 정한다.
     const { width, height, count } = frameLayout(image);
-    const manifest: Manifest = { schemaVersion: 1, displaySize: editingDesign?.manifest.displaySize || 160, frameWidth: width, frameHeight: height, animations: {} };
-
-    // 2. 동작을 입력한 경우에만 범위와 재생 속도를 검증한다.
-    for (const key of ['idle', 'walk', 'react'] as const) {
-      const value = (form.elements.namedItem(`${key}Frames`) as HTMLInputElement).value.trim();
-      if (!value) {
-        continue;
-      }
-      if (!/^\d+(?:\s*,\s*\d+)*$/.test(value)) {
-        throw new Error('칸 번호는 0부터 시작하며 쉼표로 구분해 재생 순서대로 입력하세요.');
-      }
-      const frames = value.split(',').map(item => Number(item.trim()));
-      const fps = Number((form.elements.namedItem(`${key}FPS`) as HTMLInputElement).value);
-      if (frames.length > 256 || frames.some(frame => !Number.isInteger(frame) || frame >= count) || !Number.isInteger(fps) || fps < 1 || fps > 24) {
-        throw new Error(`칸 번호는 0~${count - 1}, 재생 속도는 초당 1~24장으로 입력하세요.`);
-      }
-      manifest.animations[key] = { frames, fps };
-    }
-    return manifest;
+    const settings = animationEditor.read(count);
+    return { schemaVersion: Object.keys(settings.animations).length ? 2 : 1, displaySize: editingDesign?.manifest.displaySize || 160, frameWidth: width, frameHeight: height, ...settings };
   }
 
   // 설정을 펼쳤을 때 원본 크기·행·열과 번호가 붙은 실제 그림 칸을 보여 준다.
@@ -276,13 +282,14 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       return;
     }
     const now = Date.now();
-    const mode = action.value as PreviewAction;
-    drawPet(canvas, loadedImage, previewDesign, mode, reducedMotion.matches ? 0 : now, { walking: mode === 'walk', gesture: mode === 'react' ? 'wave' : undefined, elapsed: (now - actionStarted) % 3300, reduced: reducedMotion.matches });
+    const selectedAnimation = action.value;
+    const mode: PreviewAction = selectedAnimation === 'idle' ? 'idle' : selectedAnimation === 'walk' ? 'walk' : 'react';
+    drawPet(canvas, loadedImage, previewDesign, mode, reducedMotion.matches ? 0 : now, { animationId: selectedAnimation, walking: mode === 'walk', gesture: mode === 'react' ? 'wave' : undefined, elapsed: now - actionStarted, reduced: reducedMotion.matches });
 
     // 2. 누락된 동작의 대체와 실제 크기를 함께 안내한다.
     dialog.querySelector<HTMLElement>('[data-preview-name]')!.textContent = nameInput.value.trim() || '추가할 펫';
     dialog.querySelector<HTMLElement>('[data-size-note]')!.textContent = `이 PC의 실제 펫 크기 · ${petSize}px`;
-    previewNote.textContent = reducedMotion.matches ? '동작 줄이기 설정에 따라 정지 상태로 표시해요.' : !previewDesign.manifest.animations[mode] ? '이 동작의 프레임이 없어 대기 프레임이나 첫 이미지로 표시해요.' : '선택한 동작을 실제 펫 크기로 미리 보여요.';
+    previewNote.textContent = reducedMotion.matches ? '동작 줄이기 설정에 따라 정지 상태로 표시해요.' : !previewDesign.manifest.animations[selectedAnimation] ? '이 동작의 프레임이 없어 대기 프레임이나 첫 이미지로 표시해요.' : '선택한 동작을 실제 펫 크기로 미리 보여요.';
   }
 
   // 추가 요청을 잠그되 닫기와 취소는 계속 사용할 수 있게 한다.
@@ -366,6 +373,8 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   function reset(): void {
     // 1. 이전 입력과 추가 결과를 초기화한다.
     form.reset();
+    animationEditor.load({ schemaVersion: 1, displaySize: 160, frameWidth: 1, frameHeight: 1, animations: {} });
+    syncAnimationPreviewChoices();
     editingDesign = undefined;
     cachedSubmission = undefined;
     selectedFile = undefined;
@@ -407,11 +416,8 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       nameInput.value = design.name;
       (form.elements.namedItem('frameWidth') as HTMLInputElement).value = String(design.manifest.frameWidth);
       (form.elements.namedItem('frameHeight') as HTMLInputElement).value = String(design.manifest.frameHeight);
-      for (const key of ['idle', 'walk', 'react'] as const) {
-        const animation = design.manifest.animations[key];
-        (form.elements.namedItem(`${key}Frames`) as HTMLInputElement).value = animation?.frames.join(',') || '';
-        (form.elements.namedItem(`${key}FPS`) as HTMLInputElement).value = String(animation?.fps || 8);
-      }
+      animationEditor.load(design.manifest);
+      syncAnimationPreviewChoices();
       animationDefaultsApplied = true;
       useExampleDimensions = false;
       animationSettings.open = Object.keys(design.manifest.animations).length > 0;
@@ -459,28 +465,19 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     void addPet();
   };
   form.addEventListener('invalid', () => feedback('표시한 입력 항목을 확인한 뒤 다시 추가하세요.', true), true);
-  form.addEventListener('click', event => {
-    const target = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-preview-mode]') : null;
-    const mode = target?.dataset.previewMode;
-    if (mode === 'idle' || mode === 'walk' || mode === 'react') {
-      action.value = mode;
-      void refreshPreview();
-    }
-  });
   // 예시 기본값을 한 번만 채워 설정을 펼친 직후의 사용자 입력도 덮어쓰지 않는다.
   function initializeAnimationDefaults(): void {
     // 1. 일반 PNG는 빈 설정을 유지하고 예시 시트는 별도 버튼 없이 시작한다.
     if (!animationDefaultsApplied) {
       animationDefaultsApplied = true;
-      const defaults = {
-        frameWidth: '256', frameHeight: '256',
-        idleFrames: '0,1,2,3', idleFPS: '4',
-        walkFrames: '4,5,6,7,8,9,10,11', walkFPS: '8',
-        reactFrames: '12,13,14,15', reactFPS: '6',
-      };
-      for (const [name, value] of Object.entries(defaults)) {
-        (form.elements.namedItem(name) as HTMLInputElement).value = value;
-      }
+      (form.elements.namedItem('frameWidth') as HTMLInputElement).value = '256';
+      (form.elements.namedItem('frameHeight') as HTMLInputElement).value = '256';
+      animationEditor.load({ schemaVersion: 2, displaySize: 160, frameWidth: 256, frameHeight: 256, idleAnimation: 'idle', walkAnimation: 'walk', animations: {
+        idle: { name: '대기', frames: [0,1,2,3], fps: 4 },
+        walk: { name: '걷기', frames: [4,5,6,7,8,9,10,11], fps: 8 },
+        react: { name: '반응', frames: [12,13,14,15], fps: 6 },
+      } });
+      syncAnimationPreviewChoices();
       void refreshPreview();
     }
   }
@@ -501,6 +498,9 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   };
   form.oninput = event => {
     const input = event.target as HTMLInputElement;
+    if (input.closest('[data-animation-editor]')) {
+      return;
+    }
     if (input.name === 'name') {
       paintPreview();
     } else if (input.name && input.name !== 'image') {

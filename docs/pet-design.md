@@ -15,12 +15,12 @@ The character-prompt section offers text for a single-image PNG or a sprite shee
 - The server validates the PNG signature and decodes pixels; a filename or extension alone is insufficient.
 - A regular PNG is one frame. Walking artwork is not generated automatically.
 - Frame width and height must divide the PNG dimensions exactly. At most 256 frames are allowed.
-- `idle`, `walk`, and `react` animations are optional and run at 1–24 FPS. Frame indices start at zero, proceeding left to right, then onto the next row.
+- Animations run at 1–24 FPS. Frame indices start at zero, proceeding left to right, then onto the next row. Schema 1 supports the legacy `idle`, `walk`, and `react` keys. Schema 2 supports up to 32 named animations, with explicit idle/walk role assignments.
 - A missing action falls back to `idle`, or the first frame if `idle` is absent.
 
 For example, a 256×128px PNG with 64×64px frames has four columns, two rows, and eight frames (0–7). The dialog explains the grid and previews idle, walk, and reaction actions, reflecting display size and reduced-motion settings.
 
-Example stored manifest:
+Legacy stored manifest (still supported):
 
 ```json
 {
@@ -49,3 +49,28 @@ Uploaded artwork is assumed to face right. The renderer mirrors it for leftward 
 Enter the size of one cell and the frame order for each action. The generated-prompt example uses a 1024×1024px, four-by-four sheet: sixteen 256px cells, with idle 0–3, walk 4–11, and reaction 12–15. If the actual output dimensions differ, use cell dimensions that divide the real PNG exactly.
 
 Opening the animation settings for the first time fills the example's 4×4 layout automatically: idle frames 0–3 at 4 FPS, walk frames 4–11 at 8 FPS, and reaction frames 12–15 at 6 FPS. Cell dimensions follow the selected PNG dimensions divided by four until edited manually. Reopening the section preserves edits. For a regular single-image PNG, leave this section unopened; its animation settings remain empty.
+
+The initial three animations are editable examples, not fixed slots. Use the add icon to create named animations, enter their frame order and FPS, and preview or delete individual entries. Select which entries play while idle and walking. Left-clicking a pet chooses randomly from all other nonempty animations, plays the selected animation for one cycle, and then resumes normal behavior. The selection remains fixed during that playback. With no eligible entry, the existing fallback expression is used. Added animations reuse frames in the registered PNG; they do not generate new poses or replace the PNG.
+
+Names may contain Unicode and are limited to 80 UTF-8 bytes. Internal IDs remain stable across name edits. New animated uploads use schema 2; single-image uploads without animations retain schema 1. Updated server and desktop versions are required to edit and render schema 2; existing schema 1 designs remain readable.
+
+Example schema 2 manifest:
+
+```json
+{
+  "schemaVersion": 2,
+  "displaySize": 160,
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "idleAnimation": "rest",
+  "walkAnimation": "stride",
+  "animations": {
+    "rest": { "name": "Idle", "frames": [0, 1, 2, 3], "fps": 4 },
+    "stride": { "name": "Walk", "frames": [4, 5, 6, 7, 8, 9, 10, 11], "fps": 8 },
+    "wave": { "name": "Wave", "frames": [12, 13], "fps": 6 },
+    "dance": { "name": "Dance", "frames": [14, 15], "fps": 8 }
+  }
+}
+```
+
+Here, a click can choose `wave` or `dance`, while `rest` and `stride` remain reserved for automatic idle/movement behavior.
