@@ -12,5 +12,5 @@ desktop/public/licenses/* -whitespace
 desktop/src/assets/builtin/gopher/README.source.md -whitespace
 
 # 출처 지문과 외부 라이선스 원문의 줄 끝을 바꾸지 않는다.
-desktop/src/assets/builtin/gopher/source.json -text
+desktop/src/assets/builtin/gopher/source.json -text -whitespace
 desktop/public/licenses/gopher-CC0.txt -text
