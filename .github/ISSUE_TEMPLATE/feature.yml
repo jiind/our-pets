@@ -1,0 +1,16 @@
+name: 기능 제안
+description: 사용 상황과 기대하는 개선을 알려 주세요.
+title: 'feat: '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 사용 상황과 문제
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 원하는 동작
+    validations:
+      required: true

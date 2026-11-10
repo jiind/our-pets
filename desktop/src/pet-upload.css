@@ -1,0 +1,217 @@
+/* 펫 추가 모달은 공통 토큰으로 배치하며 버튼·입력의 공통 규칙을 그대로 쓴다. */
+dialog.pet-upload-dialog {
+  width: min(760px, calc(100vw - var(--space-8)));
+  max-width: calc(100vw - var(--space-8));
+  max-height: calc(100vh - var(--space-8));
+  margin: auto;
+  padding: var(--space-6);
+  overflow-y: auto;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.pet-upload-dialog .pet-upload-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.pet-upload-dialog .pet-upload-heading h2 {
+  margin: 0;
+}
+.pet-upload-dialog .pet-upload-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+.pet-upload-dialog .pet-upload-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* 이름 입력과 다음 파일 입력은 서로 다른 항목으로 읽히도록 간격을 둔다. */
+.pet-upload-dialog .pet-upload-fields > label + label {
+  margin-top: var(--space-5);
+}
+/* 파일 조건 안내는 입력 아래 왼쪽에 맞추고 살짝 옅게 표시한다. */
+.pet-upload-dialog .pet-upload-file-hint {
+  margin: var(--space-2) 0 0;
+  text-align: left;
+  opacity: .85;
+}
+/* 파일 개수와 그림 구성을 구분하는 안내를 파일 선택 가까이에 둔다. */
+.pet-upload-dialog .pet-upload-png-guide {
+  margin-top: var(--space-3);
+}
+.pet-upload-dialog .pet-upload-png-guide p {
+  margin: 0 0 var(--space-1);
+}
+.pet-upload-dialog .pet-upload-png-guide ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-4);
+}
+.pet-upload-dialog .pet-upload-fields details {
+  margin-block: var(--space-4);
+}
+/* 설정 안의 제목과 설명은 붙여 읽고 항목 사이에서만 더 큰 간격을 둔다. */
+.pet-upload-dialog [data-animation-settings] > summary {
+  padding-block: var(--space-1);
+}
+.pet-upload-dialog [data-animation-settings] > p {
+  margin: var(--space-1) 0 var(--space-2);
+}
+/* 너비·높이가 한 그림 칸을 나누는 설정임을 공통 소제목으로 구분한다. */
+.pet-upload-dialog .pet-upload-frame-heading {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--text-subheading);
+  font-weight: var(--weight-medium);
+}
+.pet-upload-dialog .pet-upload-animation {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.pet-upload-dialog .pet-upload-animation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.pet-upload-dialog .pet-upload-animation-heading > div {
+  min-width: 0;
+}
+.pet-upload-dialog .pet-upload-animation-heading p {
+  margin: var(--space-1) 0 0;
+}
+.pet-upload-dialog .pet-upload-frame-map {
+  min-width: 0;
+  max-width: 100%;
+  margin: var(--space-3) 0;
+}
+.pet-upload-dialog .pet-upload-frame-map figcaption {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-caption);
+}
+.pet-upload-dialog .pet-upload-frame-scroll {
+  overflow: auto;
+  max-height: 240px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.pet-upload-dialog .pet-upload-frame-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--frame-columns), 48px);
+  width: max-content;
+}
+.pet-upload-dialog .pet-upload-frame-cell {
+  display: grid;
+  justify-items: center;
+  border: 1px solid var(--border);
+  background: var(--paper);
+}
+.pet-upload-dialog .pet-upload-frame-cell canvas {
+  display: block;
+  width: 46px;
+  height: 46px;
+}
+.pet-upload-dialog .pet-upload-frame-cell span {
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+.pet-upload-dialog .pet-upload-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.pet-upload-dialog .pet-upload-two-col input {
+  min-width: 0;
+  width: 100%;
+}
+.pet-upload-dialog .pet-upload-preview {
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.pet-upload-dialog .pet-upload-preview h3 {
+  margin: 0 0 var(--space-4);
+}
+.pet-upload-dialog .pet-upload-preview-stage {
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  min-height: 280px;
+  padding-bottom: calc(var(--space-8) + var(--space-1));
+  border-bottom: 1px solid var(--border);
+}
+.pet-upload-dialog .pet-upload-preview-stage canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+}
+.pet-upload-dialog .pet-upload-status {
+  margin-block: var(--space-4);
+  overflow-wrap: anywhere;
+}
+.pet-upload-dialog .pet-upload-status:empty {
+  display: none;
+}
+.pet-upload-dialog .pet-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+@media (max-width: 640px) {
+  .pet-upload-dialog .pet-upload-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  dialog.pet-upload-dialog {
+    padding: var(--space-4);
+  }
+}
+
+/* PNG 설명 아래에서 생성용 문구를 펼치고 애니메이션 설정과 구분한다. */
+.pet-upload-dialog .character-prompts {
+  padding-top: 0;
+  border-top: 0;
+}
+.character-prompt-content {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  min-width: 0;
+}
+.character-prompt-content p {
+  margin: 0;
+}
+.character-prompt-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+.character-prompts textarea {
+  width: 100%;
+  min-width: 0;
+  max-height: 480px;
+  resize: vertical;
+}
+.character-prompts [data-character-prompt-status]:empty {
+  display: none;
+}
+
+.pet-upload-dialog [data-animation-settings] {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}

@@ -1,0 +1,32 @@
+{
+  "name": "our-pets-desktop",
+  "private": true,
+  "version": "0.1.0-beta.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "tauri": "tauri",
+    "test": "vitest run src",
+    "test:ui": "playwright test",
+    "check:ui-types": "tsc --project tsconfig.ui.json"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.0",
+    "gsap": "3.15.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@tauri-apps/cli": "^2.11.0",
+    "@types/node": "^24.19.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.1.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jiind/our-pets.git",
+    "directory": "desktop"
+  }
+}

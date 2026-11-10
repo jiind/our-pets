@@ -1,0 +1,146 @@
+/* 너비와 접힘 상태는 모듈이 정하고 열 배치는 작업 화면의 공통 레이아웃이 담당한다. */
+.workspace[data-sidebar-collapsed] .sidebar {
+  position: relative;
+  height: 100%;
+  max-height: none;
+  min-width: 0;
+  padding: var(--space-6) var(--space-3);
+  border-bottom: 0;
+  border-right: 1px solid var(--border);
+}
+.workspace .sidebar-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  min-width: 0;
+}
+.workspace .sidebar-heading .brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.workspace .sidebar-heading .brand > span {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+.workspace .sidebar-heading .brand img {
+  flex-shrink: 0;
+}
+.workspace button.sidebar-toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--control-icon-size);
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
+  min-height: var(--control-icon-size);
+  padding: 0;
+}
+.workspace[data-sidebar-collapsed] .sidebar nav {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: var(--space-6);
+}
+/* 서버 정보는 펫 탐색 바로 위에서 현재 주소를 읽을 수 있게 표시한다. */
+.workspace .sidebar-server {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.workspace .sidebar-server-led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--status-idle);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-idle) 16%, transparent);
+}
+.workspace .sidebar-server-led[data-state=connected] {
+  background: var(--status-connected);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-connected) 16%, transparent);
+}
+.workspace .sidebar-server-led[data-state=connecting] {
+  background: var(--status-connecting);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-connecting) 16%, transparent);
+}
+.workspace .sidebar-server-led[data-state=disconnected] {
+  background: var(--status-disconnected);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-disconnected) 16%, transparent);
+}
+.workspace .sidebar-server-address {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workspace .sidebar-copyright {
+  display: block;
+  text-align: center;
+}
+.workspace[data-sidebar-collapsed] .sidebar-bottom {
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: var(--space-4);
+}
+.workspace .sidebar-resize {
+  position: absolute;
+  z-index: 4;
+  inset-block: 0;
+  right: 0;
+  width: var(--space-2);
+  cursor: col-resize;
+  touch-action: none;
+  outline-offset: calc(-1 * var(--focus-width));
+}
+.workspace .sidebar-resize::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  border-left: 1px solid transparent;
+}
+.workspace .sidebar-resize:hover,
+.workspace .sidebar-resize:focus-visible,
+.workspace[data-sidebar-resizing=true] .sidebar-resize {
+  background: var(--selected-bg);
+}
+.workspace .sidebar-resize:hover::after,
+.workspace .sidebar-resize:focus-visible::after,
+.workspace[data-sidebar-resizing=true] .sidebar-resize::after {
+  border-color: var(--accent);
+}
+.workspace .sidebar-resize[aria-disabled=true] {
+  cursor: default;
+}
+.workspace[data-sidebar-resizing=true],
+.workspace[data-sidebar-resizing=true] * {
+  cursor: col-resize;
+  user-select: none;
+}
+.workspace[data-sidebar-collapsed=true] .sidebar-heading {
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.workspace[data-sidebar-collapsed=true] .sidebar-heading .brand {
+  flex: 0 0 auto;
+  justify-content: center;
+}
+.workspace[data-sidebar-collapsed=true] .sidebar-heading .brand > span,
+.workspace[data-sidebar-collapsed=true] .sidebar nav button > span,
+.workspace[data-sidebar-collapsed=true] .sidebar-bottom button > span,
+.workspace[data-sidebar-collapsed=true] .sidebar-server,
+.workspace[data-sidebar-collapsed=true] .sidebar-copyright {
+  display: none;
+}
+.workspace[data-sidebar-collapsed=true] .sidebar nav button,
+.workspace[data-sidebar-collapsed=true] .sidebar-bottom button {
+  justify-content: center;
+  padding-inline: var(--space-2);
+}

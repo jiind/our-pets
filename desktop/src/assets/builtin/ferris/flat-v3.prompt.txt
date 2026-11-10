@@ -1,0 +1,23 @@
+경로 안내: 파일 경로는 공개용 예시이며 실제 사용자 경로와 생성 작업 ID를 포함하지 않습니다.
+생성일: 2026-11-09
+도구: 내장 image_gen.imagegen, transparent_background=true
+대상: ferris. 비픽셀 평면 2D 원화로 변경.
+입력 1: /home/example/projects/our-pets/desktop/src/assets/builtin/ferris/sheet.png
+입력 2: gopher/flat-v3.png. 그림체 참고이며 고퍼 자체는 변경하지 않음.
+출력: ferris/flat-v3.png, RGBA 1254×1254px, 4열×4행 16자세.
+원본 PNG를 수정 없이 복사하고 이전 원화는 보존.
+생성 원본: /home/example/.codex/generated_images/sample-session/sample-image.png
+
+최종 프롬프트:
+Use case: style-transfer. Production transparent desktop-pet PNG animation atlas.
+Image roles: Image 1 is the character identity/pose reference or edit target. Image 2 (cyan flat Go Gopher) is STYLE REFERENCE ONLY. Do not draw a gopher.
+Match image 2's non-pixel FLAT 2D cartoon style: smooth dark ink outlines of consistent weight, simple solid-color areas, readable friendly expression, hand-drawn animation-cel appearance. NO fuzzy fur texture, painterly hair, 3D volume, gradients, plastic/clay/plush material, photorealistic lighting, specular/rim highlights, ambient occlusion or pixel art. Flat white eyes and dark pupils. No sticker border or halo.
+Output ONE SQUARE RGBA PNG with real transparent alpha, EXACTLY FOUR equal columns by FOUR equal rows, 16 equally sized cells, read left-to-right top-to-bottom. One complete SAME character in each cell. Keep consistent scale, face identity, camera, colors and stable foot baseline at 88% cell height. All limbs/ears/tail/claws inside each cell with transparent gutters. No grid, labels, background, checkerboard, white mat, ground, ground shadow, text, props, logo or watermark.
+Pose order MUST match:
+Row 1, frames 0-3: four genuinely DIFFERENT consecutive RIGHTWARD WALK-cycle phases: contact, passing, opposite contact, opposite passing. Alternate planted feet and limb articulation, stable body and head, seamless looping walk. Do not duplicate the same walk poses.
+Row 2, frames 4-7: neutral standing; standing blink with eyes shut; standing looking slightly toward viewer; standing weight shift / prepare to walk.
+Row 3, frames 8-11: hand/forepaw/claw starting to raise; waving by head; high five extended RIGHT around local x=80%,y=42% (no partner); lowering back to neutral.
+Row 4, frames 12-15: settling down; resting seated; comfortably sleeping; waking into an attentive resting pose.
+Keep clear margins around EVERY frame and preserve a single consistent model size.
+Subject-specific requirements:
+Create a new 4-by-4 non-pixel 2D Ferris the Rust mascot crab atlas using image 1 ONLY for identity reference. Image 1's old irregular sprite layout must be replaced by the exact square 16-frame layout above. Respect Karen Rustad Tölva's original CC0 Rustacean/Ferris design: vivid orange-red crab, wide rounded shell with little triangular rim/spikes, two expressive white eyes, little smiling mouth, TWO curved arms with pincers and SIX short walking legs (three per side). Keep this anatomy identical in every pose. No human feet, fingers, cat ears, dog tail, clothing or letters. Mostly front/three-quarter view oriented slightly RIGHT. Walking is crab leg articulation with alternate planted legs, body stable; not bouncing or gliding. Gestures use the RIGHTWARD pincer with a clear extended claw in frame 10 and smaller near-head wave in frame 9. Row 4 resting poses tuck legs/claws close to shell; frame14 sleeps with eyes closed; frame15 wakes. Match the flat gopher's ink-line/color-block illustration style while keeping Ferris's crab silhouette and natural width.

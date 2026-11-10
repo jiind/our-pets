@@ -1,0 +1,146 @@
+{
+  "checkedOn": "2026-11-05",
+  "sources": {
+    "dog": {
+      "artist": "Jason of GDN",
+      "license": "CC0-1.0",
+      "source": "https://opengameart.org/content/dog-spritesheets",
+      "file": "https://opengameart.org/sites/default/files/spritesheet_brown.png"
+    },
+    "gopher": {
+      "artist": "Egon Elbre; original design Renée French",
+      "license": "CC0-1.0 (sprites); CC-BY-4.0 (original design attribution retained)",
+      "source": "https://github.com/egonelbre/gophers",
+      "commit": "63b1f5a9f334f9e23735c6e09ac003479ffe5df5"
+    },
+    "ferris": {
+      "artist": "Marc Duiker; original design Karen Rustad Tölva",
+      "license": "MIT (sprites); CC0-1.0 (original design)",
+      "source": "https://github.com/tonybaloney/vscode-pets",
+      "commit": "15f13bc96cb8bade1aff2d49e363cd332b18536b"
+    }
+  },
+  "processing": "현재 기본 펫 네 종류 모두 cel-v4.png의 비픽셀 2D 애니메이션 원화. 고양이 한 자세 기준을 먼저 생성한 뒤 같은 얇은 유색 선·절제한 명암을 네 캐릭터에 적용. PNG는 내장 image_gen으로 생성·편집해 원본 그대로 복사. 이전 원화·출처 보존. 공통 16자세·거리 기반 보행·고급 보간·발/손 기준과 메모리 저알파 정리를 유지.",
+  "files": [
+    {
+      "path": "dog/source.png",
+      "sha256": "3aefb65615a6639a80e01d3045c2d70b87bbd4555794f34993aadcfd232fd4e3"
+    },
+    {
+      "path": "ferris/frames.json",
+      "sha256": "b827e5a0f9aea2012e97d6e7473cdcf47baf87bd4faa7ecf928ac8b9d8abe580"
+    },
+    {
+      "path": "ferris/idle.gif",
+      "sha256": "45166d4bd475b3b7d3c722e7e74b61477a6b4a7615d57e858bfa18023ff01526"
+    },
+    {
+      "path": "ferris/sheet.png",
+      "sha256": "54bbfadd326b848e8bd52e58b588e0248bb496353ded553f4557e60ca619df0b"
+    },
+    {
+      "path": "ferris/swipe.gif",
+      "sha256": "dadce31a17a52d9591d176dcfa2348dd349ad6b98b278b7d21efcbc3c98bee72"
+    },
+    {
+      "path": "ferris/walk.gif",
+      "sha256": "8774ee3904b6bfe6a0a11b702a3eccdeeae00de04e685428813223a6d0ad77cd"
+    },
+    {
+      "path": "gopher/README.source.md",
+      "sha256": "7c8a80f5d3b15c11a4bffd6cf09d802e827560046bc61b77cf3aee76ce4a4de3"
+    },
+    {
+      "path": "gopher/source.json",
+      "sha256": "a9bba522185bbbd39ecd0fb9d337b7361fffea8b466270304b061d3b457cdeb4"
+    },
+    {
+      "path": "gopher/source.png",
+      "sha256": "37c87fcbd218a10197dcd82772d349ea0bc65394cff997ad0f4a873a0f4b553c"
+    },
+    {
+      "path": "dog/painted-v2.png",
+      "sha256": "4f8f89784c3de5dc743a1479dafcf2c668c645b15f3aec5cc1a9ce2f7c0156f6"
+    },
+    {
+      "path": "gopher/painted-v2.png",
+      "sha256": "71768562ba0ac5ebacce136aeff5e4e5d7b279f896d91b05008aaca52fc95c2b"
+    },
+    {
+      "path": "gopher/flat-v3.png",
+      "sha256": "1f39e01519299c6c16e8eb6fe12ab7176913350ade996517d5856077a1a9ca8a"
+    },
+    {
+      "path": "cat/flat-v3.png",
+      "sha256": "99a5230b912a27e94ac85d44f017f8c8456971ea66be54261a2f8eaa4b6e5143"
+    },
+    {
+      "path": "dog/flat-v3.png",
+      "sha256": "d974233cd6bef74b28bf83d8dd36852e8a07be78f1c962ddb20d960a74122fed"
+    },
+    {
+      "path": "ferris/flat-v3.png",
+      "sha256": "2241c30d33431474ae030ac36d8adcea244a27b336491139f7e2d905032e3b30"
+    },
+    {
+      "path": "cat/cel-v4.png",
+      "sha256": "6e17e9fb227fab649ea95e22ceea004ce0788960d359ad356f112e72d58c5a75"
+    },
+    {
+      "path": "dog/cel-v4.png",
+      "sha256": "27fc66db14ffa11558f14acc8fc089b747bef1834957c46feaf512e1dc59e6c5"
+    },
+    {
+      "path": "gopher/cel-v4.png",
+      "sha256": "f9fbc14178cf8cf53459245ed848df6b14878c4666b69b48c9109175b053424b"
+    },
+    {
+      "path": "ferris/cel-v4.png",
+      "sha256": "1ae8a8e18f63f68469e615fb8faf29d9f8fc806717adf93873fd0908fd106b24"
+    },
+    {
+      "path": "cat/cel-v4-master.png",
+      "sha256": "6df6c510f635df45d443619bff51e00c5549ee1748c173902c7c6b29766dfe72"
+    }
+  ],
+  "updatedOn": "2026-11-09",
+  "activeArtwork": {
+    "dog": {
+      "file": "dog/cel-v4.png",
+      "method": "built-in image_gen.imagegen",
+      "prompt": "dog/cel-v4.prompt.txt",
+      "changes": "먼저 확인한 고양이 기준 원화에 맞춰 선을 얇게 하고 제한된 셀 명암을 추가한 2D 애니메이션 원화로 편집"
+    },
+    "gopher": {
+      "file": "gopher/cel-v4.png",
+      "method": "built-in image_gen.imagegen",
+      "prompt": "gopher/cel-v4.prompt.txt",
+      "originalArtist": "Renée French",
+      "originalLicense": "CC-BY-4.0",
+      "source": "https://go.dev/wiki/Gopher",
+      "changes": "먼저 확인한 고양이 기준 원화에 맞춰 선을 얇게 하고 제한된 셀 명암을 추가한 2D 애니메이션 원화로 편집"
+    },
+    "ferris": {
+      "file": "ferris/cel-v4.png",
+      "method": "built-in image_gen.imagegen",
+      "prompt": "ferris/cel-v4.prompt.txt",
+      "changes": "먼저 확인한 고양이 기준 원화에 맞춰 선을 얇게 하고 제한된 셀 명암을 추가한 2D 애니메이션 원화로 편집",
+      "originalArtist": "Karen Rustad Tölva",
+      "originalLicense": "CC0-1.0",
+      "source": "https://rustacean.net/",
+      "referenceArtwork": "Marc Duiker, vscode-pets, MIT; 이전 참고 스프라이트·고지 보존"
+    },
+    "cat": {
+      "file": "cat/cel-v4.png",
+      "method": "built-in image_gen.imagegen",
+      "prompt": "cat/cel-v4.prompt.txt",
+      "changes": "먼저 확인한 고양이 기준 원화에 맞춰 선을 얇게 하고 제한된 셀 명암을 추가한 2D 애니메이션 원화로 편집"
+    }
+  },
+  "styleMaster": {
+    "file": "cat/cel-v4-master.png",
+    "prompt": "cat/cel-v4-master.prompt.txt",
+    "method": "built-in image_gen.imagegen",
+    "role": "한 자세에서 선 굵기·명암·표정을 먼저 정한 뒤 네 캐릭터의 스타일 기준으로 사용"
+  }
+}

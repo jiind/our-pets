@@ -1,0 +1,409 @@
+/* 동일한 역할의 색·글꼴·크기·간격은 이 토큰과 공통 컴포넌트에서만 정한다. */
+:root {
+  --paper: #f7f8f3;
+  --surface: #ffffff;
+  --ink: #243b30;
+  --accent: #355e47;
+  --muted: #526454;
+  --tint: #e7eddf;
+  --danger: #9c342c;
+  --status-connected: #22c55e;
+  --status-connecting: #eab308;
+  --status-disconnected: #ef4444;
+  --status-idle: #9ca3af;
+  --overlay-surface: #fffef9;
+  --overlay-shadow: 0 5px 22px #29422d26;
+  --font-ui: Pretendard, sans-serif;
+  --text-caption: 12px;
+  --text-body: 14px;
+  --text-label: var(--text-body);
+  --text-subheading: 16px;
+  --text-section: 18px;
+  --text-title: 26px;
+  --weight-regular: 400;
+  --weight-medium: 600;
+  --weight-bold: 700;
+  --leading-body: 1.6;
+  --leading-control: 1.4;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --border: #d2dbcd;
+  --border-strong: #7b8a7c;
+  --control-height: 44px;
+  --control-icon-size: 32px;
+  --control-icon-font-size: 22px;
+  --control-padding: var(--space-2) var(--space-3);
+  --control-bg: #eef1e9;
+  --control-hover: #e1e8dc;
+  --control-pressed: #d6e1d1;
+  --primary-hover: #2b503b;
+  --primary-pressed: #234331;
+  --selected-bg: var(--tint);
+  --disabled-opacity: .5;
+  --focus-width: 3px;
+  --focus-offset: 3px;
+  --control-transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+}
+
+/* 기본 동작 버튼은 화면이나 문구에 관계없이 같은 표면과 입력 크기를 쓴다. */
+button, input, textarea, select {
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  line-height: var(--leading-control);
+}
+button {
+  min-height: var(--control-height);
+  padding: var(--control-padding);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--control-bg);
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: var(--control-transition);
+}
+button:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+button:active:not(:disabled) {
+  background: var(--control-pressed);
+}
+button:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+button.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+button.primary:active:not(:disabled) {
+  background: var(--primary-pressed);
+  border-color: var(--primary-pressed);
+}
+/* 보조 동작도 버튼의 경계를 유지하고 선택 상태에는 공통 표시를 붙인다. */
+button.quiet {
+  background: var(--control-bg);
+  color: var(--ink);
+}
+button[aria-pressed=true], nav button.active, .segmented button.active {
+  background: var(--selected-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+button[aria-pressed=true]:hover:not(:disabled), nav button.active:hover, .segmented button.active:hover {
+  background: var(--control-hover);
+}
+nav button, .pet-menu > button, .pet-menu-group > button {
+  align-items: center;
+  text-align: left;
+}
+button .ui-icon {
+  width: var(--space-5);
+  height: var(--space-5);
+}
+/* 같은 X 동작은 말풍선·메뉴·작성·모집·대화상자에서 같은 원형 버튼이다. */
+button.menu-close, button.dialog-close, button.bubble-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--control-icon-size);
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
+  min-height: var(--control-icon-size);
+  padding: 0;
+  border-radius: 50%;
+  background: var(--control-bg);
+  color: var(--ink);
+  font-size: var(--control-icon-font-size);
+  font-weight: var(--weight-regular);
+  line-height: 1;
+}
+/* 닫기는 글꼴 기준선 대신 중심이 고정된 SVG로 원 안에 정확히 정렬한다. */
+button.menu-close .ui-icon, button.dialog-close .ui-icon, button.bubble-close .ui-icon {
+  display: block;
+  width: var(--space-5);
+  height: var(--space-5);
+  pointer-events: none;
+}
+/* 캐릭터 자체를 누르는 아바타는 이미지 크기와 투명 표면을 유지한다. */
+button.avatar {
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+/* 입력은 바깥 화면과 펫 위에서도 같은 글자·테두리·안쪽 여백을 사용한다. */
+input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=hidden]), select, textarea {
+  min-height: var(--control-height);
+  padding: var(--control-padding);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+}
+textarea {
+  min-height: 96px;
+}
+input[type=checkbox], input[type=radio] {
+  width: var(--space-5);
+  height: var(--space-5);
+  accent-color: var(--accent);
+}
+input[type=range] {
+  accent-color: var(--accent);
+}
+input[type=file] {
+  max-width: 100%;
+  color: var(--muted);
+}
+/* 좁은 폼의 파일 선택은 작은 버튼을 쓰고 파일 상태 문구와 충분히 띄운다. */
+input[type=file].file-input-compact {
+  --control-height: var(--control-icon-size);
+  --control-padding: var(--space-1) var(--space-2);
+  --file-name-gap: var(--space-4);
+}
+input[type=file]::file-selector-button {
+  min-height: var(--control-height);
+  padding: var(--control-padding);
+  margin-inline-end: var(--file-name-gap, var(--space-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--control-bg);
+  color: var(--ink);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: var(--control-transition);
+}
+input[type=file]:hover:not(:disabled)::file-selector-button {
+  background: var(--control-hover);
+}
+input[type=file]:active:not(:disabled)::file-selector-button {
+  background: var(--control-pressed);
+}
+input:disabled, textarea:disabled, select:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+:is(button, input, textarea, select, summary, a, canvas, [tabindex]):focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+/* 투명 창에서는 포커스 테두리를 클릭 영역 안쪽에 표시한다. */
+.pet-stage {
+  --focus-offset: -3px;
+}
+
+/* 본문·제목·보조 설명·오류의 위계를 동일하게 적용한다. */
+h1, h2, h3 {
+  color: var(--ink);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-control);
+  letter-spacing: -.02em;
+}
+h1 {
+  font-size: var(--text-title);
+}
+h2 {
+  font-size: var(--text-section);
+}
+h3 {
+  font-size: var(--text-subheading);
+}
+label, legend, .field-label {
+  font-family: var(--font-ui);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-body);
+  color: var(--ink);
+  gap: var(--space-2);
+}
+small, .fine, .muted {
+  color: var(--muted);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+}
+.pet-menu-title, .pet-compose-heading h2, .recruitment-heading h2 {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-body);
+}
+.pet-compose-target, .pet-menu-status, .recruitment-owner, .bubble-sender {
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+}
+.pet-menu, .pet-compose, .pet-bubble, .pet-connection, .recruitment-panel, .pet-preview-menu {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--text-body);
+  color: var(--ink);
+  background: var(--overlay-surface);
+  box-shadow: var(--overlay-shadow);
+}
+.pet-menu-heading, .pet-compose-heading, .recruitment-heading {
+  z-index: 1;
+  gap: var(--space-2);
+  min-height: var(--control-icon-size);
+  background: var(--overlay-surface);
+  padding: 0 0 var(--space-2);
+  top: calc(-1 * var(--space-3));
+}
+.bubble-actions, .companion-controls, .pet-menu-row, .recruitment-choices {
+  gap: var(--space-2);
+}
+.pet-menu > button, .pet-menu-group > button {
+  gap: var(--space-2);
+}
+.recruitment-badge {
+  border-radius: 999px;
+  background: var(--overlay-surface);
+  box-shadow: var(--overlay-shadow);
+  pointer-events: none;
+}
+/* 이름은 펫 발밑에 표시하고 데스크톱의 30px 아래 여백 안에 맞춘다. */
+.pet-nameplate {
+  display: inline-block;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--overlay-surface);
+  color: var(--ink);
+  font-size: var(--text-subheading);
+  font-weight: var(--weight-medium);
+  line-height: 1.25;
+  box-shadow: var(--overlay-shadow);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pet-nameplate:empty {
+  display: none;
+}
+.pet-name-anchor {
+  position: relative;
+  display: inline-grid;
+}
+.pet-name-anchor > .pet-nameplate {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  translate: -50% 0;
+  top: calc(100% + var(--space-1));
+  bottom: auto;
+  display: none;
+}
+.pet-name-anchor:has(canvas:hover) > .pet-nameplate:not(:empty),
+.preview-menu-open .pet-name-anchor > .pet-nameplate:not(:empty) {
+  display: inline-block;
+}
+.pet-dialog {
+  padding: 0;
+  background: var(--overlay-surface);
+}
+.bubble-sender {
+  padding-right: calc(var(--control-icon-size) + var(--space-2));
+}
+.bubble-close, .pet-connection .menu-close, .dialog-close {
+  top: var(--space-2);
+  right: var(--space-2);
+}
+#notice, #local-source-notice, .local-form-notice, .source-action-notice,
+.pet-compose-status, .recruitment-feedback, .pet-registration-status, .pet-upload-status {
+  color: var(--muted);
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
+}
+#notice.error, #local-source-notice.error,
+.pet-compose-status:not(:empty), .error, .recruitment-feedback.error {
+  color: var(--danger);
+}
+
+/* 아이콘 단독 동작은 일반 버튼 크기를 유지하고 원형 닫기 버튼과 구분한다. */
+button.icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 var(--control-height);
+  width: var(--control-height);
+  height: var(--control-height);
+  min-width: var(--control-height);
+  padding: 0;
+}
+/* 소제목 옆의 보조 동작은 동일한 작은 버튼과 제목 크기의 아이콘을 사용한다. */
+button.icon-button.icon-button-compact {
+  --control-height: var(--control-icon-size);
+}
+button.icon-button-compact .ui-icon {
+  width: var(--text-subheading);
+  height: var(--text-subheading);
+}
+/* 모집 종류는 이모지로만 표시하고 선택 영역은 공통 버튼 크기를 유지한다. */
+.recruitment-choices > button {
+  font-size: var(--control-icon-font-size);
+  line-height: 1;
+}
+
+/* 사용량은 공통 색상과 실제 백분율로 표시하며 조회 시각을 함께 제공한다. */
+.codex-usage {
+  margin-top: var(--space-3);
+  max-width: 620px;
+}
+
+/* 메뉴 메시지는 추가 창 없이 한 줄 입력·전송으로 제공한다. */
+.pet-menu-message {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+}
+.pet-menu-message input {
+  width: 100%;
+  min-width: 0;
+}
+.pet-menu-message-feedback {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-caption);
+}
+.codex-quota {
+  margin-bottom: var(--space-3);
+}
+.codex-quota > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.codex-quota progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--accent);
+}
+.codex-quota p {
+  margin-top: var(--space-1);
+}

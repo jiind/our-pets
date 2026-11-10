@@ -1,0 +1,24 @@
+name: 버그 보고
+description: 재현 가능한 오류를 알려 주세요.
+title: 'fix: '
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 순서
+      description: 비밀값과 개인 메시지는 제외해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 기대 동작과 실제 동작
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 실행 환경
+      description: 앱 버전, OS, Linux라면 X11/Wayland와 데스크톱 환경을 적어 주세요.
+    validations:
+      required: true

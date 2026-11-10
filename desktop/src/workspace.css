@@ -1,0 +1,200 @@
+/* 설정 화면의 안내와 복구 동작은 펫 창의 입력 영역과 분리한다. */
+.workspace .notification-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin: 0;
+}
+.workspace .page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.workspace .page-actions:empty {
+  display: none;
+}
+.workspace .sidebar > .brand {
+  flex-shrink: 0;
+}
+.workspace .connection-problem {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  background: #fff6e7;
+  border: 1px solid #d4bd95;
+  border-radius: var(--radius-md);
+}
+.workspace .connection-problem p {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: var(--text-body);
+}
+.workspace .friend-search {
+  display: grid;
+  margin: var(--space-4) 0 var(--space-2);
+}
+.workspace .friend-search input {
+  margin: 0;
+}
+.workspace #recipient-feedback {
+  min-height: 20px;
+  margin: var(--space-2) 0 var(--space-3);
+}
+.workspace .pet-option[data-online=false] {
+  background: #f5f6f0;
+}
+.workspace .pet-option label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.workspace .pet-option small {
+  font-size: var(--text-caption);
+}
+.workspace .pet-option > input {
+  flex-shrink: 0;
+}
+.workspace .delivery-details {
+  margin-top: var(--space-3);
+  font-size: var(--text-caption);
+}
+.workspace .delivery-details button {
+  margin-top: var(--space-2);
+}
+.workspace .studio-preview-controls {
+  margin-top: var(--space-5);
+}
+.workspace .studio-preview-controls label {
+  max-width: 240px;
+}
+.workspace .studio-preview-controls p {
+  margin: var(--space-2) 0;
+}
+.workspace .design-preview canvas {
+  max-width: 100%;
+  image-rendering: auto;
+}
+.workspace .connector-intro, .local-workspace .connector-intro {
+  max-width: 65ch;
+  margin: 0 0 var(--space-3);
+  line-height: var(--leading-body);
+}
+.workspace .connector-boundary, .local-workspace .connector-boundary {
+  margin-bottom: 28px;
+}
+.workspace .connector-boundary p, .local-workspace .connector-boundary p {
+  font-size: var(--text-caption);
+  color: var(--muted);
+  max-width: 65ch;
+}
+.workspace .connector-create, .local-workspace .connector-create {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+.workspace .connector-create h2, .local-workspace .connector-create h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-section);
+}
+/* 연결 편집은 목록 옆 아이콘에서 여는 모달에만 배치한다. */
+dialog.connector-dialog {
+  width: min(620px, calc(100vw - var(--space-8)));
+  max-width: calc(100vw - var(--space-8));
+  max-height: calc(100vh - var(--space-8));
+  margin: auto;
+  padding: var(--space-6);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--ink);
+}
+.connector-dialog .connector-create {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.connector-dialog .connector-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.connector-dialog .connector-dialog-heading h2 {
+  margin: 0;
+}
+/* 입력 항목 사이를 충분히 띄우고 체크박스 선택 목록의 행 간격은 유지한다. */
+.connector-dialog form > label + label,
+.connector-dialog details > label + label {
+  margin-top: var(--space-5);
+}
+.local-event-types .local-event-options {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: var(--space-4);
+}
+.connector-list-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.workspace .provider-picker, .local-workspace .provider-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+.workspace .provider-picker button, .local-workspace .provider-picker button {
+  min-width: 100px;
+}
+.workspace .connector-source, .local-workspace .connector-source {
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+.workspace .connector-source .section-label, .local-workspace .connector-source .section-label {
+  margin: 0 0 var(--space-2);
+  flex-wrap: wrap;
+}
+.workspace .connector-source strong, .local-workspace .connector-source strong {
+  overflow-wrap: anywhere;
+}
+.workspace .connector-form-actions, .local-workspace .connector-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.workspace .connector-create form, .local-workspace .connector-create form {
+  max-width: 620px;
+}
+.workspace .local-form-notice, .local-workspace .local-form-notice {
+  overflow-wrap: anywhere;
+}
+.workspace .local-form-notice:empty, .local-workspace .local-form-notice:empty,
+.workspace .source-action-notice:empty, .local-workspace .source-action-notice:empty,
+.workspace #local-source-notice:empty, .local-workspace #local-source-notice:empty {
+  display: none;
+}
+.workspace .connector-create details, .local-workspace .connector-create details {
+  margin: var(--space-4) 0;
+}
+.workspace details > summary, .local-workspace details > summary {
+  padding-block: var(--space-2);
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  dialog.connector-dialog {
+    padding: var(--space-4);
+  }
+  .workspace .connection-problem {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Our Pets",
+  "version": "0.1.0-beta.1",
+  "identifier": "com.ourpets.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "settings",
+        "title": "우리 펫 · 함께하는 데스크톱",
+        "width": 980,
+        "height": 760,
+        "minWidth": 680,
+        "minHeight": 580
+      },
+      {
+        "label": "pet",
+        "title": "우리 펫",
+        "url": "index.html?pet",
+        "width": 360,
+        "height": 560,
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "focus": false,
+        "focusable": false,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' ipc: http: https: ws: wss:; object-src 'none'; base-uri 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "shortDescription": "로컬망 LAN 데스크톱 펫",
+    "category": "SocialNetworking",
+    "resources": {
+      "../../LICENSE": "licenses/Apache-2.0.txt",
+      "../../THIRD_PARTY_NOTICES.md": "licenses/THIRD_PARTY_NOTICES.md",
+      "../public/fonts/OFL.txt": "licenses/Pretendard-OFL.txt",
+      "../public/licenses/": "licenses/assets/"
+    }
+  }
+}

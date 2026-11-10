@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 보안 문제 비공개 신고
+    url: https://github.com/jiind/our-pets/security/advisories/new
+    about: 자격증명이나 취약점 세부 정보를 일반 이슈에 공개하지 마세요.

@@ -1,0 +1,209 @@
+/* 펫 등록 화면은 공통 토큰의 배치만 조합하고 별도 버튼 표면을 만들지 않는다. */
+.pet-registration {
+  container-name: pet-settings;
+  container-type: inline-size;
+}
+.pet-registration .pet-registration-heading {
+  display: block;
+  margin-bottom: var(--space-5);
+}
+.pet-registration .pet-registration-heading h2 {
+  margin: 0 0 var(--space-2);
+}
+.pet-registration .pet-registration-heading p {
+  margin: 0;
+  color: var(--muted);
+}
+.pet-registration .pet-registration-status {
+  margin-block: var(--space-4);
+  overflow-wrap: anywhere;
+}
+.pet-registration .pet-registration-status:empty {
+  display: none;
+}
+.pet-registration .pet-registration-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+/* 펫 메뉴에서는 미리보기와 편집 폼을 함께 열고 표시·저장 제어를 상단에 모은다. */
+.pet-registration .pet-registration-layout > form {
+  min-width: 0;
+  width: 100%;
+}
+.pet-registration .pet-registration-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.pet-registration .pet-registration-toolbar .pet-display-settings {
+  margin-bottom: 0;
+}
+.pet-registration .pet-registration-editor,
+.pet-registration .pet-registration-choice {
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* 이름 제목과 실제 입력도 한 줄에서 공통 간격을 사용한다. */
+.pet-registration .pet-registration-editor > label {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+.pet-registration .pet-registration-editor > label input {
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+}
+.pet-registration .pet-registration-character-options {
+  display: grid;
+  gap: var(--space-2);
+}
+.pet-registration .pet-registration-catalogue-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  gap: var(--space-2);
+}
+/* 이름과 캐릭터 제목만 공통 소제목 크기로 키워 실제 입력·선택지는 본문 크기를 유지한다. */
+.pet-registration .pet-registration-field-title {
+  font-size: var(--text-subheading);
+  font-weight: var(--weight-medium);
+}
+.pet-registration .pet-registration-choice {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-5);
+}
+.pet-registration .pet-registration-choice label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: var(--control-height);
+  gap: var(--space-2);
+}
+.pet-registration .pet-registration-choice input {
+  flex-shrink: 0;
+  margin: 0;
+}
+.pet-registration .pet-registration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.pet-registration .pet-registration-preview {
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.pet-registration .pet-registration-preview h3 {
+  margin: 0;
+}
+.pet-registration .pet-registration-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.pet-registration .pet-registration-preview-stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  min-height: 280px;
+  padding-bottom: calc(var(--space-8) + var(--space-1));
+  border-bottom: 1px solid var(--border);
+}
+.pet-registration .pet-registration-preview-stage canvas {
+  cursor: context-menu;
+}
+/* 메뉴는 미리보기 영역 안에서 열고 버튼 표면은 공통 UI 규칙을 사용한다. */
+.pet-registration .pet-preview-menu {
+  position: absolute;
+  z-index: 2;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: min(260px, calc(100% - var(--space-4)));
+}
+.pet-registration .pet-preview-menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-medium);
+}
+.pet-registration .pet-preview-menu-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.pet-registration .pet-preview-menu-actions button {
+  min-width: 0;
+}
+.pet-registration .pet-registration-preview-stage canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: none;
+}
+.pet-registration .pet-registration-preview select {
+  max-width: 100%;
+}
+/* 미리보기 설정의 제목과 실제 입력을 같은 두 열에 맞춘다. */
+.pet-registration .pet-preview-control {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) minmax(0, 240px);
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+.pet-registration .pet-preview-control select {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+/* 사이드바 조절까지 반영한 실제 본문 너비가 충분할 때만 두 열을 사용한다. */
+@container pet-settings (min-width: 600px) {
+  .pet-registration .pet-registration-layout {
+    grid-template-columns: minmax(260px, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* legend의 별도 너비 계산 없이 실제 편집 폼 너비로 제목과 아이콘을 정렬한다. */
+.pet-registration .pet-registration-choice-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.builtin-credits {
+  margin-top: var(--space-3);
+}
+.builtin-credits [data-builtin-credits] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-top: var(--space-2);
+}
+
+.pet-registration [data-catalogue-note]:empty {
+  display: none;
+}

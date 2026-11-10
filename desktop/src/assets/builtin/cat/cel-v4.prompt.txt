@@ -1,0 +1,22 @@
+경로 안내: 파일 경로는 공개용 예시이며 실제 사용자 경로와 생성 작업 ID를 포함하지 않습니다.
+생성일: 2026-11-09
+도구: 내장 image_gen.imagegen, transparent_background=true
+입력 1: cat/flat-v3.png. 정체성·기존 동작 배치 참고.
+입력 2: cat/cel-v4-master.png. 먼저 확인한 고양이 한 자세의 선·채색 기준.
+출력: cat/cel-v4.png. 얇은 유색 선·제한된 명암의 2D 애니메이션 원화.
+구성: 4열 × 4행 16자세. 기존 파일은 보존하고 새 PNG를 수정 없이 복사.
+생성 원본: /home/example/.codex/generated_images/sample-session/sample-image.png
+
+최종 프롬프트:
+Use case: style-transfer. Production transparent PNG desktop pet animation atlas.
+Image 1 is the existing 4x4 character sheet: preserve its species, recognizable identity, model proportions, cell arrangement and pose functions. Image 2 is the APPROVED GINGER CAT STYLE MASTER: transfer ONLY its delicate colored linework, softly designed cel shading and moderate illustrative depth. Do not copy the cat species into other characters.
+Art direction: polished hand-drawn 2D animation character artwork, thin tapered colored outlines (about half the old black outline weight), 1-2 designed shadow tones under ears/shell, cheek, belly, arm/tail overlaps and far-side limbs, restrained soft transitions and warm small highlights. Friendly expressive face readable at about 160px display. Match the style master's balance of clear drawing and gentle depth. Keep surface clean: no individual fur strands, fluffy texture, photorealism, glossy plastic/clay/plush model rendering, cinematic rim lights, heavy ambient occlusion, thick black vector-logo borders or pixel art.
+Output ONE SQUARE transparent RGBA PNG. EXACT 4 equal columns x 4 equal rows, 16 cells, one full character per cell, invisible grid. Consistent model scale, face proportions, camera and baseline (feet at about 88% cell height); safe transparent margins all around. No ear, tail, claw or hand crosses its cell boundary. Right-facing mild three-quarter side view, no ground/ground shadow, scene, props, text, labels, numbers, white mat, fake checkerboard, border or watermark.
+Exact pose plan (zero based, left to right then top to bottom):
+Row1 0,1,2,3: four DISTINCT phases of a grounded RIGHTWARD walk: near-side limbs in forward contact / near-side passing underneath / opposite contact (FAR-side front limb forward, NEAR-side front limb back) / opposite passing. Clearly articulate and alternate planted limbs. Shade far-side legs slightly darker to show depth and make opposite contacts visually distinct. Feet move relative to stable body/head. No repeated copy-pasted contact poses, no floating or whole-body bouncing.
+Row2 4,5,6,7: neutral standing; standing blink; standing looking a little toward viewer; prepare-to-walk weight shift.
+Row3 8,9,10,11: hand/paw/claw starting to raise; hand/paw/claw waving by face; HIGH FIVE toward RIGHT at local x80%,y42% (no partner); lowering to neutral.
+Row4 12,13,14,15: settling to sit/rest; seated/resting awake; curled/tucked asleep eyes closed; waking into attentive resting pose.
+Keep the SAME character and limb count throughout every pose, proportion and foot anchoring matter more than decorative detail.
+Character-specific invariants:
+Same original ginger tabby kitten from Image1: orange coat, darker orange stripe SHAPES, cream muzzle/chest/paw tips, pink nose, triangular ears, full curved tail and FOUR connected quadruped legs. Match Image2's exact improved kitten style closely. Eyes remain charming but not enlarged further. Sleep curls around the complete tail.

@@ -1,0 +1,14 @@
+경로 안내: 파일 경로는 공개용 예시이며 실제 사용자 경로와 생성 작업 ID를 포함하지 않습니다.
+생성일: 2026-11-09
+도구: 내장 image_gen.imagegen, transparent_background=true
+입력 역할: cat/flat-v3.png는 고양이 정체성 참고.
+산출물: cel-v4-master.png. 한 자세의 그림체 기준 원화이며 기존 파일은 보존.
+생성 원본: /home/example/.codex/generated_images/sample-session/sample-image.png
+얇은 유색 선·절제한 셀 명암을 확인한 뒤 동작과 다른 캐릭터의 그림체 참고로 사용함.
+
+최종 프롬프트:
+Use case: style-transfer. Asset type: desktop-pet animation STYLE MASTER, ONE SINGLE neutral standing pose, not a sprite sheet.
+Input image is the existing ginger tabby identity reference ONLY. Preserve its character identity: small original orange tabby kitten, cream muzzle/chest/paw tips, darker orange stripe shapes, triangular ears, long curved tail, short connected FOUR legs, warm expressive eyes and pink nose. Draw exactly ONE complete kitten standing comfortably facing RIGHT in a mild three-quarter side view, all four paws grounded, full ears/feet/tail with clear transparent margins.
+Improve art direction to polished HAND-DRAWN 2D ANIMATION CEL character art with a little illustrated depth. The previous version's outlines are too heavy and colors too flat. Use delicately tapered warm reddish-brown linework (roughly half the old outline thickness), softer and less black. Add carefully designed cel shadows under the ears, cheek, belly, tail overlap and on far-side legs: one main shadow color plus a restrained softer secondary transition. Gentle warm light on forehead and back, subtle eye highlights. Keep facial readability and connected anatomy at about 160px displayed height.
+Target: expressive, softly shaded animation drawing with clean shapes and moderate depth, suitable as an animation model sheet master. The balance is between a flat sticker graphic and a furry 3D rendering. Use no realistic individual fur strands, fuzzy texture, glossy plastic, clay/plush rendering, cinematic rim lighting, ambient occlusion or thick uniform black vector contours. Do not copy any existing branded cartoon character.
+Output ONE square transparent RGBA PNG, true alpha outside the silhouette. No ground shadow, floor, background, checkerboard, white mat, props, labels, words, watermarks, borders, multiple poses or grid. Center the single kitten with breathing room.
