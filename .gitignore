@@ -25,9 +25,46 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# 실제 환경 설정과 인증 자료는 예제와 구분한다.
 .env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+credentials.json
+auth.json
+session.json
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.db
+*.db-*
+*.log
+.DS_Store
+
+# 로컬 앱·테스트·서버 산출물
+data/
+node_modules/
+dist/
+target/
+bin/
+.playwright-cli/
+test-results/
+desktop/src-tauri/gen/
+*.local
 
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# CI·릴리즈 임시 산출물
+release-out/
+release-notes.md
+__pycache__/
+*.pyc
+/our-pets

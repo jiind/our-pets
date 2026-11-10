@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible problem.
+title: 'fix: '
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Exclude secrets and personal messages.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include app version, OS, and Linux desktop/X11/Wayland details.
+    validations:
+      required: true

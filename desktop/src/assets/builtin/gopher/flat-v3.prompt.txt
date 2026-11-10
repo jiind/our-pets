@@ -1,0 +1,20 @@
+Path note: all absolute paths are public examples; real usernames and generation job IDs are omitted.
+Created: 2026-11-09
+Tool: built-in image_gen.imagegen, transparent_background=true
+Edit target: gopher/painted-v2.png, adapted to non-pixel flat 2D.
+Output: gopher/flat-v3.png. Original output copied unchanged; earlier artwork retained.
+Original design: Renée French, Go Gopher, CC BY 4.0. Attribution is retained in the app and documentation.
+Generated source example: /home/example/.codex/generated_images/sample-session/sample-image.png
+
+Exact generation prompt:
+Use case: style-transfer.
+Edit target: the attached Go Gopher 4-by-4 sprite sheet. Redraw ONLY this gopher in a clearly FLAT, clean, hand-drawn 2D cartoon animation style. This is a production PNG animation atlas for a desktop pet, not a concept poster.
+Keep the same recognizable cyan Go Gopher identity (Renée French Go Gopher design, CC BY 4.0, attribution maintained by application), huge white eyes, dark pupils, little round ears, two front teeth, short tan hands and feet, pear-shaped blue body, and friendly expressive face. Keep a BIPED with exactly two legs and two arms.
+Critical style change: uniform solid color fills, graceful dark teal ink contour with consistent line weight, smooth antialiased curves and crisp readable silhouette. Think polished traditional 2D cartoon cel artwork / clean flat character illustration. NO fur, fuzz, texture, sculpted volume, gradients, 3D modeling, clay/plush/toy effect, photographic lighting, shiny eyes rendered as spheres, ambient occlusion, specular highlights, rim lighting, pixel art or pixelated edges. Flat white eyes and flat dark pupils. Keep details simple enough to read at desktop-pet size. No sticker border or white halo.
+Preserve the EXACT existing layout: ONE SQUARE RGBA PNG, FOUR equal columns by FOUR equal rows, exactly 16 frames, one complete same gopher per cell, invisible grid, transparent gutters. Face RIGHT in a mild side/three-quarter 2D view. Same character scale and proportions throughout. Feet at a stable baseline about 88% of each cell height; no limb, ear, hand or foot crosses a cell edge. Keep generous transparent margins.
+Frame plan, left to right, top to bottom:
+Row 1 (0-3): four distinct phases of a RIGHTWARD WALK. Frame0 near foot reaches forward to plant, frame1 near foot passes bent under body, frame2 opposite foot forward plant, frame3 opposite passing. Alternate arm swing and planted feet; do not duplicate walk poses. Preserve head height and body scale for a seamless loop.
+Row 2 (4-7): standing neutral; standing blink eyes closed; standing looking a little toward viewer; preparing to walk / shifting weight.
+Row 3 (8-11): beginning to raise near hand; waving hand by face; high-five palm extended to the RIGHT around local x=80%,y=42% (no partner); lowering hand.
+Row 4 (12-15): settling to sit; seated awake; comfortably curled asleep; waking into alert seated pose.
+Outside each silhouette is GENUINE alpha transparency, including the gutters. No background, painted checkerboard, white mat, floor, ground shadow, scenery, props, text, labels, numbers, logos, cell borders or watermark. Only change this gopher sheet; do not include any dog or cat.

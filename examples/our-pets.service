@@ -1,0 +1,21 @@
+[Unit]
+Description=Our Pets LAN server
+After=network.target
+
+[Service]
+User=our-pets
+Group=our-pets
+WorkingDirectory=/var/lib/our-pets
+EnvironmentFile=/etc/our-pets/server.env
+ExecStart=/opt/our-pets/our-pets
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/our-pets
+
+[Install]
+WantedBy=multi-user.target

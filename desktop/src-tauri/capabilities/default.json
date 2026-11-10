@@ -1,0 +1,6 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "local-desktop", "description": "로컬 설정 창과 펫 창의 기본 이벤트만 허용한다.",
+  "windows": ["settings", "pet", "peer-*"],
+  "permissions": ["core:default"]
+}

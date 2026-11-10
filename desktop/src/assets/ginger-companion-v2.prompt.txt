@@ -1,0 +1,38 @@
+Path note: all absolute paths are public examples; real usernames and generation job IDs are omitted.
+Original orange-cat sprite-sheet specification
+Created: 2026-11-04
+Tool: built-in image_gen.imagegen, default mode, one generation
+Parameter: transparent_background=true
+Selected file: desktop/src/assets/ginger-companion-v2.png
+Storage: original PNG copied without resizing, re-editing, or alpha changes.
+Actual output: PNG RGBA, 1254×1254px; requested size was 1024×1024px.
+Layout: four columns, four rows, sixteen frames; source cells are 313.5×313.5px.
+Frame order, zero-based, left to right then top to bottom:
+0 walk contact / 1 walk passing / 2 opposite contact / 3 opposite passing
+4 standing / 5 blink / 6 look toward viewer / 7 prepare to walk
+8 raise paw / 9 greeting / 10 right high-five / 11 lower paw
+12 sit transition / 13 sitting awake / 14 curled sleeping / 15 wake
+Rendering notes:
+- Total pixels: 1572516; alpha=0: 467221; alpha=1: 435324. Interior cat alpha is generally 251–253.
+- Colored residue surrounding the pet is primarily alpha=1. Preserve source alpha and clean low alpha in rendering memory.
+- Use fractional cell coordinates. Cutting directly into integer 256px or 313px cells does not match the source.
+- Standing feet are around cell y=279–286 (about 228–234 at 256px); seated/sleeping feet are around y=281–286. Align runtime foot baselines.
+- Most head tops are around source-cell y=25–38 (about 20–31 at 256px), above the requested y=48.
+- Frame 10's high-five paw approaches the right cell boundary and may extend slightly into the next cell. Derive contact from artwork rather than assuming requested x=220,y=105.
+- Seated/sleeping silhouettes differ from standing. Use one scale and common grounding rather than maximizing each frame independently.
+- Generated for this project without third-party character/sprite copying or external image inputs.
+Generated source example: /home/example/.codex/generated_images/sample-session/sample-image.png
+
+Exact generation prompt:
+
+Use case: stylized-concept
+Asset type: production-ready transparent 2D desktop pet animation sprite sheet, exactly 16 separate frames.
+Generate ONE square 1024 x 1024 PNG with genuine alpha transparency. Exactly FOUR columns and FOUR rows on an invisible regular grid, each of the 16 equal cells 256 x 256. One complete cat in EVERY cell. Read order left-to-right then top-to-bottom. No visible grid or cell borders. Every cat fits completely inside its own cell with clear transparent gutters between frames.
+Subject and identity: the SAME original ginger tabby kitten in all 16 frames, creamy muzzle, chest and paw tips, orange striped fur, rounded coherent torso, four short connected legs, full nicely shaped tail, expressive gentle eyes, rounded little ears. Soft detailed hand-painted 2D animated character art with consistent volume and clean readable silhouette. Adorable polished cartoon pet, NOT photorealistic, NOT pixel art, not a crude arrangement of ellipsoids or generic gradients. No costume or accessories. Consistent soft lighting, palette, camera, facial identity and proportions throughout.
+Camera: side / three-quarter view facing RIGHT. All standing/walking frames have identical scale, head normally around local y=48, paws planted around local y=224, body centered around local x=128. Tail fully inside local x=20..235. Keep stable foot baseline across every frame, including sitting and sleep; no bobbing up and down as a whole. Never crop feet, ears, tail, raised paw. Raised high-five paw can extend to about local x=220,y=105 with safe margins.
+Exact frame plan:
+Row 1 (top, frames 0,1,2,3): four distinct RIGHTWARD WALK cycle poses: front-near paw planted forward / rear-near paw back; passing pose with near paws moving under body; opposite contact with far paws forward; opposite passing. Clear connected leg/foot articulation, subtly changing weight, stable head and consistent body scale. These four frames form a smoothly looping walk.
+Row 2 (frames 4,5,6,7): standing idle; standing gentle blink; standing looking slightly toward viewer; standing prepare-to-walk weight shift.
+Row 3 (frames 8,9,10,11): front forepaw beginning to raise; forepaw held up waving; HIGH FIVE forepaw extended RIGHT to local x=220,y=105 (no partner, no object); forepaw lowering back toward standing pose.
+Row 4 (bottom, frames 12,13,14,15): settling down to sit; sitting awake gently; sleeping curled up with eyes closed and complete tail; waking up into attentive sitting.
+Constraints: EXACT 4 by 4 evenly spaced layout, no extra frames, same cat and scale across all 16. Truly transparent background everywhere outside the cat silhouettes. No checkerboard drawn into image, no background color, no scene, no ground, no ground shadows or ground props, no text, no labels, no numbers, no watermark, no outlines around cells. Create original art, do not copy an existing character or third-party sprite sheet.

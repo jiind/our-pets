@@ -1,0 +1,21 @@
+Path note: all absolute paths are public examples; real usernames and generation job IDs are omitted.
+Created: 2026-11-09
+Tool: built-in image_gen.imagegen, transparent_background=true
+Reference: ginger-companion-v2.png for visual style; the reference itself was not edited.
+Output: painted-v2.png, four columns, four rows, sixteen poses. Original PNG copied unchanged.
+Original pixel references are retained separately from runtime artwork.
+Low-alpha residue is cleaned only in rendering memory, as for the cat.
+Generated source example: /home/example/.codex/generated_images/sample-session/sample-image.png
+
+Exact generation prompt:
+Use case: stylized-concept. Asset type: production transparent desktop pet sprite atlas.
+The attached ginger cat sheet is STYLE REFERENCE ONLY: match its polished soft hand-painted 2.5D cartoon character illustration, smooth antialiased silhouettes, appealing expressive face and consistent gentle upper-left lighting. Generate an ENTIRELY NEW character sheet, do not include a cat.
+ONE SQUARE transparent PNG, exactly FOUR columns and FOUR rows (16 equally sized invisible cells), left-to-right top-to-bottom. One complete same character per cell. All poses must fit fully within their cell with generous transparent gutters. No grid, labels, words, numbers, background, stage, floor, shadow, checkerboard, props, accessories, pixel art or hard pixel edges.
+All frames have identical character scale, body identity and camera. Grounded poses share a foot baseline around 88% of cell height. Face RIGHT in a side/three-quarter view. No feet/ears/hands/tail crossing cell boundaries.
+Exact pose order:
+Row 1 frames 0-3: Four genuinely DIFFERENT rightward walking gait poses: near foot forward contact, passing with near foot lifted under body, opposite contact, opposite passing. Clear limb articulation and stable head/body/foot baseline, seamless cyclic walk.
+Row 2 frames 4-7: neutral standing; standing blinking with closed eyes; standing looking slightly toward viewer; standing preparing to walk/weight shift.
+Row 3 frames 8-11: raising near forepaw/hand; waving upright hand near head; HIGH FIVE hand extended toward RIGHT at local x=80%,y=42%, palm visible (no partner); lowering hand/forepaw.
+Row 4 frames 12-15: transition to sitting; seated awake; sleeping comfortably curled up; waking into an alert seated pose.
+Soft full rounded volumes and detailed appealing shading, no sticker outline, no plastic toy look, no generic simple circles. Transparent alpha outside silhouettes. Keep row 1 legs distinct across the four walk phases.
+Subject: ONE original adorable young golden retriever puppy across all 16 poses, warm golden/apricot silky fur, creamy muzzle/chest/paw tips, soft floppy ears, gentle brown eyes, rounded dark nose, short sturdy FOUR connected legs, fluffy raised tail. Quadruped normally; raises one front paw for gestures. Same puppy proportions throughout, harmonious style with the reference ginger kitten. No likeness to a branded dog character.

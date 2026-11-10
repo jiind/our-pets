@@ -1,0 +1,16 @@
+# 텍스트 줄 끝을 통일하고 에셋은 바이너리 그대로 보존한다.
+* text=auto eol=lf
+*.png binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.woff2 binary
+
+# 외부 라이선스·출처 원문에 포함된 공백은 그대로 보존한다.
+desktop/public/fonts/OFL.txt -whitespace
+desktop/public/licenses/* -whitespace
+desktop/src/assets/builtin/gopher/README.source.md -whitespace
+
+# 출처 지문과 외부 라이선스 원문의 줄 끝을 바꾸지 않는다.
+desktop/src/assets/builtin/gopher/source.json -text -whitespace
+desktop/public/licenses/gopher-CC0.txt -text

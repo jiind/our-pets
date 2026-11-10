@@ -1,0 +1,16 @@
+name: Feature request
+description: Describe your use case and desired improvement.
+title: 'feat: '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use case and problem
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Desired behavior
+    validations:
+      required: true

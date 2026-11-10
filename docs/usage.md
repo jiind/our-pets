@@ -1,0 +1,44 @@
+# User guide
+
+The current app UI is in Korean. Control names below are described in English.
+
+## Connect and register a pet
+
+1. Open the app and enter the server address supplied by its operator. For the default server on the same PC, use `http://127.0.0.1:9377`.
+2. Create an account or sign in. The server operator supplies the registration code. Your nickname appears on your pet's nameplate.
+3. On the pet page, choose a built-in character or an uploaded PNG and complete registration. Changing appearance preserves the pet's recipient ID.
+
+See [deployment](operations.md) for server setup and access restrictions, and [README](../README.md) for development startup.
+
+## Pet controls
+
+| Action | Behavior |
+| --- | --- |
+| Left-click | Pet any character, regardless of ownership |
+| Left-drag | Move or lift it; release to land on the ground |
+| Right-click | Open that pet's messaging, gathering, and interaction menu |
+| Hover | Show its nickname below its feet |
+
+Greeting and high-five are available on another pet's menu. Your pet approaches that pet, both react, and yours returns. These options are not shown on your own pet. Offline friends disappear from the desktop.
+
+## Messages and replies
+
+Enter text and emoji in the input at the bottom of a pet's right-click menu. Your own pet sends to all other connected pets; a friend's pet sends only to that friend. There is no multi-select recipient screen.
+
+Incoming messages appear above the sender's pet and as OS notifications. Reply from the bubble to address the original sender. If friends are hidden or the sender window is unavailable, only the OS notification is shown; the message is not moved to your own pet.
+
+Each connected device receives messages independently. Messages received while offline are not replayed on reconnect, and there is no inbox. App receipt is not a user read receipt.
+
+## Gatherings
+
+Use the flag menu to choose coffee, a smoke break, a meal, a chat, or a walk. The host stops moving, and accepting pets gather beside it. The host completes the gathering; participants can leave.
+
+Starting a gathering notifies other connected users, joining notifies the host, and completion notifies the participants. Current gatherings synchronize after reconnecting, but old activity notifications do not replay.
+
+## Display and notification settings
+
+On the pet page, show/hide pets, show only your own or include friends, and adjust size. Display options synchronize with the tray and apply to this PC. Selecting a character applies it immediately. Add PNG designs through the add-pet dialog; see [PNG and animation registration](pet-design.md).
+
+On the notifications page, use the + beside external connections to add Docker, Slack, Codex, or Claude. Sources run on this PC and are not automatically shared with friends or other devices. See [connector setup](connectors.md) for credentials, permissions, and query behavior.
+
+Turning connected alerts off mutes bubbles and OS notifications from external sources. Turning OS notifications off mutes all OS banners, including messages and gatherings, while leaving bubbles enabled. Muted events are not queued for later playback. OS permissions and Do Not Disturb also affect banner visibility.

@@ -1,0 +1,43 @@
+/* 표시 버튼은 미리보기 위에, 크기 입력은 미리보기 안에 같은 제어 상태로 배치한다. */
+.pet-display-settings {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.pet-display-settings p {
+  margin: 0;
+}
+.pet-display-settings .pet-display-toolbar {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+}
+.pet-display-settings .pet-display-toolbar > button {
+  white-space: nowrap;
+}
+.pet-preview-size {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+.pet-preview-size output {
+  min-width: 5ch;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.pet-preview-size input {
+  grid-column: auto;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  min-height: var(--control-height);
+}
+.pet-display-settings [data-display-retry] {
+  justify-self: start;
+}

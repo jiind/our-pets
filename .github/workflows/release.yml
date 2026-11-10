@@ -1,0 +1,161 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 태그와 main 포함 여부 확인
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 scripts/check_versions.py --tag "$RELEASE_TAG"
+          git merge-base --is-ancestor HEAD origin/main
+
+  checks:
+    needs: validate
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  desktop:
+    name: Package desktop (${{ matrix.name }})
+    needs: [validate, checks]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: linux-x64
+            args: --bundles deb,appimage
+          - os: windows-2022
+            name: windows-x64
+            args: --bundles nsis
+          - os: macos-15
+            name: macos-universal
+            args: --target universal-apple-darwin --bundles dmg
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+      - name: Linux 패키지 의존성
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+      - name: macOS 두 아키텍처 준비
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - run: npm ci
+      - name: 설치 파일 생성
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: npm run tauri -- build --ci ${{ matrix.args }} -- --locked
+      - name: 고지와 패키지 수집
+        env:
+          PACKAGE_PLATFORM: ${{ matrix.name }}
+        run: python ../scripts/package_release.py desktop --platform "$PACKAGE_PLATFORM"
+        shell: bash
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-${{ matrix.name }}
+          path: release-out/*
+          if-no-files-found: error
+          retention-days: 14
+
+  server:
+    name: Package server
+    needs: [validate, checks]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: OS별 서버 빌드
+        shell: bash
+        run: |
+          set -euo pipefail
+          for platform in linux-amd64 linux-arm64 windows-amd64 darwin-amd64 darwin-arm64; do
+            export GOOS="${platform%-*}"
+            export GOARCH="${platform#*-}"
+            export CGO_ENABLED=0
+            binary="/tmp/our-pets-$platform"
+            if [ "$GOOS" = windows ]; then binary="$binary.exe"; fi
+            go build -trimpath -ldflags='-s -w' -o "$binary" ./cmd/our-pets
+            python3 scripts/package_release.py server --platform "$platform" --binary "$binary"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: server-packages
+          path: release-out/*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Draft GitHub release
+    needs: [validate, checks, desktop, server]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: release-out
+          merge-multiple: true
+      - name: 지문과 릴리즈 설명 생성
+        run: python3 scripts/package_release.py notes
+      - name: 모든 산출물을 초안 릴리즈에 첨부
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          prerelease_flags=(--prerelease=false)
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            prerelease_flags=(--prerelease)
+          fi
+          if gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft > /tmp/our-pets-release-state; then
+            test "$(cat /tmp/our-pets-release-state)" = true
+            gh release upload "$RELEASE_TAG" release-out/* --clobber
+            gh release edit "$RELEASE_TAG" --notes-file release-notes.md "${prerelease_flags[@]}"
+          else
+            gh release create "$RELEASE_TAG" release-out/* --verify-tag --draft --title "Our Pets $RELEASE_TAG" --notes-file release-notes.md "${prerelease_flags[@]}"
+          fi

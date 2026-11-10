@@ -1,0 +1,23 @@
+Path note: all absolute paths are public examples; real usernames and generation job IDs are omitted.
+Created: 2026-11-09
+Tool: built-in image_gen.imagegen, transparent_background=true
+Target: dog, adapted to non-pixel flat 2D.
+Input 1 example: /home/example/projects/our-pets/desktop/src/assets/builtin/dog/painted-v2.png
+Input 2: gopher/flat-v3.png as a style reference; the Gopher reference itself was not changed.
+Output: dog/flat-v3.png, RGBA 1254×1254px, four columns, four rows, sixteen poses.
+Original PNG copied unchanged; earlier artwork retained.
+Generated source example: /home/example/.codex/generated_images/sample-session/sample-image.png
+
+Exact generation prompt:
+Use case: style-transfer. Production transparent desktop-pet PNG animation atlas.
+Image roles: Image 1 is the character identity/pose reference or edit target. Image 2 (cyan flat Go Gopher) is STYLE REFERENCE ONLY. Do not draw a gopher.
+Match image 2's non-pixel FLAT 2D cartoon style: smooth dark ink outlines of consistent weight, simple solid-color areas, readable friendly expression, hand-drawn animation-cel appearance. NO fuzzy fur texture, painterly hair, 3D volume, gradients, plastic/clay/plush material, photorealistic lighting, specular/rim highlights, ambient occlusion or pixel art. Flat white eyes and dark pupils. No sticker border or halo.
+Output ONE SQUARE RGBA PNG with real transparent alpha, EXACTLY FOUR equal columns by FOUR equal rows, 16 equally sized cells, read left-to-right top-to-bottom. One complete SAME character in each cell. Keep consistent scale, face identity, camera, colors and stable foot baseline at 88% cell height. All limbs/ears/tail/claws inside each cell with transparent gutters. No grid, labels, background, checkerboard, white mat, ground, ground shadow, text, props, logo or watermark.
+Pose order MUST match:
+Row 1, frames 0-3: four genuinely DIFFERENT consecutive RIGHTWARD WALK-cycle phases: contact, passing, opposite contact, opposite passing. Alternate planted feet and limb articulation, stable body and head, seamless looping walk. Do not duplicate the same walk poses.
+Row 2, frames 4-7: neutral standing; standing blink with eyes shut; standing looking slightly toward viewer; standing weight shift / prepare to walk.
+Row 3, frames 8-11: hand/forepaw/claw starting to raise; waving by head; high five extended RIGHT around local x=80%,y=42% (no partner); lowering back to neutral.
+Row 4, frames 12-15: settling down; resting seated; comfortably sleeping; waking into an attentive resting pose.
+Keep clear margins around EVERY frame and preserve a single consistent model size.
+Subject-specific requirements:
+Redraw the golden retriever puppy from image 1 in flat 2D. Preserve golden/apricot coat, cream muzzle/chest/paw tips, soft floppy ears, rounded dark nose, four short connected legs and raised soft-shaped tail. Retain image 1's existing 4-by-4 pose order and identity; change only rendering style. Quadruped, do not turn into a biped or copy gopher anatomy. Use simple warm golden/cream shapes and a warm dark brown outline; no fur texture. Sleeping pose is curled with complete tail.
