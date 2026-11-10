@@ -163,7 +163,7 @@ jobs:
       - name: Rust 단위 검사
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
       - name: 네이티브 실행 파일 빌드
-        run: cargo build --locked --manifest-path src-tauri/Cargo.toml
+        run: npm run tauri -- build --debug --no-bundle --ci -- --locked
 
   required:
     name: CI required

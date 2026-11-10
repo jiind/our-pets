@@ -79,7 +79,7 @@ The project uses a Go server with SQLite and a Tauri 2 desktop app built with Ru
 <details>
 <summary><strong>Run from source</strong></summary>
 
-Install Go 1.25+, Node.js 24, Rust stable, Python 3.10+, and the [Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/). Initial dependency installation requires internet access.
+Install Go 1.26+, Node.js 24, Rust stable, Python 3.10+, and the [Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/). Initial dependency installation requires internet access.
 
 ```bash
 git clone https://github.com/jiind/our-pets.git

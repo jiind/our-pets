@@ -8,7 +8,7 @@
 - **Repository checks:** six version declarations, packaging contracts, public-file exclusion rules, and distribution notices.
 - **Go checks:** module verification, vet, race tests, and build.
 - **Frontend checks:** locked installation, TypeScript/Vite, UI test type-checking, Vitest, and Playwright using installed Chrome. No extra browser download is needed. Test servers use loopback and temporary databases.
-- **Native:** Rust unit tests and native builds on Linux, Windows, and macOS. GUI validation is separate.
+- **Native:** Rust unit tests and Tauri CLI builds on Linux, Windows, and macOS, including JS/Rust SDK version compatibility checks. GUI validation is separate.
 - **CI required:** succeeds only when every dependency succeeds. Failure, cancellation, or skipping is not converted into success.
 
 Remote CI runs after source/workflows are committed and pushed and the corresponding event occurs. Check results in GitHub Actions. Real user authentication, Slack tokens, and Docker engines are not used in CI.
