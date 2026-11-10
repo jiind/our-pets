@@ -380,7 +380,7 @@ textarea {
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border);
 }
-.pet-menu > button, .pet-menu-group > button {
+.pet-menu-body > button, .pet-menu-group > button {
   display: flex;
   width: 100%;
   gap: var(--space-3);
@@ -984,12 +984,41 @@ dialog::backdrop {
 }
 .pet-menu {
   max-height: var(--pet-overlay-space, calc(100% - var(--pet-ground) - var(--pet-visual-height) - 20px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
 }
 .pet-menu-heading {
-  position: sticky;
+  position: static;
+  flex-shrink: 0;
   z-index: 1;
+}
+/* 바깥 라운드와 꼬리는 유지하고 제목 아래 내용만 테두리 안쪽에서 스크롤한다. */
+.pet-menu-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--overlay-surface);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+}
+.pet-menu-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.pet-menu-body::-webkit-scrollbar-track {
+  background: var(--overlay-surface);
+  border-radius: var(--radius-sm);
+}
+.pet-menu-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 2px solid var(--overlay-surface);
+  border-radius: var(--radius-sm);
+}
+.pet-menu-body::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 /* 펫 곁의 작성창은 화면 전환 없이 같은 입력 영역 안에서 사용한다. */
 .pet-compose {

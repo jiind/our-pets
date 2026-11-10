@@ -96,12 +96,14 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   root.hidden = !targetID;
   root.innerHTML = `<div class="pet-menu" data-hit hidden aria-label="펫 동작 메뉴">
     <div class="pet-menu-heading"><span class="pet-menu-title">무엇을 할까요?</span><button data-action="close" class="menu-close" aria-label="펫 메뉴 닫기">${icon('close')}</button></div>
+    <div class="pet-menu-body">
     <p class="pet-menu-status" hidden></p>
 
     <div class="pet-menu-group" aria-label="함께하기"><button data-action="recruit" aria-label="모집 종류 선택"><span data-recruit-icon aria-hidden="true">🚩</span><span data-recruit-label>모집</span></button></div>
     <div class="pet-menu-row" aria-label="펫과 상호작용" hidden><button data-action="highfive" hidden>🙌 하이파이브</button><button data-action="wave" hidden>👋 인사하기</button></div>
     <button data-action="gathering" hidden>함께하기 상태 보기</button>
     <form class="pet-menu-message"><input name="body" type="text" maxlength="2000" required autocomplete="off" aria-label="전체 펫에게 보낼 메시지" placeholder="모두에게 메시지"><button type="submit" class="primary">전송</button><p class="pet-menu-message-feedback" role="status" aria-live="polite" hidden></p></form>
+    </div>
   </div>
   <article class="pet-bubble" data-hit hidden tabindex="-1" aria-label="현재 도착한 소식" aria-live="polite"><button class="bubble-close" aria-label="알림 닫기">${icon('close')}</button><div class="bubble-sender"></div><p></p><p class="bubble-state"></p><div class="bubble-actions"><button class="bubble-reply" hidden>답장하기</button><button class="bubble-accept" hidden>같이하기</button><button class="bubble-leave" hidden>함께하기 그만두기</button></div></article>
   <section class="pet-connection" data-hit hidden role="status" aria-label="소식 수신 문제"><button class="menu-close" aria-label="연결 안내 닫기">${icon('close')}</button><strong>소식을 받을 수 없어요</strong><p></p><button class="connection-retry">다시 연결</button><button class="connection-login" hidden>다시 로그인</button></section>

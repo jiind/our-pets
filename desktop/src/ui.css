@@ -110,7 +110,7 @@ button[aria-pressed=true], nav button.active, .segmented button.active {
 button[aria-pressed=true]:hover:not(:disabled), nav button.active:hover, .segmented button.active:hover {
   background: var(--control-hover);
 }
-nav button, .pet-menu > button, .pet-menu-group > button {
+nav button, .pet-menu-body > button, .pet-menu-group > button {
   align-items: center;
   text-align: left;
 }
@@ -274,7 +274,7 @@ small, .fine, .muted {
 .bubble-actions, .companion-controls, .pet-menu-row, .recruitment-choices {
   gap: var(--space-2);
 }
-.pet-menu > button, .pet-menu-group > button {
+.pet-menu-body > button, .pet-menu-group > button {
   gap: var(--space-2);
 }
 .recruitment-badge {
