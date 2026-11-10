@@ -5,7 +5,7 @@
 `.github/workflows/ci.yml` runs on pull requests, pushes to main, manual dispatch, and reusable calls from releases. It has no path filter that could leave a required check pending indefinitely. Contributor PRs receive read-only repository permissions, and checkout credentials are not persisted. Contributor code does not run under `pull_request_target`. Actions are pinned to full commit SHAs; Dependabot proposes updates.
 
 - **Secret scan:** a fixed Gitleaks version, verified by checksum, scans current files and full Git history. Secrets are redacted; findings and execution errors fail the job.
-- **Repository checks:** six version declarations, public-file exclusion rules, and distribution notices.
+- **Repository checks:** six version declarations, packaging contracts, public-file exclusion rules, and distribution notices.
 - **Go checks:** module verification, vet, race tests, and build.
 - **Frontend checks:** locked installation, TypeScript/Vite, UI test type-checking, Vitest, and Playwright using installed Chrome. No extra browser download is needed. Test servers use loopback and temporary databases.
 - **Native:** Rust unit tests and native builds on Linux, Windows, and macOS. GUI validation is separate.
@@ -29,6 +29,8 @@ Use private vulnerability reporting. Keep secret scanning, push protection, vuln
 4. After full CI succeeds, build Linux x64 DEB/AppImage, Windows x64 NSIS, and macOS universal DMG on their respective OSes. Build server ZIPs for Linux amd64/arm64, Windows amd64, and macOS amd64/arm64.
 5. Only after every target succeeds, create a **draft GitHub release** containing installers, server ZIPs, notice ZIPs, and `SHA256SUMS.txt`. Tags such as `v0.1.0-beta.1` are marked as prereleases. A failed target prevents a partial release. A rerun updates only the same draft; published releases are not overwritten.
 6. Review installers, OS behavior, and notices before publication. The workflow does not automatically publish drafts.
+
+Desktop assets use `our-pets-desktop-<version>-<platform>.<extension>` with no spaces, so GitHub uploads preserve the filenames referenced by `SHA256SUMS.txt`. Packaging rejects duplicate bundle types instead of silently collecting stale installers.
 
 Only the final release job uses `contents: write`; it uses `github.token` rather than a personal PAT. Tags include committed source only, not local untracked files.
 
