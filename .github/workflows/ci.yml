@@ -61,6 +61,8 @@ jobs:
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes= .github/workflows/ci.yml .github/workflows/release.yml
       - name: 버전 일치 확인
         run: python3 scripts/check_versions.py
+      - name: 릴리즈 패키징 계약 검사
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: 공개 파일 제외 규칙 확인
         shell: bash
         run: |

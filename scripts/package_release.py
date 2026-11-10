@@ -39,13 +39,14 @@ def package_desktop(platform: str) -> None:
     bundle = ROOT / 'desktop/src-tauri/target'
     bundle = bundle / ('universal-apple-darwin/release/bundle' if platform == 'macos-universal' else 'release/bundle')
     packages = [file for file in bundle.rglob('*') if file.is_file() and file.suffix in required[platform]]
-    if {file.suffix for file in packages} != required[platform]:
-        raise SystemExit('필수 설치 파일이 모두 생성되지 않았습니다: ' + platform)
+    if len(packages) != len(required[platform]) or {file.suffix for file in packages} != required[platform]:
+        raise SystemExit('Expected exactly one installer for each required bundle type: ' + platform)
+    version = check_versions()
     OUTPUT.mkdir(exist_ok=True)
 
     # 2. 아티팩트 이름 충돌을 피하고 고지를 함께 제공한다.
     for file in packages:
-        shutil.copyfile(file, OUTPUT / (platform + '-' + file.name))
+        shutil.copyfile(file, OUTPUT / f'our-pets-desktop-{version}-{platform}{file.suffix}')
     notices = ROOT / 'desktop/src-tauri/target/release-notices'
     prepare(notices)
     with zipfile.ZipFile(OUTPUT / f'our-pets-notices-{check_versions()}-{platform}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
