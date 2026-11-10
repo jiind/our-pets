@@ -161,6 +161,124 @@ test('펫 추가 모달은 네 모서리를 유지하고 헤더 아래 내용만
   await dialog.screenshot({ path: '/tmp/our-pets-upload-modal-scroll.png' });
 });
 
+test('직접 등록한 펫은 원본 PNG를 고정한 채 수정·삭제하고 기본 펫은 보호한다', async ({ page }) => {
+  // 1. 실제 등록 폼으로 PNG와 애니메이션을 저장하고 기본 펫의 관리 아이콘은 숨긴다.
+  await createWorkspace(page);
+  await expect(page.getByRole('button', { name: '고양이 삭제', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '강아지 수정', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '펫 추가', exact: true }).click();
+  const add = page.getByRole('dialog', { name: '펫 추가', exact: true });
+  await add.getByRole('textbox', { name: '이름', exact: true }).fill('수정할 펫');
+  await add.locator('input[type=file]').setInputFiles(path.resolve('src-tauri/icons/icon.png'));
+  await add.locator('[data-animation-settings] > summary').click();
+  await add.locator('[name=walkFPS]').fill('6');
+  await add.getByRole('button', { name: '추가', exact: true }).click();
+  await expect(add).toBeHidden();
+  const editButton = page.getByRole('button', { name: '수정할 펫 수정', exact: true });
+  await expect(editButton).toBeEnabled();
+  await expect(page.getByRole('radio', { name: '수정할 펫', exact: true })).toBeChecked();
+
+  // 2. 수정 폼은 저장된 설정으로 열리고 PNG 교체 없이 실패 후에도 입력을 유지한다.
+  await editButton.click();
+  const edit = page.getByRole('dialog', { name: '펫 수정', exact: true });
+  await expect(edit.getByRole('textbox', { name: '이름', exact: true })).toHaveValue('수정할 펫');
+  await expect(edit.locator('[name=frameWidth]')).toHaveValue('128');
+  await expect(edit.locator('[name=walkFrames]')).toHaveValue('4,5,6,7,8,9,10,11');
+  await expect(edit.locator('[name=walkFPS]')).toHaveValue('6');
+  await expect(edit.locator('input[type=file]')).toBeDisabled();
+  await expect(edit.locator('input[type=file]')).toBeHidden();
+  await expect(edit.locator('[data-empty]')).toBeHidden();
+  await edit.getByRole('textbox', { name: '이름', exact: true }).fill('수정한 펫');
+  await edit.locator('[name=walkFPS]').fill('10');
+  let updates = 0;
+  let updateBody: Record<string, unknown> = {};
+  await page.route('**/api/v1/designs/*', async route => {
+    if (route.request().method() === 'PUT') {
+      updates += 1;
+      updateBody = route.request().postDataJSON();
+      if (updates === 1) {
+        await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: '수정 재시도 테스트' }) });
+        return;
+      }
+    }
+    await route.continue();
+  });
+  await edit.getByRole('button', { name: '저장', exact: true }).click();
+  await expect(edit.locator('[data-status]')).toContainText('수정 재시도 테스트');
+  await expect(edit.locator('[name=walkFPS]')).toHaveValue('10');
+  await edit.getByRole('button', { name: '저장', exact: true }).click();
+  await expect(edit).toBeHidden();
+  expect(Object.keys(updateBody).sort()).toEqual(['manifest', 'name']);
+  await expect(page.getByRole('radio', { name: '수정할 펫', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radio', { name: '수정한 펫', exact: true })).toBeChecked();
+
+  // 3. 새로고침 후에도 변경값이 유지되고 현재 외형 삭제 시 고양이로 돌아간다.
+  await page.reload();
+  const savedEdit = page.getByRole('button', { name: '수정한 펫 수정', exact: true });
+  await expect(savedEdit).toBeEnabled();
+  await savedEdit.click();
+  await expect(page.getByRole('dialog', { name: '펫 수정', exact: true }).locator('[name=walkFPS]')).toHaveValue('10');
+  await page.getByRole('dialog', { name: '펫 수정', exact: true }).getByRole('button', { name: '취소', exact: true }).click();
+  await page.getByRole('button', { name: '수정한 펫 삭제', exact: true }).click();
+  await expect(page.getByRole('radio', { name: '수정한 펫', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radio', { name: '고양이', exact: true })).toBeChecked();
+  await page.reload();
+  await expect(page.getByRole('radio', { name: '수정한 펫', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('radio', { name: '고양이', exact: true })).toBeChecked();
+});
+
+test('계정 메뉴에서 아이디는 고정하고 닉네임·비밀번호를 저장해 다시 로그인한다', async ({ page }) => {
+  // 1. 계정 정보는 저장된 값으로 열리고 닉네임 변경은 펫 이름에도 반영된다.
+  await createWorkspace(page);
+  await page.getByRole('button', { name: '계정', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '계정', exact: true })).toBeVisible();
+  const profile = page.locator('[data-profile]');
+  const password = page.locator('[data-password]');
+  const username = profile.getByRole('textbox', { name: '아이디', exact: true });
+  await expect(username).toHaveAttribute('readonly', '');
+  await expect(profile.getByRole('button', { name: '닉네임 저장', exact: true })).toBeEnabled();
+  const originalUsername = await username.inputValue();
+  await profile.getByRole('textbox', { name: '닉네임', exact: true }).fill('변경한 닉네임');
+  await profile.getByRole('button', { name: '닉네임 저장', exact: true }).click();
+  await expect(profile.getByRole('status')).toContainText('닉네임을 저장했어요');
+  await page.getByRole('button', { name: '펫', exact: true }).click();
+  await expect(page.locator('.pet-registration-preview [data-preview-name]')).toHaveText('변경한 닉네임');
+  await page.getByRole('button', { name: '계정', exact: true }).click();
+  await expect(username).toHaveValue(originalUsername);
+  await expect(profile.getByRole('textbox', { name: '닉네임', exact: true })).toHaveValue('변경한 닉네임');
+
+  // 2. 보기 버튼·새 비밀번호 일치·현재 비밀번호 검증을 거쳐 저장 후 입력을 지운다.
+  await password.getByLabel('현재 비밀번호', { exact: true }).fill('wrong-password-123');
+  await password.getByLabel('새 비밀번호', { exact: true }).fill('changed-password-456');
+  await password.getByLabel('새 비밀번호 확인', { exact: true }).fill('different-password-456');
+  await password.getByRole('button', { name: '새 비밀번호 보기', exact: true }).click();
+  await expect(password.getByLabel('새 비밀번호', { exact: true })).toHaveAttribute('type', 'text');
+  await password.getByRole('button', { name: '비밀번호 변경', exact: true }).click();
+  await expect(password.getByRole('status')).toContainText('서로 일치하지');
+  await password.getByLabel('새 비밀번호 확인', { exact: true }).fill('changed-password-456');
+  await password.getByRole('button', { name: '비밀번호 변경', exact: true }).click();
+  await expect(password.getByRole('status')).toContainText('현재 비밀번호가 올바르지');
+  await password.getByLabel('현재 비밀번호', { exact: true }).fill('test-password-123');
+  await password.getByRole('button', { name: '비밀번호 변경', exact: true }).click();
+  await expect(password.getByRole('status')).toContainText('비밀번호를 변경했어요');
+  for (const name of ['현재 비밀번호', '새 비밀번호', '새 비밀번호 확인']) {
+    await expect(password.getByLabel(name, { exact: true })).toHaveValue('');
+    await expect(password.getByLabel(name, { exact: true })).toHaveAttribute('type', 'password');
+  }
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('changed-password-456');
+  await page.locator('.account-settings').screenshot({ path: '/tmp/our-pets-account-settings.png' });
+
+  // 3. 기존 비밀번호는 거부되고 같은 아이디와 새 비밀번호로 접속한다.
+  await page.getByRole('button', { name: '로그아웃', exact: true }).click();
+  await page.getByRole('textbox', { name: '아이디', exact: true }).fill(originalUsername);
+  await page.getByLabel('비밀번호', { exact: true }).fill('test-password-123');
+  await page.getByRole('button', { name: /접속하기/ }).click();
+  await expect(page.locator('#notice')).toContainText('로그인 정보를 확인');
+  await page.getByLabel('비밀번호', { exact: true }).fill('changed-password-456');
+  await page.getByRole('button', { name: /접속하기/ }).click();
+  await expect(page.getByRole('button', { name: '계정', exact: true })).toBeVisible();
+});
+
 test('개인 연결 IPC 모의 저장·삭제 실패는 화면 입력과 연결 상태를 유지한다', async ({ page }) => {
   // 1. 계정과 펫을 화면에서 만들고 네이티브 IPC 경계만 공식 모의로 연결한다.
   await createWorkspace(page);

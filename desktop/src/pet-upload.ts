@@ -1,4 +1,4 @@
-import { api, serverURL, session } from './api';
+import { api, designImage, serverURL, session } from './api';
 import { drawPet, loadImage } from './render';
 import { watchDisplay } from './preferences';
 import type { Design, Manifest } from './types';
@@ -7,16 +7,18 @@ import { mountCharacterPrompts } from './character-prompts';
 
 export interface PetUploadOptions {
   onAdded: (design: Design) => void | Promise<void>;
+  onUpdated: (previous: Design, design: Design) => void | Promise<void>;
 }
 
 type PreviewAction = 'idle' | 'walk' | 'react';
 
 // PNG 펫을 선택 목록에 추가하고 실제 적용은 바깥 설정 화면에 맡기는 모달을 구성한다.
-export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { open(): void; close(): void; dispose(): void } {
+export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { open(design?: Design): void; close(): void; dispose(): void } {
   // 1. 모달의 파일·미리보기·재시도 상태를 다른 설정 입력과 분리한다.
   let disposed = false;
   let busy = false;
   let completed = false;
+  let editingDesign: Design | undefined;
   let previewVersion = 0;
   let petSize = 160;
   let selectedFile: File | undefined;
@@ -29,7 +31,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   let actionStarted = Date.now();
   let timer: ReturnType<typeof setInterval> | undefined;
   let unwatch = (): void => {};
-  let cachedSubmission: { file: File; fingerprint: string; design: Design } | undefined;
+  let cachedSubmission: { file?: File; fingerprint: string; design: Design } | undefined;
   const urls = new Set<string>();
   const account = `${serverURL()}/${session()?.token || ''}`;
   const id = `pet-upload-${crypto.randomUUID()}`;
@@ -100,7 +102,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   function manifestFor(image: HTMLImageElement): Manifest {
     // 1. 안내에 표시한 것과 같은 분할 결과로 저장할 프레임 크기를 정한다.
     const { width, height, count } = frameLayout(image);
-    const manifest: Manifest = { schemaVersion: 1, displaySize: 160, frameWidth: width, frameHeight: height, animations: {} };
+    const manifest: Manifest = { schemaVersion: 1, displaySize: editingDesign?.manifest.displaySize || 160, frameWidth: width, frameHeight: height, animations: {} };
 
     // 2. 동작을 입력한 경우에만 범위와 재생 속도를 검증한다.
     for (const key of ['idle', 'walk', 'react'] as const) {
@@ -125,7 +127,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   function updateFrameGuide(): void {
     // 1. 현재 파일과 열린 설정에만 안내를 만들고 닫힌 동안에는 그림을 나누지 않는다.
     frameMap.hidden = true;
-    if (!loadedImage || selectedFile !== fileInput.files?.[0]) {
+    if (!loadedImage || (!editingDesign && selectedFile !== fileInput.files?.[0])) {
       frameGuide.textContent = 'PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.';
       return;
     }
@@ -177,49 +179,63 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     frameGuide.textContent = 'PNG와 한 칸 크기를 확인하는 중이에요.';
     try {
       assertAccount();
-      const file = fileInput.files?.[0];
-      if (!file) {
-        throw new Error('PNG를 고르면 이곳에서 미리 볼 수 있어요.');
-      }
-      if (file.size > 8 * 1024 * 1024) {
-        throw new Error('PNG 파일은 8 MiB 이하로 선택하세요.');
-      }
-      if (file !== selectedFile || !loadedImage) {
-        const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
-        if (disposed || version !== previewVersion || !dialog.open) {
-          return;
-        }
-        if (signature.join(',') !== '137,80,78,71,13,10,26,10') {
-          throw new Error('PNG 파일을 선택하세요. 확장자만 바꾼 다른 이미지 형식은 추가할 수 없어요.');
-        }
-        const url = URL.createObjectURL(file);
-        urls.add(url);
-        let image: HTMLImageElement;
-        try {
-          image = await loadImage(url);
-        } catch {
-          urls.delete(url);
-          URL.revokeObjectURL(url);
-          throw new Error('PNG를 읽지 못했어요. 파일이 손상되지 않았는지 확인하고 다시 선택하세요.');
-        }
-        if (disposed || version !== previewVersion || !dialog.open) {
-          urls.delete(url);
-          URL.revokeObjectURL(url);
-          return;
-        }
-        if (image.naturalWidth > 2048 || image.naturalHeight > 2048) {
-          urls.delete(url);
-          URL.revokeObjectURL(url);
-          throw new Error('PNG 크기는 2048 × 2048px 이하여야 해요.');
-        }
-        urls.forEach(previous => {
-          if (previous !== url) {
-            URL.revokeObjectURL(previous);
-            urls.delete(previous);
+      if (editingDesign) {
+        if (!loadedImage) {
+          const url = await designImage(editingDesign);
+          urls.add(url);
+          const image = await loadImage(url);
+          if (disposed || version !== previewVersion || !dialog.open) {
+            urls.delete(url);
+            URL.revokeObjectURL(url);
+            return;
           }
-        });
-        selectedFile = file;
-        loadedImage = image;
+          loadedImage = image;
+        }
+      } else {
+        const file = fileInput.files?.[0];
+        if (!file) {
+          throw new Error('PNG를 고르면 이곳에서 미리 볼 수 있어요.');
+        }
+        if (file.size > 8 * 1024 * 1024) {
+          throw new Error('PNG 파일은 8 MiB 이하로 선택하세요.');
+        }
+        if (file !== selectedFile || !loadedImage) {
+          const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+          if (disposed || version !== previewVersion || !dialog.open) {
+            return;
+          }
+          if (signature.join(',') !== '137,80,78,71,13,10,26,10') {
+            throw new Error('PNG 파일을 선택하세요. 확장자만 바꾼 다른 이미지 형식은 추가할 수 없어요.');
+          }
+          const url = URL.createObjectURL(file);
+          urls.add(url);
+          let image: HTMLImageElement;
+          try {
+            image = await loadImage(url);
+          } catch {
+            urls.delete(url);
+            URL.revokeObjectURL(url);
+            throw new Error('PNG를 읽지 못했어요. 파일이 손상되지 않았는지 확인하고 다시 선택하세요.');
+          }
+          if (disposed || version !== previewVersion || !dialog.open) {
+            urls.delete(url);
+            URL.revokeObjectURL(url);
+            return;
+          }
+          if (image.naturalWidth > 2048 || image.naturalHeight > 2048) {
+            urls.delete(url);
+            URL.revokeObjectURL(url);
+            throw new Error('PNG 크기는 2048 × 2048px 이하여야 해요.');
+          }
+          urls.forEach(previous => {
+            if (previous !== url) {
+              URL.revokeObjectURL(previous);
+              urls.delete(previous);
+            }
+          });
+          selectedFile = file;
+          loadedImage = image;
+        }
       }
       if (!loadedImage || disposed || version !== previewVersion || !dialog.open) {
         return;
@@ -273,7 +289,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   function updateBusy(): void {
     fields.disabled = busy;
     submit.disabled = busy;
-    submit.textContent = busy ? '추가하는 중…' : '추가';
+    submit.textContent = busy ? (editingDesign ? '저장하는 중…' : '추가하는 중…') : (editingDesign ? '저장' : '추가');
     submit.setAttribute('aria-busy', String(busy));
   }
 
@@ -301,18 +317,23 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
         throw new Error(previewProblem || 'PNG 미리보기를 먼저 확인해 주세요.');
       }
       const file = fileInput.files?.[0];
-      if (!file) {
+      if (!editingDesign && !file) {
         throw new Error('추가할 PNG 파일을 선택하세요.');
       }
-      const fingerprint = `${file.name}/${file.size}/${file.lastModified}/${label}/${JSON.stringify(previewDesign.manifest)}`;
+      const fingerprint = `${editingDesign?.id || `${file!.name}/${file!.size}/${file!.lastModified}`}/${label}/${JSON.stringify(previewDesign.manifest)}`;
       assertAccount();
-      if (cachedSubmission?.file !== file || cachedSubmission.fingerprint !== fingerprint) {
-        const data = new FormData();
-        data.set('name', label);
-        data.set('image', file);
-        data.set('manifest', JSON.stringify(previewDesign.manifest));
-        data.set('draft', 'true');
-        const design = await api<Design>('/designs', { method: 'POST', body: data });
+      if (!cachedSubmission || cachedSubmission.file !== file || cachedSubmission.fingerprint !== fingerprint) {
+        let design: Design;
+        if (editingDesign) {
+          design = await api<Design>(`/designs/${editingDesign.id}`, { method: 'PUT', body: JSON.stringify({ name: label, manifest: previewDesign.manifest }) });
+        } else {
+          const data = new FormData();
+          data.set('name', label);
+          data.set('image', file!);
+          data.set('manifest', JSON.stringify(previewDesign.manifest));
+          data.set('draft', 'true');
+          design = await api<Design>('/designs', { method: 'POST', body: data });
+        }
         cachedSubmission = { file, fingerprint, design };
       }
 
@@ -322,7 +343,11 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
         return;
       }
       assertAccount();
-      await options.onAdded(cachedSubmission.design);
+      if (editingDesign) {
+        await options.onUpdated(editingDesign, cachedSubmission.design);
+      } else {
+        await options.onAdded(cachedSubmission.design);
+      }
       if (!disposed) {
         completed = true;
         close();
@@ -341,6 +366,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   function reset(): void {
     // 1. 이전 입력과 추가 결과를 초기화한다.
     form.reset();
+    editingDesign = undefined;
     cachedSubmission = undefined;
     selectedFile = undefined;
     loadedImage = undefined;
@@ -367,28 +393,52 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   }
 
   // 파일과 프레임 입력을 보존한 채 모달을 열고 실제 크기 미리보기를 시작한다.
-  function open(): void {
+  function open(design?: Design): void {
     // 1. 해제된 화면이나 이미 열린 모달을 중복으로 열지 않는다.
-    if (disposed || !dialog.isConnected || dialog.open) {
+    if (disposed || busy || !dialog.isConnected || dialog.open) {
       return;
     }
-    if (completed) {
+    if (completed || design?.id !== editingDesign?.id) {
       reset();
     }
+    // 2. 수정은 저장된 설정을 채우고 원본 PNG 선택·교체 경로를 닫는다.
+    if (design && !editingDesign) {
+      editingDesign = design;
+      nameInput.value = design.name;
+      (form.elements.namedItem('frameWidth') as HTMLInputElement).value = String(design.manifest.frameWidth);
+      (form.elements.namedItem('frameHeight') as HTMLInputElement).value = String(design.manifest.frameHeight);
+      for (const key of ['idle', 'walk', 'react'] as const) {
+        const animation = design.manifest.animations[key];
+        (form.elements.namedItem(`${key}Frames`) as HTMLInputElement).value = animation?.frames.join(',') || '';
+        (form.elements.namedItem(`${key}FPS`) as HTMLInputElement).value = String(animation?.fps || 8);
+      }
+      animationDefaultsApplied = true;
+      useExampleDimensions = false;
+      animationSettings.open = Object.keys(design.manifest.animations).length > 0;
+    }
+    dialog.querySelector('h2')!.textContent = design ? '펫 수정' : '펫 추가';
+    fileInput.hidden = !!design;
+    fileInput.disabled = !!design;
+    fileInput.required = !design;
+    fileInput.parentElement!.hidden = !!design;
+    dialog.querySelector<HTMLElement>('.pet-upload-file-hint')!.hidden = !!design;
+    dialog.querySelector<HTMLElement>('.pet-upload-png-guide')!.hidden = !!design;
+    dialog.querySelector<HTMLElement>('.character-prompts')!.hidden = !!design;
+    updateBusy();
     dialog.showModal();
     if (!busy) {
-      (nameInput.value.trim() && !fileInput.files?.length ? fileInput : nameInput).focus();
+      (!design && nameInput.value.trim() && !fileInput.files?.length ? fileInput : nameInput).focus();
     }
     try {
       assertAccount();
-      if (fileInput.files?.length) {
+      if (editingDesign || fileInput.files?.length) {
         void refreshPreview();
       }
     } catch (error) {
       feedback(error instanceof Error ? error.message : '로그인 상태를 확인해 주세요.', true);
     }
 
-    // 2. 닫힌 동안에는 타이머를 돌리지 않고 열린 모달에서만 그린다.
+    // 3. 닫힌 동안에는 타이머를 돌리지 않고 열린 모달에서만 그린다.
     clearInterval(timer);
     timer = setInterval(paintPreview, 1000 / 24);
   }
@@ -417,10 +467,10 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       void refreshPreview();
     }
   });
-  // 스프라이트 설정을 처음 펼칠 때만 예시 배치와 속도를 채우고 이후 편집값을 보존한다.
-  animationSettings.ontoggle = () => {
+  // 예시 기본값을 한 번만 채워 설정을 펼친 직후의 사용자 입력도 덮어쓰지 않는다.
+  function initializeAnimationDefaults(): void {
     // 1. 일반 PNG는 빈 설정을 유지하고 예시 시트는 별도 버튼 없이 시작한다.
-    if (animationSettings.open && !animationDefaultsApplied) {
+    if (!animationDefaultsApplied) {
       animationDefaultsApplied = true;
       const defaults = {
         frameWidth: '256', frameHeight: '256',
@@ -433,8 +483,20 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       }
       void refreshPreview();
     }
+  }
 
-    // 2. 다시 펼칠 때는 수동으로 바꾼 칸 크기와 동작 순서를 그대로 안내한다.
+  // 펼치기 클릭에서 기본값을 먼저 채우고 비동기 toggle은 안내만 갱신한다.
+  animationSettings.querySelector('summary')!.addEventListener('click', () => {
+    if (!animationSettings.open) {
+      initializeAnimationDefaults();
+    }
+  });
+  animationSettings.ontoggle = () => {
+    if (animationSettings.open) {
+      initializeAnimationDefaults();
+    }
+
+    // 다시 펼칠 때는 수동으로 바꾼 칸 크기와 동작 순서를 그대로 안내한다.
     updateFrameGuide();
   };
   form.oninput = event => {

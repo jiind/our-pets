@@ -67,6 +67,22 @@
   display: grid;
   gap: var(--space-2);
 }
+/* 라디오 이름을 누르면 선택하고 오른쪽 아이콘은 해당 외형만 관리한다. */
+.pet-registration .pet-registration-character-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pet-registration .pet-registration-character-row > label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pet-registration .pet-registration-character-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
 .pet-registration .pet-registration-catalogue-actions {
   display: flex;
   align-items: center;

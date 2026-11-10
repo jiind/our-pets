@@ -38,6 +38,8 @@ Example stored manifest:
 
 Uploading creates a design draft; registration chooses the design for the representative pet. If the upload succeeds but refreshing the list fails, retrying the dialog does not upload the same file again. The server stores PNGs by content hash and manages design IDs and versions. Authenticated users can retrieve registered designs but cannot overwrite another user's originals. Downloaded PNGs are cached in IndexedDB so already-cached artwork remains available during a temporary outage. Initial signup and uncached downloads still require the server.
 
+Uploaded pets have edit and delete icons beside their radio choices. Editing opens the registration form with the saved name, cell dimensions, frame order, and playback speeds. The original PNG is fixed and cannot be replaced. Saving creates a new immutable design version and removes the previous version from the owner's choices. Deleting the owner's current appearance restores the built-in cat without deleting their Pet or changing its ID. Built-in choices have no edit/delete controls. Existing message references and appearances used by other users remain intact; deletion removes the catalogue entry rather than erasing shared PNG bytes.
+
 ## Animation and rendering
 
 A single PNG remains one drawing; the app can supply movement, sway, and jumps. Sprite-sheet `walk` frames follow movement distance. Previews and pet windows use the same renderer. A shared opaque bounding region across registered frames compensates for transparent margins without resizing each drawing independently. This does not guarantee that the supplied artwork has correct contact points or animation quality.

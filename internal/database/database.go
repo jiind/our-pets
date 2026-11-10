@@ -29,6 +29,9 @@ var socialRecruitments string
 //go:embed migrations/006_builtin_pets.sql
 var builtinPets string
 
+//go:embed migrations/007_design_catalogue.sql
+var designCatalogue string
+
 // Open은 단일 서버용 SQLite 연결과 멱등적인 초기 마이그레이션을 준비한다.
 func Open(directory string) (*sql.DB, error) {
 	// 1. 서버 전용 데이터 디렉터리와 연결을 만든다.
@@ -82,6 +85,13 @@ func Open(directory string) (*sql.DB, error) {
 				err = tx.QueryRow(`SELECT MAX(version) FROM schema_versions`).Scan(&version)
 				if err == nil && version < 6 {
 					_, err = tx.Exec(builtinPets)
+				}
+			}
+			if err == nil {
+				var version int
+				err = tx.QueryRow(`SELECT MAX(version) FROM schema_versions`).Scan(&version)
+				if err == nil && version < 7 {
+					_, err = tx.Exec(designCatalogue)
 				}
 			}
 			if err == nil {

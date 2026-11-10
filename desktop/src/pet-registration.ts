@@ -28,6 +28,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
   let pet: RegisteredPet | undefined;
   let designs: Design[] = [];
   let catalogueProblem = '';
+  let catalogueMutation = false;
   let selectedDesignID = 'default';
   let catalogueVersion = 0;
   let catalogueRequests = 0;
@@ -70,6 +71,29 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
 
   const displaySettings = mountPetDisplaySettings(root.querySelector<HTMLElement>('[data-display-settings]')!, root.querySelector<HTMLElement>('[data-size-control]')!, message => feedback(message, true));
   const uploadDialog = mountPetUpload(root, {
+    onUpdated: async (previous, design) => {
+      // 1. 교체된 불변 버전은 목록에서 제거하고 기존 선택만 새 버전으로 옮긴다.
+      assertAccount();
+      catalogueVersion += 1;
+      designs = [design, ...designs.filter(item => item.id !== previous.id && item.id !== design.id)];
+      if (selectedDesignID === previous.id) {
+        selectedDesignID = design.id;
+      }
+
+      // 2. 서버가 반영한 대표 펫과 미리보기를 확인해 같은 기기에도 갱신한다.
+      const current = await api<RegisteredPet>('/me/pet');
+      assertAccount();
+      if (disposed) {
+        return;
+      }
+      pet = current;
+      updateCatalogue();
+      updateView();
+      await refreshPreview();
+      if (current.registered) {
+        await options.onRegistered(current);
+      }
+    },
     onAdded: async design => {
       // 1. 새로 등록한 펫은 늦게 끝난 목록 조회와 분리해 즉시 선택지에 넣는다.
       if (disposed) {
@@ -213,12 +237,16 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     const registered = !!pet?.registered;
     root.querySelector<HTMLElement>('[data-registration-heading]')!.hidden = registered;
     canvas.setAttribute('aria-label', `${registered ? '변경할' : '등록할'} 내 펫 미리보기. 오른쪽 클릭으로 동작 메뉴 열기`);
-    editor.disabled = busy;
+    editor.disabled = busy || catalogueMutation;
+    root.querySelector<HTMLButtonElement>('[data-add-pet]')!.disabled = busy || catalogueMutation;
     root.querySelector<HTMLElement>('[data-form-actions]')!.hidden = registered;
     submit.textContent = busy ? '등록하는 중…' : '등록 완료';
     form.setAttribute('aria-busy', String(busy || autosaving));
     submit.disabled = busy;
     submit.setAttribute('aria-busy', String(busy));
+    root.querySelectorAll<HTMLButtonElement>('[data-design-action]').forEach(button => {
+      button.disabled = busy || autosaving || autosavePending || catalogueMutation;
+    });
 
     // 2. 선택한 등록 펫과 로컬 표시 설정을 현재 상태에 맞춘다.
     form.querySelectorAll<HTMLInputElement>('[name=character]').forEach(input => {
@@ -255,12 +283,80 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       input.required = true;
       input.checked = entry.id === selectedDesignID;
       label.append(input, document.createTextNode(entry.label));
-      target.append(label);
+      const row = document.createElement('div');
+      row.className = 'pet-registration-character-row';
+      row.append(label);
+      const design = choices.get(entry.id);
+      if (design && design.ownerId === pet?.userId) {
+        const actions = document.createElement('span');
+        actions.className = 'pet-registration-character-actions';
+        for (const [action, title] of [['edit', '수정'], ['trash', '삭제']] as const) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'icon-button icon-button-compact';
+          button.dataset.designAction = action;
+          button.dataset.designId = design.id;
+          button.setAttribute('aria-label', `${design.name} ${title}`);
+          button.title = title;
+          button.innerHTML = icon(action);
+          button.disabled = busy || autosaving || autosavePending || catalogueMutation;
+          actions.append(button);
+        }
+        row.append(actions);
+      }
+      target.append(row);
     }
     if (focusedValue) {
       Array.from(target.querySelectorAll<HTMLInputElement>('input')).find(input => input.value === focusedValue)?.focus({ preventScroll: true });
     }
     root.querySelector<HTMLElement>('[data-catalogue-note]')!.textContent = catalogueProblem || (pet?.registered ? '' : '펫을 선택한 뒤 등록 완료를 눌러 주세요.');
+  }
+
+  // 등록 외형만 삭제하고 사용 중이던 외형은 서버의 고양이 복귀 상태와 동기화한다.
+  async function deleteDesign(design: Design): Promise<void> {
+    // 1. 자동 저장과 삭제가 같은 선택을 동시에 덮어쓰지 못하게 한다.
+    if (busy || autosaving || autosavePending || catalogueMutation) {
+      return;
+    }
+    catalogueMutation = true;
+    updateView();
+    try {
+      assertAccount();
+      await api(`/designs/${design.id}`, { method: 'DELETE' });
+      catalogueVersion += 1;
+      designs = designs.filter(item => item.id !== design.id);
+      if (pet?.design?.id === design.id) {
+        pet = { ...pet, design: null, builtinId: 'cat' };
+      }
+      if (selectedDesignID === design.id) {
+        selectedDesignID = 'default';
+      }
+      updateCatalogue();
+      const current = await api<RegisteredPet>('/me/pet');
+      assertAccount();
+      if (disposed) {
+        return;
+      }
+
+      // 2. 펫 자체를 새로 만들지 않고 목록·선택·미리보기만 갱신한다.
+      pet = current;
+      if (selectedDesignID === design.id) {
+        selectedDesignID = 'default';
+      }
+      updateCatalogue();
+      await refreshPreview();
+      if (current.registered) {
+        await options.onRegistered(current);
+      }
+      feedback('');
+    } catch (error) {
+      feedback(error instanceof Error ? error.message : '펫을 삭제하지 못했어요. 목록을 새로고침한 뒤 다시 시도하세요.', true);
+    } finally {
+      catalogueMutation = false;
+      if (!disposed) {
+        updateView();
+      }
+    }
   }
 
 
@@ -515,6 +611,18 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     }
   };
   root.querySelector<HTMLButtonElement>('[data-add-pet]')!.onclick = () => uploadDialog.open();
+  root.querySelector<HTMLElement>('[data-characters]')!.onclick = event => {
+    const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-design-action]') : null;
+    const design = designs.find(item => item.id === button?.dataset.designId);
+    if (!button || !design || busy || autosaving || autosavePending || catalogueMutation) {
+      return;
+    }
+    if (button.dataset.designAction === 'edit') {
+      uploadDialog.open(design);
+    } else {
+      void deleteDesign(design);
+    }
+  };
   retrySave.onclick = () => requestAutosave(true);
   root.querySelector<HTMLButtonElement>('[data-retry]')!.onclick = () => void loadRegistration();
   root.querySelector<HTMLButtonElement>('[data-refresh-designs]')!.onclick = () => {

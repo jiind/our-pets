@@ -37,7 +37,7 @@ INSERT INTO message_recipients(message_id,pet_id) VALUES('old','p2');`); err != 
 		if err = db.QueryRow(`SELECT body,reply_to_message_id FROM messages WHERE id='old'`).Scan(&body, &reply); err != nil || body != "original" || reply.Valid {
 			t.Fatalf("이전 메시지 보존 실패: %q, %+v, %v", body, reply, err)
 		}
-		if err = db.QueryRow(`SELECT MAX(version) FROM schema_versions`).Scan(&version); err != nil || version != 6 {
+		if err = db.QueryRow(`SELECT MAX(version) FROM schema_versions`).Scan(&version); err != nil || version != 7 {
 			t.Fatalf("스키마 버전 오류: %d, %v", version, err)
 		}
 		var builtin string

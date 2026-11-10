@@ -10,6 +10,10 @@ The current app UI is in Korean. Control names below are described in English.
 
 See [deployment](operations.md) for server setup and access restrictions, and [README](../README.md) for development startup.
 
+## Account settings
+
+Open the account menu to view your username and edit your nickname or password. Usernames cannot be changed. Saving a nickname updates your pet's displayed name while preserving user and pet IDs. Password changes require the current password and matching new-password fields. The current login remains active; other login sessions are revoked and their real-time connections close when the server next checks session validity. Password fields are masked, support a visibility toggle, and are cleared after a successful change.
+
 ## Pet controls
 
 | Action | Behavior |

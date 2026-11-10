@@ -61,7 +61,7 @@ func (s *Service) Current(p model.Principal) (model.Pet, error) {
 // OwnDesigns는 등록 전에 올려 둔 디자인도 다시 선택할 수 있도록 본인 버전을 조회한다.
 func (s *Service) OwnDesigns(p model.Principal) ([]model.Design, error) {
 	// 1. 미적용 디자인을 포함한 본인 버전만 최신순으로 조회한다.
-	rows, err := s.DB.Query(`SELECT id,owner_id,version,name,image_hash,manifest FROM designs WHERE owner_id=? ORDER BY version DESC`, p.UserID)
+	rows, err := s.DB.Query(`SELECT id,owner_id,version,name,image_hash,manifest FROM designs WHERE owner_id=? AND NOT EXISTS(SELECT 1 FROM design_retirements WHERE design_id=designs.id) ORDER BY version DESC`, p.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +116,15 @@ func (s *Service) Register(p model.Principal, in Registration) (model.Pet, error
 		}
 		if owner != p.UserID && !(registered && previousDesign.Valid && previousDesign.String == in.DesignID) {
 			return model.Pet{}, model.Bad(403, "내가 올린 디자인으로만 펫을 등록할 수 있습니다")
+		}
+		if !previousDesign.Valid || previousDesign.String != in.DesignID {
+			var retired int
+			if err = tx.QueryRow(`SELECT COUNT(*) FROM design_retirements WHERE design_id=?`, in.DesignID).Scan(&retired); err != nil {
+				return model.Pet{}, err
+			}
+			if retired > 0 {
+				return model.Pet{}, model.Bad(409, "목록에서 삭제되거나 수정된 펫입니다. 목록을 새로고침하세요")
+			}
 		}
 		designID = in.DesignID
 	}
@@ -324,7 +333,7 @@ func (s *Service) Apply(p model.Principal, designID string) error {
 	if !builtin {
 		builtinID = "cat"
 		var exists int
-		err = tx.QueryRow(`SELECT 1 FROM designs WHERE id=?`, designID).Scan(&exists)
+		err = tx.QueryRow(`SELECT 1 FROM designs WHERE id=? AND NOT EXISTS(SELECT 1 FROM design_retirements WHERE design_id=designs.id)`, designID).Scan(&exists)
 		if err == sql.ErrNoRows {
 			return model.Bad(404, "디자인을 찾을 수 없습니다")
 		}
