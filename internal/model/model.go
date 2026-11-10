@@ -39,8 +39,9 @@ type Principal struct {
 }
 
 type FrameAnimation struct {
-	Frames []int `json:"frames"`
-	FPS    int   `json:"fps"`
+	Name   string `json:"name,omitempty"`
+	Frames []int  `json:"frames"`
+	FPS    int    `json:"fps"`
 }
 
 type Manifest struct {
@@ -49,6 +50,8 @@ type Manifest struct {
 	FrameWidth    int                       `json:"frameWidth"`
 	FrameHeight   int                       `json:"frameHeight"`
 	Animations    map[string]FrameAnimation `json:"animations"`
+	IdleAnimation string                    `json:"idleAnimation,omitempty"`
+	WalkAnimation string                    `json:"walkAnimation,omitempty"`
 }
 
 type Design struct {

@@ -12,8 +12,9 @@ import { mountMenuMessage } from './pet-menu-message';
 import { setPetInput } from './pet-input';
 import { mountRecruitment } from './recruitment';
 import { recruitmentOptions, type Design, type Gathering, type Pet, type PetEvent, type RegisteredPet } from './types';
-import { notifyReceivedMessage, notifyGatheringActivity } from './system-notifications';
+import { externalNotificationTitle, notifyReceivedMessage, notifyGatheringActivity } from './system-notifications';
 import { connectedAlertsMuted } from './notification-preferences';
+import { animationKey, randomClickAnimation } from './pet-animations';
 
 type Rect = { x: number; y: number; width: number; height: number };
 
@@ -96,12 +97,14 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   root.hidden = !targetID;
   root.innerHTML = `<div class="pet-menu" data-hit hidden aria-label="펫 동작 메뉴">
     <div class="pet-menu-heading"><span class="pet-menu-title">무엇을 할까요?</span><button data-action="close" class="menu-close" aria-label="펫 메뉴 닫기">${icon('close')}</button></div>
+    <div class="pet-menu-body">
     <p class="pet-menu-status" hidden></p>
 
     <div class="pet-menu-group" aria-label="함께하기"><button data-action="recruit" aria-label="모집 종류 선택"><span data-recruit-icon aria-hidden="true">🚩</span><span data-recruit-label>모집</span></button></div>
     <div class="pet-menu-row" aria-label="펫과 상호작용" hidden><button data-action="highfive" hidden>🙌 하이파이브</button><button data-action="wave" hidden>👋 인사하기</button></div>
     <button data-action="gathering" hidden>함께하기 상태 보기</button>
     <form class="pet-menu-message"><input name="body" type="text" maxlength="2000" required autocomplete="off" aria-label="전체 펫에게 보낼 메시지" placeholder="모두에게 메시지"><button type="submit" class="primary">전송</button><p class="pet-menu-message-feedback" role="status" aria-live="polite" hidden></p></form>
+    </div>
   </div>
   <article class="pet-bubble" data-hit hidden tabindex="-1" aria-label="현재 도착한 소식" aria-live="polite"><button class="bubble-close" aria-label="알림 닫기">${icon('close')}</button><div class="bubble-sender"></div><p></p><p class="bubble-state"></p><div class="bubble-actions"><button class="bubble-reply" hidden>답장하기</button><button class="bubble-accept" hidden>같이하기</button><button class="bubble-leave" hidden>함께하기 그만두기</button></div></article>
   <section class="pet-connection" data-hit hidden role="status" aria-label="소식 수신 문제"><button class="menu-close" aria-label="연결 안내 닫기">${icon('close')}</button><strong>소식을 받을 수 없어요</strong><p></p><button class="connection-retry">다시 연결</button><button class="connection-login" hidden>다시 로그인</button></section>
@@ -136,6 +139,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   let stopped = false;
   let reactUntil = 0;
   let reactionStart = 0;
+  let clickedAnimationId: string | undefined;
   let gesture: Gesture = 'wave';
   let mirroredGesture = false;
   let pairedReaction = false;
@@ -418,11 +422,13 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     }
   }
   root.addEventListener('keydown', escapeMenu);
-  // 소유자와 무관하게 직접 클릭한 펫만 쓰다듬고 친구끼리 인사 동작과 분리한다.
+  // 직접 클릭한 펫의 추가 동작을 한 번 뽑고 없으면 기존 쓰다듬기 표현을 사용한다.
   function patPet(): void {
     pairedReaction = false;
+    const selected = design ? randomClickAnimation(design.manifest) : undefined;
+    clickedAnimationId = selected?.id;
     reactionStart = Date.now();
-    reactUntil = reactionStart + 3300;
+    reactUntil = reactionStart + (selected ? selected.animation.frames.length / selected.animation.fps * 1000 : 3300);
     gesture = 'pat';
     reaction.textContent = '💕 기분 좋아요!';
     reaction.hidden = false;
@@ -545,6 +551,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         reactionStart = Date.now();
         reactUntil = reactionStart + 3300;
         gesture = 'pat';
+        clickedAnimationId = undefined;
       }).finally(() => {
         button.disabled = false;
         canvas.setAttribute('aria-expanded', String(!menu.hidden || composer.visible() || recruitment.visible()));
@@ -793,7 +800,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const displayedID = targetID || session()?.principal.petId;
     const grouped = groups.some(group => group.hostPetId === displayedID || group.members.some(member => member.petId === displayedID));
     const movingNow = !carried && liftHeight === 0 && !landing && !offline && menu.hidden && !composer.visible() && !recruitment.visible() && !motionPreference.matches && (isTauri() ? walking : !grouped && preview && Math.floor(now / 4000) % 2 === 0);
-    const visualHeight = drawPet(canvas, image, design, reacting ? 'react' : movingNow ? 'walk' : 'idle', motionPreference.matches ? 0 : now, { walking: movingNow, direction, gesture: reacting ? gesture : undefined, elapsed: now - reactionStart, reduced: motionPreference.matches, mirrored: mirroredGesture, pose: motion.pose, resting: offline || (grouped && !movingNow), distance: nativeDistance, speed: nativeSpeed, paired: pairedReaction, elevation: liftHeight, carried, builtin });
+    const visualHeight = drawPet(canvas, image, design, reacting ? 'react' : movingNow ? 'walk' : 'idle', motionPreference.matches ? 0 : now, { animationId: reacting && gesture === 'pat' ? clickedAnimationId : undefined, walking: movingNow, direction, gesture: reacting ? gesture : undefined, elapsed: now - reactionStart, reduced: motionPreference.matches, mirrored: mirroredGesture, pose: motion.pose, resting: offline || (grouped && !movingNow), distance: nativeDistance, speed: nativeSpeed, paired: pairedReaction, elevation: liftHeight, carried, builtin });
     const anchors = petAnchors(canvas, image, design);
     root.style.setProperty('--pet-visual-height', `${anchors.headHeight}px`);
     root.style.setProperty('--pet-overlay-space', `${Math.max(48, root.clientHeight - 30 - liftHeight - anchors.headHeight - 20 - topInset)}px`);
@@ -814,7 +821,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         bubble.dataset.eventId = event.id;
         const sender = bubble.querySelector<HTMLElement>('.bubble-sender')!;
         sender.replaceChildren();
-        sender.textContent = event.outgoing ? event.outgoing.mode === 'all' ? '모두에게 보낸 메시지' : `${event.outgoing.recipientName || '상대'}에게 보낸 ${event.replyToMessageId ? '답장' : '메시지'}` : event.sender ? event.sender.userName || event.sender.petName : `${event.notification?.sourceKind === 'codex' ? 'Codex' : event.notification?.sourceKind === 'claude' ? 'Claude' : event.notification?.sourceKind} · ${event.notification?.title}`;
+        sender.textContent = event.outgoing ? event.outgoing.mode === 'all' ? '모두에게 보낸 메시지' : `${event.outgoing.recipientName || '상대'}에게 보낸 ${event.replyToMessageId ? '답장' : '메시지'}` : event.sender ? event.sender.userName || event.sender.petName : externalNotificationTitle(event.notification);
         if (event.sender?.designId) {
           const expectedID = event.id;
           bubble.dataset.eventId = expectedID;
@@ -871,7 +878,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     }
     root.dataset.overlayBusy = String(!menu.hidden || composer.visible() || recruitment.visible() || !bubble.hidden || !connectionNotice.hidden);
     canvas.setAttribute('aria-expanded', String(!menu.hidden || composer.visible() || recruitment.visible()));
-    setTimeout(() => void tick(), carried || liftHeight > 0 || landing ? 1000 / 30 : motionPreference.matches ? 150 : (!image && walking) || design?.manifest.animations.walk || reacting ? 1000 / 30 : 100);
+    setTimeout(() => void tick(), carried || liftHeight > 0 || landing ? 1000 / 30 : motionPreference.matches ? 150 : (!image && walking) || (design && animationKey(design.manifest, 'walk')) || reacting ? 1000 / 30 : 100);
   }
   void refresh().catch(console.error);
   void tick();

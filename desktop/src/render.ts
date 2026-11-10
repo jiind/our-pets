@@ -2,6 +2,7 @@ import type { Design } from './types';
 import type { CharacterState } from './character';
 import { defaultPetAnchors, drawDefaultPet } from './default-pet';
 import { builtinID, builtinAnchors, drawBuiltinPet, type BuiltinPetID } from './builtin-pets';
+import { animationKey } from './pet-animations';
 
 const renderedBuiltin = new WeakMap<HTMLCanvasElement, BuiltinPetID>();
 
@@ -11,7 +12,8 @@ const walkClocks = new WeakMap<HTMLCanvasElement, { design: string; distance: nu
 // 사용자 스프라이트도 동작 시작 시각과 실제 이동 거리로 프레임을 선택한다.
 function animationFrame(canvas: HTMLCanvasElement, design: Design, action: 'idle' | 'walk' | 'react', time: number, state: CharacterState): number {
   // 1. 디자인·동작이 바뀌면 별도의 재생 시계를 처음부터 시작한다.
-  const animation = design.manifest.animations[action] || design.manifest.animations.idle;
+  const selected = animationKey(design.manifest, action, state.animationId);
+  const animation = selected ? design.manifest.animations[selected] : undefined;
   let walk = walkClocks.get(canvas);
   if (state.distance !== undefined) {
     if (!walk || walk.design !== design.id) {
@@ -29,7 +31,10 @@ function animationFrame(canvas: HTMLCanvasElement, design: Design, action: 'idle
   if (!animation?.frames.length) {
     return 0;
   }
-  const key = `${design.id}/${action}/${state.gesture || ''}`;
+  if (state.reduced) {
+    return animation.frames[0];
+  }
+  const key = `${design.id}/${action}/${selected || ''}/${state.gesture || ''}`;
   let clock = animationClocks.get(canvas);
   if (!clock || clock.key !== key || time < clock.started || (clock.started === 0 && time > 0)) {
     clock = { key, started: time };
@@ -70,7 +75,15 @@ export function drawPet(canvas: HTMLCanvasElement, image: HTMLImageElement | nul
   const ratio = Math.min(size / crop.width, size / crop.height);
   const w = crop.width * ratio;
   const h = crop.height * ratio;
+  // 오른쪽을 보는 등록 원화를 이동 방향과 두 펫의 상호작용 방향에 맞춰 반전한다.
+  const direction = state.gesture && state.paired && !pairMoving ? (state.mirrored ? -1 : 1) : (state.direction || 1);
+  ctx.save();
+  if (direction < 0) {
+    ctx.translate(size, 0);
+    ctx.scale(-1, 1);
+  }
   ctx.drawImage(image, (frame % columns) * m.frameWidth + crop.x, Math.floor(frame / columns) * m.frameHeight + crop.y, crop.width, crop.height, (size - w) / 2, size - h, w, h);
+  ctx.restore();
   return h;
 }
 

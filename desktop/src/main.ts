@@ -12,6 +12,7 @@ import './ui.css';
 import { mountPetRegistration } from './pet-registration';
 import { mountLocalConnectors } from './local-connectors';
 import { mountSidebar } from './sidebar';
+import { mountAccountSettings } from './account-settings';
 import { mountSystemNotificationToggle } from './system-notifications';
 import { connectedAlertsMuted, setConnectedAlertsMuted } from './notification-preferences';
 
@@ -22,6 +23,7 @@ let viewGeneration = 0;
 let disposeViewMotion: (() => void) | undefined;
 let registrationCleanup: (() => void) | undefined;
 let connectionCleanup: (() => void) | undefined;
+let accountCleanup: (() => void) | undefined;
 let ownPet: RegisteredPet | undefined;
 let sidebarCleanup: (() => void) | undefined;
 let serverAttempt: AbortController | undefined;
@@ -156,6 +158,8 @@ function showLogin(register = false, chooseServer = false): void {
   registrationCleanup = undefined;
   connectionCleanup?.();
   connectionCleanup = undefined;
+  accountCleanup?.();
+  accountCleanup = undefined;
   app.className = 'login-shell';
   const needsServer = chooseServer || !localStorage.getItem('ourpets.server');
   const title = needsServer ? '함께할 서버에 연결하기' : register ? '우리 펫에 합류하기' : '오늘도 만나서 반가워요';
@@ -293,8 +297,10 @@ async function showHome(): Promise<void> {
   registrationCleanup = undefined;
   connectionCleanup?.();
   connectionCleanup = undefined;
+  accountCleanup?.();
+  accountCleanup = undefined;
   app.className = 'workspace';
-  app.innerHTML = `<aside class="sidebar"><a class="brand" href="#" aria-label="우리 펫"><img src="/favicon.svg" alt=""><span>우리 펫</span></a><nav aria-label="주 메뉴"><div class="sidebar-server" role="group" aria-label="서버 정보"><span class="sidebar-server-led" role="img" data-state="connecting" aria-label="실시간 연결 확인 중" title="실시간 연결 확인 중"></span><span class="sidebar-server-address fine" title="${escape(serverURL())}">${escape(serverURL())}</span></div><button data-view="studio" title="펫" aria-label="펫">${icon('paw')} <span>펫</span></button><button data-view="connections" title="알림" aria-label="알림">${icon('bell')} <span>알림</span></button></nav><div class="sidebar-bottom"><button id="logout" class="quiet" title="로그아웃" aria-label="로그아웃">${icon('logout')}<span>로그아웃</span></button><small class="sidebar-copyright">© ${new Date().getFullYear()} 우리 펫</small></div></aside>
+  app.innerHTML = `<aside class="sidebar"><a class="brand" href="#" aria-label="우리 펫"><img src="/favicon.svg" alt=""><span>우리 펫</span></a><nav aria-label="주 메뉴"><div class="sidebar-server" role="group" aria-label="서버 정보"><span class="sidebar-server-led" role="img" data-state="connecting" aria-label="실시간 연결 확인 중" title="실시간 연결 확인 중"></span><span class="sidebar-server-address fine" title="${escape(serverURL())}">${escape(serverURL())}</span></div><button data-view="studio" title="펫" aria-label="펫">${icon('paw')} <span>펫</span></button><button data-view="connections" title="알림" aria-label="알림">${icon('bell')} <span>알림</span></button><button data-view="account" title="계정" aria-label="계정">${icon('account')} <span>계정</span></button></nav><div class="sidebar-bottom"><button id="logout" class="quiet" title="로그아웃" aria-label="로그아웃">${icon('logout')}<span>로그아웃</span></button><small class="sidebar-copyright">© ${new Date().getFullYear()} 우리 펫</small></div></aside>
   <main class="content" id="main-content" tabindex="-1"><header><div><h1 id="page-title">펫</h1></div><div class="page-actions" id="page-actions"></div></header><p id="notice" role="status"></p><section id="connection-problem" class="connection-problem" role="status" hidden></section><div id="view"></div></main>`;
   sidebarCleanup = mountSidebar(app);
   showServerStatus();
@@ -367,6 +373,8 @@ async function renderView(): Promise<void> {
   registrationCleanup = undefined;
   connectionCleanup?.();
   connectionCleanup = undefined;
+  accountCleanup?.();
+  accountCleanup = undefined;
   document.querySelectorAll<HTMLElement>('[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === view));
   document.querySelectorAll<HTMLElement>('[data-view]').forEach(button => {
     if (button.dataset.view === view) {
@@ -375,11 +383,22 @@ async function renderView(): Promise<void> {
       button.removeAttribute('aria-current');
     }
   });
-  const titles: Record<string, string> = { studio: '펫', connections: '알림' };
+  const titles: Record<string, string> = { studio: '펫', connections: '알림', account: '계정' };
   document.querySelector('#page-title')!.textContent = titles[view];
   if (view === 'studio') {
     await renderStudio();
 
+  } else if (view === 'account') {
+    const target = document.querySelector<HTMLElement>('#view')!;
+    const cleanup = await mountAccountSettings(target, async () => {
+      await changed();
+      await refreshOwnPet();
+    });
+    if (generation !== viewGeneration || view !== 'account') {
+      cleanup();
+    } else {
+      accountCleanup = cleanup;
+    }
   } else {
     await renderConnections();
   }

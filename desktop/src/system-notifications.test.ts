@@ -55,6 +55,18 @@ describe('메시지·개인 알림의 OS 전달 경계', () => {
     notifyReceivedMessage(message());
     expect(runtime.invoke).not.toHaveBeenCalled();
   });
+  it.each([
+    ['docker', 'Docker · 컨테이너', 'Docker · 컨테이너'],
+    ['slack', 'Slack · 멘션', 'Slack · 멘션'],
+    ['codex', 'Codex 한도 소진', 'Codex 한도 소진'],
+    ['claude', 'Claude 사용량 알림', 'Claude 사용량 알림'],
+    ['docker', '컨테이너', 'Docker · 컨테이너'],
+    ['docker', 'Dockerfile 변경', 'Docker · Dockerfile 변경'],
+  ])('외부 알림 출처 %s의 제목 %s를 한 번만 표시한다', (sourceKind, title, expected) => {
+    const event: PetEvent = { ...message(), type: 'notification', sender: undefined, kind: 'external', body: '', notification: { schemaVersion: 1, sourceKind, connectionId: 'local-source', eventId: 'external-event', occurredAt: Date.now(), title, body: '상태 변경' } };
+    notifyReceivedMessage(event);
+    expect(runtime.invoke).toHaveBeenCalledWith('show_system_notification', expect.objectContaining({ title: expected, body: '상태 변경' }));
+  });
 });
 
 describe('모집 OS 알림의 수신자', () => {

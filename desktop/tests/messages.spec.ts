@@ -40,6 +40,34 @@ test('실제 메시지·이모지·답장 대상과 마릿수 없는 전송 확�
     // 2. 내 펫의 하단 입력은 접속한 친구 모두에게 이모지를 포함한 텍스트를 보낸다.
     await a.getByRole('button', { name: '메시지 A 동작 메뉴 · 오른쪽 클릭 또는 Enter' }).click({ button: 'right' });
     await expect(a.getByRole('button', { name: '👋 인사하기', exact: true })).toBeHidden();
+    // 작은 표시 영역에서도 바깥 모서리·닫기 버튼은 유지하고 메뉴 본문만 움직인다.
+    const menu = a.locator('.pet-menu');
+    await menu.evaluate(element => element.style.maxHeight = '128px');
+    const heading = menu.locator('.pet-menu-heading');
+    const headingBefore = await heading.evaluate(element => ({ top: (element as HTMLElement).offsetTop, left: (element as HTMLElement).offsetLeft, height: (element as HTMLElement).offsetHeight }));
+    const layout = await menu.evaluate(element => {
+      const style = getComputedStyle(element);
+      const body = element.querySelector<HTMLElement>('.pet-menu-body')!;
+      return {
+        corners: [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius],
+        bodyScrollable: body.scrollHeight > body.clientHeight,
+        scrollbar: getComputedStyle(body).scrollbarColor,
+      };
+    });
+    expect(layout.corners).toEqual(['12px', '12px', '12px', '12px']);
+    expect(layout.bodyScrollable).toBe(true);
+    expect(layout.scrollbar).not.toBe('auto');
+    const body = menu.locator('.pet-menu-body');
+    await body.hover();
+    await a.mouse.wheel(0, 400);
+    await expect.poll(() => body.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    // 꼬리가 외곽 높이를 넘어가므로 높이 차이 대신 실제 외곽 스크롤 위치를 확인한다.
+    expect(await menu.evaluate(element => element.scrollTop)).toBe(0);
+    // 펫의 숨쉬기에 따른 메뉴 전체 이동과 구분해 메뉴 안의 제목 위치를 비교한다.
+    expect(await heading.evaluate(element => ({ top: (element as HTMLElement).offsetTop, left: (element as HTMLElement).offsetLeft, height: (element as HTMLElement).offsetHeight }))).toEqual(headingBefore);
+    await expect(menu.getByRole('button', { name: '펫 메뉴 닫기', exact: true })).toBeInViewport();
+    await menu.screenshot({ path: '/tmp/our-pets-context-menu-scroll.png' });
+    await menu.evaluate(element => element.style.removeProperty('max-height'));
     await a.getByRole('textbox', { name: '전체 펫에게 보낼 메시지' }).fill('같이 이야기해요 👋');
     await a.getByRole('button', { name: '전송', exact: true }).click();
     const sent = a.getByRole('article', { name: '현재 도착한 소식' });

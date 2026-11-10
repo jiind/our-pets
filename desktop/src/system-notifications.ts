@@ -19,6 +19,20 @@ function notify(id: string, title: string, body: string, expiresAt: number): voi
   });
 }
 
+// 커넥터가 제목에 포함한 출처를 보존하고 없는 경우에만 표시 이름을 붙인다.
+export function externalNotificationTitle(notification: PetEvent['notification']): string {
+  // 1. 공급자 표시 이름과 커넥터가 만든 제목을 확인한다.
+  const source = notification?.sourceKind || '';
+  const provider = ({ docker: 'Docker', slack: 'Slack', codex: 'Codex', claude: 'Claude' } as Record<string, string>)[source] || source || '알림';
+  const title = notification?.title.trim() || '새 소식';
+
+  // 2. 출처 접두어는 한 번만 붙이고 Dockerfile 같은 일반 단어는 구분한다.
+  const lowerTitle = title.toLowerCase();
+  const lowerProvider = provider.toLowerCase();
+  const hasProvider = lowerTitle === lowerProvider || [' ', '·', ':'].some(separator => lowerTitle.startsWith(lowerProvider + separator));
+  return hasProvider ? title : `${provider} · ${title}`;
+}
+
 // 받은 메시지·연결 알림을 알리고 발신 확인·몸짓에는 OS 알림을 만들지 않는다.
 export function notifyReceivedMessage(event: PetEvent): void {
   if (event.outgoing || event.kind === 'interaction' || (event.sender && event.sender.petId === session()?.principal.petId)) {
@@ -27,9 +41,7 @@ export function notifyReceivedMessage(event: PetEvent): void {
   if (event.type === 'notification' && connectedAlertsMuted()) {
     return;
   }
-  const source = event.notification?.sourceKind;
-  const provider = source === 'docker' ? 'Docker' : source === 'slack' ? 'Slack' : source === 'codex' ? 'Codex' : source === 'claude' ? 'Claude' : source || '알림';
-  const title = event.sender ? event.sender.userName || event.sender.petName : `${provider} · ${event.notification?.title || '새 소식'}`;
+  const title = event.sender ? event.sender.userName || event.sender.petName : externalNotificationTitle(event.notification);
   notify(`message/${event.id}`, title, event.body || event.notification?.body || '', event.expiresAt);
 }
 
