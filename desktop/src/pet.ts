@@ -830,11 +830,11 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
               URL.revokeObjectURL(url);
             }
           }).catch(console.error);
-        } else {
+        } else if (event.sender) {
           const avatar = document.createElement('canvas');
           avatar.width = avatar.height = 28;
           avatar.className = 'bubble-avatar';
-          drawPet(avatar, null, null, 'idle', 0, { builtin: event.sender?.builtinId });
+          drawPet(avatar, null, null, 'idle', 0, { builtin: event.sender.builtinId });
           sender.prepend(avatar);
         }
         bubble.querySelector<HTMLElement>('p:not(.bubble-state)')!.textContent = event.kind === 'interaction' ? (event.body === 'highfive' ? '🙌 내 펫과 하이파이브!' : '👋 친구 펫과 인사해요!') : event.body || event.notification?.body || '';
