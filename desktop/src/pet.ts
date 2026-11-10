@@ -106,7 +106,10 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     <form class="pet-menu-message"><input name="body" type="text" maxlength="2000" required autocomplete="off" aria-label="전체 펫에게 보낼 메시지" placeholder="모두에게 메시지"><button type="submit" class="primary">전송</button><p class="pet-menu-message-feedback" role="status" aria-live="polite" hidden></p></form>
     </div>
   </div>
-  <article class="pet-bubble" data-hit hidden tabindex="-1" aria-label="현재 도착한 소식" aria-live="polite"><button class="bubble-close" aria-label="알림 닫기">${icon('close')}</button><div class="bubble-sender"></div><p></p><p class="bubble-state"></p><div class="bubble-actions"><button class="bubble-reply" hidden>답장하기</button><button class="bubble-accept" hidden>같이하기</button><button class="bubble-leave" hidden>함께하기 그만두기</button></div></article>
+  <article class="pet-bubble" data-hit hidden tabindex="-1" aria-label="현재 도착한 소식" aria-live="polite">
+    <div class="bubble-heading"><button class="bubble-close" aria-label="알림 닫기">${icon('close')}</button><div class="bubble-sender"></div></div>
+    <div class="pet-bubble-content"><p></p><p class="bubble-state"></p><div class="bubble-actions"><button class="bubble-reply" hidden>답장하기</button><button class="bubble-accept" hidden>같이하기</button><button class="bubble-leave" hidden>함께하기 그만두기</button></div></div>
+  </article>
   <section class="pet-connection" data-hit hidden role="status" aria-label="소식 수신 문제"><button class="menu-close" aria-label="연결 안내 닫기">${icon('close')}</button><strong>소식을 받을 수 없어요</strong><p></p><button class="connection-retry">다시 연결</button><button class="connection-login" hidden>다시 로그인</button></section>
   <div class="reaction" hidden aria-live="polite"></div>
   <span class="pet-floor-shadow" aria-hidden="true" hidden></span>
@@ -846,6 +849,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         }
         bubble.querySelector<HTMLElement>('p:not(.bubble-state)')!.textContent = event.kind === 'interaction' ? (event.body === 'highfive' ? '🙌 내 펫과 하이파이브!' : '👋 친구 펫과 인사해요!') : event.body || event.notification?.body || '';
         bubble.hidden = false;
+        bubble.querySelector<HTMLElement>('.pet-bubble-content')!.scrollTop = 0;
         motion.reveal(bubble);
         bubbleUntil = now + 12000;
       }
