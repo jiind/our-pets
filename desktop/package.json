@@ -12,7 +12,7 @@
     "check:ui-types": "tsc --project tsconfig.ui.json"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.11.0",
+    "@tauri-apps/api": "2.12.4",
     "gsap": "3.15.1"
   },
   "devDependencies": {
