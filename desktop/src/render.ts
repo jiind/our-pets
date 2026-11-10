@@ -70,7 +70,15 @@ export function drawPet(canvas: HTMLCanvasElement, image: HTMLImageElement | nul
   const ratio = Math.min(size / crop.width, size / crop.height);
   const w = crop.width * ratio;
   const h = crop.height * ratio;
+  // 오른쪽을 보는 등록 원화를 이동 방향과 두 펫의 상호작용 방향에 맞춰 반전한다.
+  const direction = state.gesture && state.paired && !pairMoving ? (state.mirrored ? -1 : 1) : (state.direction || 1);
+  ctx.save();
+  if (direction < 0) {
+    ctx.translate(size, 0);
+    ctx.scale(-1, 1);
+  }
   ctx.drawImage(image, (frame % columns) * m.frameWidth + crop.x, Math.floor(frame / columns) * m.frameHeight + crop.y, crop.width, crop.height, (size - w) / 2, size - h, w, h);
+  ctx.restore();
   return h;
 }
 

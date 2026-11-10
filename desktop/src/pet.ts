@@ -12,7 +12,7 @@ import { mountMenuMessage } from './pet-menu-message';
 import { setPetInput } from './pet-input';
 import { mountRecruitment } from './recruitment';
 import { recruitmentOptions, type Design, type Gathering, type Pet, type PetEvent, type RegisteredPet } from './types';
-import { notifyReceivedMessage, notifyGatheringActivity } from './system-notifications';
+import { externalNotificationTitle, notifyReceivedMessage, notifyGatheringActivity } from './system-notifications';
 import { connectedAlertsMuted } from './notification-preferences';
 
 type Rect = { x: number; y: number; width: number; height: number };
@@ -814,7 +814,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         bubble.dataset.eventId = event.id;
         const sender = bubble.querySelector<HTMLElement>('.bubble-sender')!;
         sender.replaceChildren();
-        sender.textContent = event.outgoing ? event.outgoing.mode === 'all' ? '모두에게 보낸 메시지' : `${event.outgoing.recipientName || '상대'}에게 보낸 ${event.replyToMessageId ? '답장' : '메시지'}` : event.sender ? event.sender.userName || event.sender.petName : `${event.notification?.sourceKind === 'codex' ? 'Codex' : event.notification?.sourceKind === 'claude' ? 'Claude' : event.notification?.sourceKind} · ${event.notification?.title}`;
+        sender.textContent = event.outgoing ? event.outgoing.mode === 'all' ? '모두에게 보낸 메시지' : `${event.outgoing.recipientName || '상대'}에게 보낸 ${event.replyToMessageId ? '답장' : '메시지'}` : event.sender ? event.sender.userName || event.sender.petName : externalNotificationTitle(event.notification);
         if (event.sender?.designId) {
           const expectedID = event.id;
           bubble.dataset.eventId = expectedID;

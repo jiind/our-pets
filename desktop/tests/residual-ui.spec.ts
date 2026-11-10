@@ -59,7 +59,18 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
 
   // 3. 스프라이트를 나누어 칸 수·속도·동작 미리보기를 확인하고 잘못된 분할은 저장하지 않는다.
   await file.setInputFiles(path.resolve('src-tauri/icons/icon.png'));
+  await expect(dialog.locator('[data-empty]')).toBeHidden();
+  await expect(dialog.locator('[name=frameWidth]')).toHaveValue('');
+  await expect(dialog.locator('[name=idleFrames]')).toHaveValue('');
   await dialog.locator('[data-animation-settings] > summary').click();
+  await expect(dialog.locator('[name=frameWidth]')).toHaveValue('128');
+  await expect(dialog.locator('[name=frameHeight]')).toHaveValue('128');
+  await expect(dialog.locator('[name=idleFrames]')).toHaveValue('0,1,2,3');
+  await expect(dialog.locator('[name=idleFPS]')).toHaveValue('4');
+  await expect(dialog.locator('[name=walkFrames]')).toHaveValue('4,5,6,7,8,9,10,11');
+  await expect(dialog.locator('[name=walkFPS]')).toHaveValue('8');
+  await expect(dialog.locator('[name=reactFrames]')).toHaveValue('12,13,14,15');
+  await expect(dialog.locator('[name=reactFPS]')).toHaveValue('6');
   await dialog.locator('[name=frameWidth]').fill('100');
   await dialog.locator('[name=frameHeight]').fill('128');
   await expect(dialog.locator('[data-frame-guide]')).toContainText('나누어떨어지게');
@@ -75,6 +86,10 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
   await dialog.getByRole('button', { name: '추가', exact: true }).click();
   await expect(dialog.locator('[data-status]')).toContainText('칸 번호는 0부터 시작');
   await dialog.locator('[name=walkFrames]').fill('4,5,6,7');
+  await dialog.locator('[data-animation-settings] > summary').click();
+  await dialog.locator('[data-animation-settings] > summary').click();
+  await expect(dialog.locator('[name=walkFrames]')).toHaveValue('4,5,6,7');
+  await expect(dialog.locator('[name=walkFPS]')).toHaveValue('6');
   await dialog.locator('[data-preview-mode=walk]').click();
   await expect(dialog.locator('[data-preview-note]')).toContainText('선택한 동작을 실제 펫 크기로 미리 보여요');
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -105,6 +120,45 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
   expect(uploads).toBe(2);
   expect(requestBody).toContain('"frameWidth":128');
   expect(requestBody).toContain('"walk":{"frames":[4,5,6,7],"fps":6}');
+});
+
+test('펫 추가 모달은 네 모서리를 유지하고 헤더 아래 내용만 스크롤한다', async ({ page }) => {
+  // 1. 작은 창에서 예시 설정을 펼쳐 내용이 모달 높이를 넘도록 한다.
+  await page.setViewportSize({ width: 900, height: 650 });
+  await createWorkspace(page);
+  await page.getByRole('button', { name: '펫 추가', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '펫 추가', exact: true });
+  await dialog.locator('[data-animation-settings] > summary').click();
+  await expect(dialog.locator('[name=frameWidth]')).toHaveValue('256');
+  await dialog.locator('input[type=file]').setInputFiles(path.resolve('src-tauri/icons/icon.png'));
+  await expect(dialog.locator('[name=frameWidth]')).toHaveValue('128');
+  await expect(dialog.locator('[name=walkFrames]')).toHaveValue('4,5,6,7,8,9,10,11');
+  const heading = dialog.locator('.pet-upload-heading');
+  const headingBefore = await heading.boundingBox();
+  const form = dialog.locator('form');
+  const layout = await dialog.evaluate(element => {
+    const style = getComputedStyle(element);
+    const content = element.querySelector('form')!;
+    return {
+      corners: [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius],
+      overflow: style.overflow,
+      contentScrollable: content.scrollHeight > content.clientHeight,
+      scrollbarColor: getComputedStyle(content).scrollbarColor,
+    };
+  });
+  expect(layout.corners).toEqual(['16px', '16px', '16px', '16px']);
+  expect(layout.overflow).toBe('hidden');
+  expect(layout.contentScrollable).toBe(true);
+  expect(layout.scrollbarColor).not.toBe('auto');
+
+  // 2. 휠을 내려도 모달 제목과 취소·추가 버튼은 같은 화면 위치에 남는다.
+  await form.hover();
+  await page.mouse.wheel(0, 1400);
+  await expect.poll(() => form.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  expect(await heading.boundingBox()).toEqual(headingBefore);
+  await expect(dialog.getByRole('button', { name: '취소', exact: true })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '추가', exact: true })).toBeInViewport();
+  await dialog.screenshot({ path: '/tmp/our-pets-upload-modal-scroll.png' });
 });
 
 test('개인 연결 IPC 모의 저장·삭제 실패는 화면 입력과 연결 상태를 유지한다', async ({ page }) => {

@@ -66,3 +66,61 @@ test('실제 drawPet 캔버스 색상으로 sprite frame·보행 거리·누락 
   expect(frames.missingWalkUsesIdle).toBe(frames.reactNext);
   expect(frames.missingAnimationUsesFirstFrame).toBe(frames.idleFirst);
 });
+
+test('등록 PNG와 스프라이트는 이동·상호작용 방향으로 반전하고 다음 그리기에 영향을 주지 않는다', async ({ page }) => {
+  await page.goto('/');
+  const samples = await page.evaluate(async () => {
+    // 1. 각 칸의 좌우 색이 다른 PNG로 실제 그림 방향과 선택된 프레임을 구분한다.
+    const source = document.createElement('canvas');
+    source.width = 32;
+    source.height = 16;
+    const context = source.getContext('2d')!;
+    ['#e02020', '#20c040', '#2040e0', '#e0c020'].forEach((color, index) => {
+      context.fillStyle = color;
+      context.fillRect(index * 8, 0, 8, 16);
+    });
+    const image = new Image();
+    image.src = source.toDataURL('image/png');
+    await image.decode();
+    // @ts-expect-error Vite가 브라우저에 제공하는 실제 렌더러 소스 모듈이다.
+    const { drawPet } = await import('/src/render.ts');
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const design = {
+      id: 'direction-sheet', version: 1, ownerId: 'fixture', name: 'direction', imageHash: 'fixture',
+      manifest: { schemaVersion: 1, displaySize: 64, frameWidth: 16, frameHeight: 16,
+        animations: { idle: { frames: [0], fps: 4 }, walk: { frames: [1], fps: 8 }, react: { frames: [0], fps: 6 } } },
+    };
+    const result: Record<string, string[]> = {};
+    const cases = [
+      { name: 'right', action: 'walk', state: { direction: 1 } },
+      { name: 'left', action: 'walk', state: { direction: -1 } },
+      { name: 'rightAgain', action: 'walk', state: { direction: 1 } },
+      { name: 'idleLeft', action: 'idle', state: { direction: -1 } },
+      { name: 'greetLeft', action: 'react', state: { direction: 1, gesture: 'wave', paired: true, mirrored: true } },
+      { name: 'greetRight', action: 'react', state: { direction: -1, gesture: 'highfive', paired: true, mirrored: false } },
+      { name: 'approachLeft', action: 'react', state: { direction: -1, gesture: 'wave', paired: true, mirrored: false, walking: true, elapsed: 0 } },
+      { name: 'singleLeft', action: 'walk', state: { direction: -1 } },
+    ] as const;
+
+    // 2. 이동·대기·인사·접근과 애니메이션 없는 PNG의 실제 좌우 픽셀을 읽는다.
+    for (const sample of cases) {
+      const current = sample.name === 'singleLeft' ? { ...design, id: 'direction-single', manifest: { ...design.manifest, animations: {} } } : design;
+      drawPet(canvas, image, current, sample.action, 1000, sample.state);
+      result[sample.name] = [16, 48].map(x => [...canvas.getContext('2d')!.getImageData(x, 32, 1, 1).data].join(','));
+    }
+    return result;
+  });
+
+  // 3. 프레임과 방향을 색으로 검증하고 좌우 전환 뒤 변환이 누적되지 않는지 확인한다.
+  const red = '224,32,32,255', green = '32,192,64,255';
+  const blue = '32,64,224,255', yellow = '224,192,32,255';
+  expect(samples.right).toEqual([blue, yellow]);
+  expect(samples.left).toEqual([yellow, blue]);
+  expect(samples.rightAgain).toEqual(samples.right);
+  expect(samples.idleLeft).toEqual([green, red]);
+  expect(samples.greetLeft).toEqual([green, red]);
+  expect(samples.greetRight).toEqual([red, green]);
+  expect(samples.approachLeft).toEqual([yellow, blue]);
+  expect(samples.singleLeft).toEqual([green, red]);
+});

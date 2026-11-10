@@ -23,6 +23,8 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   let loadedImage: HTMLImageElement | undefined;
   let previewDesign: Design | undefined;
   let previewReady = false;
+  let animationDefaultsApplied = false;
+  let useExampleDimensions = true;
   let previewProblem = '';
   let actionStarted = Date.now();
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -224,6 +226,13 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       }
 
       // 2. 칸 번호 안내와 실제 동작 미리보기를 같은 분할 규칙으로 갱신한다.
+      if (animationDefaultsApplied && useExampleDimensions) {
+        if (loadedImage.naturalWidth % 4 || loadedImage.naturalHeight % 4) {
+          throw new Error('예시 시트는 4열 × 4행이에요. 이 PNG에 맞는 한 칸 너비·높이를 직접 입력하세요.');
+        }
+        (form.elements.namedItem('frameWidth') as HTMLInputElement).value = String(loadedImage.naturalWidth / 4);
+        (form.elements.namedItem('frameHeight') as HTMLInputElement).value = String(loadedImage.naturalHeight / 4);
+      }
       updateFrameGuide();
       previewDesign = { id: 'pet-upload-preview', ownerId: session()?.principal.userId || '', version: 0, name: nameInput.value.trim(), imageHash: '', manifest: manifestFor(loadedImage) };
       previewReady = true;
@@ -338,6 +347,9 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     previewDesign = undefined;
     previewReady = false;
     previewProblem = '';
+    animationDefaultsApplied = false;
+    useExampleDimensions = true;
+    animationSettings.open = false;
     completed = false;
     canvas.hidden = true;
     placeholder.hidden = false;
@@ -405,12 +417,34 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       void refreshPreview();
     }
   });
-  animationSettings.ontoggle = updateFrameGuide;
+  // 스프라이트 설정을 처음 펼칠 때만 예시 배치와 속도를 채우고 이후 편집값을 보존한다.
+  animationSettings.ontoggle = () => {
+    // 1. 일반 PNG는 빈 설정을 유지하고 예시 시트는 별도 버튼 없이 시작한다.
+    if (animationSettings.open && !animationDefaultsApplied) {
+      animationDefaultsApplied = true;
+      const defaults = {
+        frameWidth: '256', frameHeight: '256',
+        idleFrames: '0,1,2,3', idleFPS: '4',
+        walkFrames: '4,5,6,7,8,9,10,11', walkFPS: '8',
+        reactFrames: '12,13,14,15', reactFPS: '6',
+      };
+      for (const [name, value] of Object.entries(defaults)) {
+        (form.elements.namedItem(name) as HTMLInputElement).value = value;
+      }
+      void refreshPreview();
+    }
+
+    // 2. 다시 펼칠 때는 수동으로 바꾼 칸 크기와 동작 순서를 그대로 안내한다.
+    updateFrameGuide();
+  };
   form.oninput = event => {
     const input = event.target as HTMLInputElement;
     if (input.name === 'name') {
       paintPreview();
     } else if (input.name && input.name !== 'image') {
+      if (input.name === 'frameWidth' || input.name === 'frameHeight') {
+        useExampleDimensions = false;
+      }
       void refreshPreview();
     }
   };

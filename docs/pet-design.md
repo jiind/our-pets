@@ -42,4 +42,8 @@ Uploading creates a design draft; registration chooses the design for the repres
 
 A single PNG remains one drawing; the app can supply movement, sway, and jumps. Sprite-sheet `walk` frames follow movement distance. Previews and pet windows use the same renderer. A shared opaque bounding region across registered frames compensates for transparent margins without resizing each drawing independently. This does not guarantee that the supplied artwork has correct contact points or animation quality.
 
+Uploaded artwork is assumed to face right. The renderer mirrors it for leftward movement and to face the other pet during paired reactions. A regular PNG follows the same direction rule.
+
 Enter the size of one cell and the frame order for each action. The generated-prompt example uses a 1024×1024px, four-by-four sheet: sixteen 256px cells, with idle 0–3, walk 4–11, and reaction 12–15. If the actual output dimensions differ, use cell dimensions that divide the real PNG exactly.
+
+Opening the animation settings for the first time fills the example's 4×4 layout automatically: idle frames 0–3 at 4 FPS, walk frames 4–11 at 8 FPS, and reaction frames 12–15 at 6 FPS. Cell dimensions follow the selected PNG dimensions divided by four until edited manually. Reopening the section preserves edits. For a regular single-image PNG, leave this section unopened; its animation settings remain empty.

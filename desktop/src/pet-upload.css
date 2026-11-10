@@ -5,14 +5,45 @@ dialog.pet-upload-dialog {
   max-height: calc(100vh - var(--space-8));
   margin: auto;
   padding: var(--space-6);
-  overflow-y: auto;
+  overflow: hidden;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
+/* 바깥 모서리는 유지하고 제목·확인 버튼 아래의 내용만 스크롤한다. */
+dialog.pet-upload-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.pet-upload-dialog > form {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--paper);
+  padding: var(--space-1);
+}
+/* 시스템 스크롤바를 사용하는 WebView에서도 앱의 색상과 둥근 손잡이를 맞춘다. */
+.pet-upload-dialog > form::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.pet-upload-dialog > form::-webkit-scrollbar-track {
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+}
+.pet-upload-dialog > form::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 2px solid var(--paper);
+  border-radius: var(--radius-sm);
+}
+.pet-upload-dialog > form::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
 .pet-upload-dialog .pet-upload-heading {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
