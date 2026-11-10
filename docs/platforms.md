@@ -1,41 +1,41 @@
-# 플랫폼과 실행 조건
+# Platforms and runtime requirements
 
-Linux·macOS·Windows를 지원 대상으로 하며 실제 데스크톱 펫은 Tauri 앱에서 실행한다. 브라우저 UI 실행이나 CI 컴파일 성공은 투명 창·입력·포커스 동작을 보장하지 않는다.
+Linux, macOS, and Windows are target platforms. Actual desktop pets run in the Tauri app. A browser preview or successful CI compilation does not establish correct transparency, input, or focus behavior.
 
-## 창과 입력 처리
+## Windows and input
 
-펫은 투명·장식 없는·항상 위·비포커스 창이다. 설정 창을 닫으면 트레이로 숨긴다. 펫의 불투명 영역과 메뉴·말풍선 조작 영역만 입력을 받고 나머지 공간은 뒤쪽 프로그램으로 통과시킨다. 명시적인 메시지 입력 등 필요한 동작에만 포커스를 요청한다.
+Pet windows are transparent, undecorated, always on top, and non-focusable. Closing settings hides it to the tray. Only opaque pet pixels and interactive menu/bubble regions accept input; surrounding space passes input to the application underneath. Focus is requested only for explicit actions that need it, such as text input.
 
-| 환경 | 구현 경로와 실행 조건 |
+| Environment | Implementation and requirements |
 | --- | --- |
-| Linux X11 | GTK/GDK 입력 모양에 Canvas 알파 영역과 공통 UI 영역을 반영. X11·컴포지터 필요 |
-| Linux Wayland + XWayland | `GDK_BACKEND=x11`로 X11 경로 사용. 창 배치·항상 위·배율은 compositor 정책에 영향받음 |
-| Linux 네이티브 Wayland | 전용 창 제어 경로 미구현. X11 또는 XWayland 필요 |
-| macOS | 전역 커서와 입력 영역을 비교해 클릭 통과 전환. WKWebView와 투명 창용 `macos-private-api` 사용 |
-| Windows | 전역 커서와 입력 영역을 비교해 클릭 통과 전환. WebView2 런타임 필요 |
+| Linux X11 | GTK/GDK input shapes reflect Canvas alpha and shared UI regions. Requires X11 and a compositor |
+| Linux Wayland + XWayland | Uses the X11 path through `GDK_BACKEND=x11`; placement, stacking, and scaling depend on compositor policy |
+| Native Linux Wayland | No dedicated window-control implementation. X11 or XWayland is required |
+| macOS | Compares global cursor position with input regions to switch click-through. Uses WKWebView and `macos-private-api` for transparency |
+| Windows | Compares global cursor position with input regions to switch click-through. Requires WebView2 |
 
-Windows·macOS의 커서 기반 전환에는 폴링 지연이 있으며 빠른 경계 클릭·드래그를 대상 OS에서 확인해야 한다. 창 API의 제약은 [Tauri 창 API](https://v2.tauri.app/reference/javascript/api/namespacewindow/)와 [Tao Window](https://docs.rs/tao/latest/tao/window/struct.Window.html)를 참고한다.
+Cursor-based switching on Windows/macOS has polling latency. Check fast boundary clicks and dragging on the target OS. See the [Tauri window API](https://v2.tauri.app/reference/javascript/api/namespacewindow/) and [Tao Window](https://docs.rs/tao/latest/tao/window/struct.Window.html) for platform constraints.
 
-## Linux X11과 Wayland
+## Linux X11 and Wayland
 
-X11에서도 항상 위 설정은 창 관리자의 정책을 따른다. GNOME·KDE·타일링 WM 및 XWayland 조합에 따라 동작이 달라질 수 있다. Wayland의 전역 위치·항상 위·전역 커서 제한 때문에 네이티브 지원에는 layer-shell 또는 데스크톱 확장과 같은 별도 구현이 필요하다.
+X11 stacking still follows window-manager policy. Behavior can differ across GNOME, KDE, tiling WMs, and XWayland combinations. Native Wayland restrictions on global placement, stacking, and cursor access require a separate implementation such as layer-shell or desktop extensions.
 
-메뉴 바깥 클릭은 Linux X11 RECORD 확장의 버튼 press/release를 별도 X11 연결로 관찰한다. 키보드·포인터 이동 이벤트를 수집하거나 입력을 소비·가로채지 않는다. 메뉴 실행 번호와 GTK 서버 입력 시각으로 오래된 클릭을 걸러낸다.
+Outside-menu clicks use X11 RECORD button press/release events on a separate connection. The observer does not collect keyboard or pointer-motion events, consume input, or grab it. Menu generations and GTK server input times reject stale clicks.
 
-RECORD가 없거나 연결이 끊기면 포인터 상태 폴링으로 돌아간다. 이 경로와 Windows·macOS 폴링은 매우 짧은 클릭을 놓칠 수 있다. 클릭 위치를 수신 직후 조회하므로 빠른 클릭 후 이동 경합이 가능하고, 같은 밀리초 입력은 보수적으로 무시할 수 있다.
+When RECORD is unavailable or disconnected, pointer-state polling is used. This fallback and Windows/macOS polling can miss very short clicks. Position is queried just after receipt, so rapid click-then-move races are possible; events sharing a millisecond timestamp can be conservatively ignored.
 
-## 모니터·배율·높이 이동
+## Monitors, scaling, and lifting
 
-물리 창 좌표와 논리 UI 좌표를 모니터 배율로 변환한다. 작업영역과 모니터 목록을 다시 읽어 화면 밖 위치를 보정하며 창 크기가 같아도 위치를 검사한다. 드래그·들기 중에는 자동 정렬이 사용자의 이동과 경합하지 않게 한다.
+Physical window coordinates and logical UI coordinates are converted using monitor scale. Work areas and monitor lists are refreshed to recover offscreen positions, including when window size is unchanged. Automatic alignment avoids competing with an active drag or lift.
 
-높이 드래그는 전역 커서·작업영역·물리 좌표로 계산한다. 펫 창은 작업영역 높이를 유지해 드래그 중 WebView 크기 변경을 줄인다. 그림자는 바닥에 두고 공중 그림자는 입력 영역에서 제외한다. 놓으면 바닥으로 내려와 착지한다.
+Height dragging uses the global cursor, work area, and physical coordinates. Pet windows retain work-area height to reduce WebView resizing during dragging. The shadow stays on the ground and is excluded from the input region while the pet is airborne. Releasing makes it fall and land.
 
-## OS 알림
+## OS notifications
 
-Tauri notification 플러그인의 Rust API를 전용 명령으로 호출한다. 대표 펫 창만 이벤트 ID·만료를 검증해 요청하며 웹뷰에 일반 알림 플러그인 권한을 열지 않는다. OS 알림 설정은 PC별로 저장하고 네이티브 ID 색인으로 중복 요청을 제한한다.
+The Tauri notification plugin's Rust API is called through a dedicated command. Only the representative pet window can request notifications after event-ID and expiry validation; general plugin permissions are not exposed to webviews. The OS notification preference is PC-local, and a native ID index limits duplicate requests.
 
-Windows 알림은 설치된 앱으로 확인해야 한다. Linux는 데스크톱 알림 서비스가 필요하다. OS 권한·방해 금지·알림 서비스 정책에 따라 실제 배너 표시가 달라지며 요청 성공은 화면 표시와 다르다. [Tauri 알림 플러그인](https://v2.tauri.app/plugin/notification/).
+Windows notifications must be checked using an installed app. Linux needs a desktop notification service. Permissions, Do Not Disturb, and service policy affect visible banners; a successful request is not proof of display. See the [Tauri notification plugin](https://v2.tauri.app/plugin/notification/).
 
-## 배포 전 확인할 항목
+## Before distribution
 
-대상 OS·데스크톱 환경에서 투명 합성, 펫 주변 클릭 통과, 펫·메뉴 입력, 다른 앱의 타이핑 유지, 배경 클릭 닫기, 트레이, OS 알림을 확인한다. 다중 모니터·음수 좌표·서로 다른 배율·모니터 분리 후 복귀도 실제 환경에서 확인한다. macOS·Windows 및 XWayland 동작을 Linux X11 실행 결과로 대신 판단하지 않는다. 패키지 서명과 공증 조건은 [릴리즈 절차](releasing.md)를 따른다.
+Check transparency, surrounding click-through, pet/menu input, typing in another app, outside-click dismissal, tray behavior, and OS notifications on each target OS and desktop environment. Exercise multiple monitors, negative coordinates, mixed scaling, and recovery after monitor removal. Linux X11 results do not establish macOS, Windows, or XWayland behavior. See [releases](releasing.md) for signing and notarization conditions.

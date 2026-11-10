@@ -1,34 +1,29 @@
-경로 안내: 파일 경로는 공개용 예시이며 실제 사용자 경로와 생성 작업 ID를 포함하지 않습니다.
-기본 주황 고양이 스프라이트 원화 생성 기록
+Path note: all absolute paths are public examples; real usernames and generation job IDs are omitted.
+Original orange-cat sprite-sheet specification
+Created: 2026-11-04
+Tool: built-in image_gen.imagegen, default mode, one generation
+Parameter: transparent_background=true
+Selected file: desktop/src/assets/ginger-companion-v2.png
+Storage: original PNG copied without resizing, re-editing, or alpha changes.
+Actual output: PNG RGBA, 1254×1254px; requested size was 1024×1024px.
+Layout: four columns, four rows, sixteen frames; source cells are 313.5×313.5px.
+Frame order, zero-based, left to right then top to bottom:
+0 walk contact / 1 walk passing / 2 opposite contact / 3 opposite passing
+4 standing / 5 blink / 6 look toward viewer / 7 prepare to walk
+8 raise paw / 9 greeting / 10 right high-five / 11 lower paw
+12 sit transition / 13 sitting awake / 14 curled sleeping / 15 wake
+Rendering notes:
+- Total pixels: 1572516; alpha=0: 467221; alpha=1: 435324. Interior cat alpha is generally 251–253.
+- Colored residue surrounding the pet is primarily alpha=1. Preserve source alpha and clean low alpha in rendering memory.
+- Use fractional cell coordinates. Cutting directly into integer 256px or 313px cells does not match the source.
+- Standing feet are around cell y=279–286 (about 228–234 at 256px); seated/sleeping feet are around y=281–286. Align runtime foot baselines.
+- Most head tops are around source-cell y=25–38 (about 20–31 at 256px), above the requested y=48.
+- Frame 10's high-five paw approaches the right cell boundary and may extend slightly into the next cell. Derive contact from artwork rather than assuming requested x=220,y=105.
+- Seated/sleeping silhouettes differ from standing. Use one scale and common grounding rather than maximizing each frame independently.
+- Generated for this project without third-party character/sprite copying or external image inputs.
+Generated source example: /home/example/.codex/generated_images/sample-session/sample-image.png
 
-생성일: 2026-11-04
-생성 도구: 내장 image_gen.imagegen (기본 모드), 1회 생성
-요청 매개변수: transparent_background=true
-원본 파일: /home/example/.codex/generated_images/sample-session/sample-image.png
-선정 파일: desktop/src/assets/ginger-companion-v2.png
-저장 방식: 원본 PNG를 그대로 복사. 리사이즈·재편집·알파 변경 없음.
-실제 규격: PNG RGBA, 1254 x 1254 px. 요청은 1024 x 1024였으나 도구 실출력은 1254 x 1254.
-구성: 4열 x 4행, 16프레임. 원본 셀 간격은 313.5 x 313.5 px.
-
-프레임 순서(0부터, 왼쪽→오른쪽, 위→아래):
-0 걷기 접지 / 1 걷기 통과 / 2 반대 접지 / 3 반대 통과
-4 서 있기 / 5 눈 깜빡임 / 6 관찰자 쪽 보기 / 7 걷기 준비
-8 앞발 올리기 / 9 인사 / 10 오른쪽 하이파이브 / 11 앞발 내리기
-12 앉기 전환 / 13 깨어 앉기 / 14 웅크려 잠자기 / 15 깨기
-
-소스 검사와 통합 시 유의점:
-- 이미지 도구 출력과 view_image로 원화만 살펴봤다. 앱·GUI·기능 테스트와 캡처는 하지 않았다.
-- 전체 픽셀 1572516개. alpha=0: 467221개, alpha=1: 435324개. 고양이 내부 알파는 대체로 251~253이다.
-- 도구 미리보기에 빨강·노랑 얼룩처럼 보이는 주변 픽셀은 주로 alpha=1의 색 잔여다. 원본 알파는 보존했으며 런타임 저알파 정리를 권장한다.
-- 원본을 4등분할 때 소수점 셀 좌표를 사용해야 한다. 정수 256 또는 정수 313 프레임 규격으로 바로 자르면 맞지 않는다.
-- 서 있는 프레임의 불투명 발밑은 셀 안에서 대략 y=279~286(256 기준 약228~234), 앉거나 잠든 프레임은 y=281~286이다. 런타임 발밑 정렬을 권장한다.
-- 머리 최고점은 대부분 원본 셀 y=25~38(256 기준 약20~31)로 요청한 y=48보다 높다.
-- 프레임10의 하이파이브 손은 오른쪽 셀 경계 가까이까지 뻗는다. 다음 셀 왼쪽에 손끝 픽셀이 몇 px 들어갈 수 있어 잘림 여부를 고려해야 한다. 접촉점을 고정된 요청 좌표(x220,y105)로 단정하지 말고 원화를 기준으로 맞춘다.
-- 모든 프레임의 그림 크기와 머리 방향은 유사하나 앉기·잠자기는 실루엣 폭/높이가 달라진다. 프레임별 독립 최대확대보다 동일 스케일과 발밑 정렬이 적절하다.
-- 제삼자 캐릭터나 저장소 스프라이트를 복사하지 않고 새로 생성했다. 외부 이미지 입력 없음.
-- 추가 생성이나 수정 호출 없음.
-
-아래는 image_gen에 전달한 정확한 영문 프롬프트다.
+Exact generation prompt:
 
 Use case: stylized-concept
 Asset type: production-ready transparent 2D desktop pet animation sprite sheet, exactly 16 separate frames.

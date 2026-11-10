@@ -1,15 +1,15 @@
-# 보안 정책
+# Security policy
 
-현재 초기 개발 버전은 최신 main과 최신 릴리즈를 기준으로 수정합니다. 과거 버전에 대한 장기 보안 지원은 제공하지 않습니다.
+The current beta is maintained against the latest main and release. Long-term security support for older versions is not provided.
 
-## 비공개 신고
+## Private reporting
 
-인증 우회·다른 사용자의 메시지 노출·파일 처리 취약점·자격증명 노출은 [GitHub 비공개 취약점 신고](https://github.com/jiind/our-pets/security/advisories/new)로 알려 주세요. 일반 이슈에 공격 코드나 실제 토큰을 공개하지 마세요. 이 경로를 사용할 수 없으면 공개 이슈에는 비공개 연락 경로 요청만 남기고 세부 정보는 적지 않습니다.
+Report authentication bypasses, unauthorized message access, file-processing vulnerabilities, or exposed credentials through [GitHub private vulnerability reporting](https://github.com/jiind/our-pets/security/advisories/new). Do not publish exploit details or real tokens in ordinary issues. If private reporting is unavailable, ask publicly only for a private contact method, without disclosing details.
 
-영향 버전·OS·최소 재현 단계·예상 영향과 비밀값을 제거한 증거를 포함해 주세요. 실제 운영 서버 공격이나 타인의 데이터 수집은 수행하지 않습니다. 접수 후 재현·영향 평가·수정 및 공개 시점을 신고자와 조율합니다. 정해진 응답 기한이나 과거 버전의 지원을 약속하지 않습니다.
+Include affected version, OS, minimal reproduction, expected impact, and evidence with secrets removed. Do not attack production servers or collect other people's data. Reproduction, impact assessment, fixes, and disclosure timing are coordinated with the reporter. No fixed response deadline or support commitment for old versions is implied.
 
-## 운영 경계
+## Operational boundaries
 
-사설 IP만으로 접근 제한이 완성되지 않습니다. 허용 CIDR·가입 코드·TLS·사용자 프로필 권한은 [운영 문서](docs/operations.md)에 따라 설정합니다. 개인 연결의 Slack 토큰은 OS 보안 저장소를 사용하고 로컬망 서버에 전달하지 않습니다. LAN 로그인 세션의 WebView 저장과 개인 알림의 OS 보안 저장은 별도 경계입니다.
+Private IPs alone do not establish access control. Configure allowed CIDRs, registration codes, TLS, and OS profile permissions as described in [deployment](docs/operations.md). Personal Slack tokens stay in the OS credential store and are not sent to the LAN server. LAN-session WebView storage and personal-source secure storage are separate boundaries.
 
-실제 환경 파일·키·DB·메시지·개인 연결 저장소를 커밋하거나 CI 아티팩트에 첨부하지 않습니다. 의존성 자동 업데이트 PR은 검토·CI를 거쳐 병합하며 자동으로 병합하지 않습니다.
+Do not commit real environment files, keys, databases, messages, or personal-source stores, or attach them as CI artifacts. Dependency updates require review and CI; they are not automatically merged.

@@ -1,34 +1,34 @@
-# 로컬망 운영
+# LAN deployment and operations
 
-기본 서버는 `127.0.0.1:9377`에 바인딩하고 루프백 CIDR만 허용한다. 로컬망 배포 시 `examples/server.env.example`의 바인딩·허용 CIDR·가입 코드를 실제 환경에 맞춘다. 사설 IP라는 이유만으로 요청을 허용하지 않는다. 서버는 `RemoteAddr`를 사용하며 `X-Forwarded-For`를 신뢰하지 않는다. 프록시 뒤에 배치할 경우 프록시 자체에서 접속 범위를 강제해야 한다.
+The default server binds to `127.0.0.1:9377` and permits loopback CIDRs only. For LAN deployment, adapt the bind address, allowed CIDRs, and registration code in `examples/server.env.example`. A private IP alone does not authorize access. The server uses `RemoteAddr` and does not trust `X-Forwarded-For`; a reverse proxy must enforce access restrictions itself.
 
-## 서버 설치
+## Server installation
 
-1. 연결 가능한 개발·빌드 환경에서 `go mod download`, `go build -o bin/our-pets ./cmd/our-pets`를 실행한다. 단일 서버 바이너리와 예제 환경 파일을 내부망으로 전달한다. 런타임에 Go 모듈 다운로드는 필요하지 않다.
-2. 운영 계정 `our-pets`와 데이터 디렉터리 `/var/lib/our-pets`를 만들고 해당 계정만 쓰도록 한다. 바이너리는 `/opt/our-pets/our-pets`에 배치한다.
-3. 예제에서 실제 값을 채운 `/etc/our-pets/server.env`를 만들고 계정·비밀값 접근을 제한한다. 운영 가입 코드를 저장소·명령 로그에 남기지 않는다.
-4. 로컬망 기기 대역에서 TCP 9377만 접근하도록 호스트·네트워크 방화벽을 설정한다. `OURPETS_ALLOWED_CIDRS`는 추가 방어 계층이다.
-5. `examples/our-pets.service`를 서비스 관리자에 등록한다. 서버가 사용하는 데이터 경로와 환경 파일 경로를 서비스 파일에 맞춘다.
-6. 신뢰할 수 있는 로컬망 TLS 인증서와 키를 `OURPETS_TLS_CERT`, `OURPETS_TLS_KEY`로 함께 설정한다. OS 신뢰 저장소에 로컬망 CA를 배포한다. `https` 주소를 사용하면 앱 소켓도 `wss`가 된다. HTTP 개발 모드에서는 자격증명과 본문이 암호화되지 않으므로 운영 전송망에는 TLS를 구성한다.
+1. In a build environment with dependency access, run `go mod download` and `go build -o bin/our-pets ./cmd/our-pets`. Transfer the server binary and configuration example to the LAN. Go module downloads are not required at runtime.
+2. Create an `our-pets` service account and `/var/lib/our-pets` data directory, writable only by that account. Install the binary at `/opt/our-pets/our-pets`.
+3. Create `/etc/our-pets/server.env` from the example and restrict access to credentials. Do not put the actual registration code in the repository or command logs.
+4. Permit TCP 9377 only from the intended device ranges using host/network firewalls. `OURPETS_ALLOWED_CIDRS` is an additional boundary.
+5. Register `examples/our-pets.service` with the service manager, matching its data and environment-file paths to the deployment.
+6. Configure a trusted LAN TLS certificate and key together through `OURPETS_TLS_CERT` and `OURPETS_TLS_KEY`. Install the LAN CA into clients' OS trust stores. An `https` server address makes the app use `wss`. HTTP development mode leaves credentials and bodies unencrypted; configure TLS for production transport.
 
-서버는 인증 정보 원문을 로그에 기록하지 않는다. ConnectorConnection의 `credential_ref`는 이후 공급자 비밀 참조용이며 현재 샘플에는 자격증명이 없다. 서버 설정 오류는 시작을 거부한다. 디렉터리는 기본 0700, 업로드 임시 파일은 0600이며 운영 서비스의 `UMask=0077`을 적용한다.
+The server does not log raw credentials. `ConnectorConnection.credential_ref` is a reference for provider secrets; the sample has no credentials. Invalid configuration prevents startup. Directories default to 0700 and temporary uploads to 0600; the service uses `UMask=0077`.
 
-## CI·태그 릴리즈
+## CI and tagged releases
 
-[릴리즈 절차](releasing.md)에 PR 검사와 버전 태그에 의한 세 OS 패키징·초안 릴리즈를 정의한다. 로컬 파일만으로 GitHub Actions가 활성화되지는 않으며 소스·워크플로를 커밋하고 PR로 반영해야 한다. Windows·macOS 배포 서명과 실제 데스크톱 동작 검증은 별도다.
+The [release guide](releasing.md) defines PR checks, three-OS packaging, and draft releases from version tags. Source and workflows must be committed and merged for GitHub Actions to use them. Windows/macOS signing and actual desktop validation remain separate steps.
 
-## 클라이언트 배포
+## Client deployment
 
-대상 OS에서 Rust·Node·Tauri 필수 패키지를 준비하고 `npm ci`, `npm run tauri build`를 실행한다. 네이티브 바이너리와 폰트·라이선스가 포함된 패키지를 내부 배포한다. Windows WebView2 런타임, Linux WebKitGTK/GTK/AppIndicator/X11·컴포지터는 폐쇄망에 들어가기 전에 OS 패키지 또는 오프라인 설치본으로 준비한다. macOS는 시스템 WKWebView를 사용한다. [Tauri WebView 환경](https://v2.tauri.app/reference/webview-versions/).
+Prepare Rust, Node, and Tauri prerequisites on the target OS, then run `npm ci` and `npm run tauri -- build --ci -- --locked` from `desktop`. Distribute the native package with fonts and notices. Prepare Windows WebView2 and Linux WebKitGTK/GTK/AppIndicator/X11/compositor dependencies through OS packages or offline installers before entering a disconnected network. macOS uses system WKWebView. See [Tauri WebView versions](https://v2.tauri.app/reference/webview-versions/).
 
-기본 동작에는 외부 인증·CDN·클라우드·폰트 서버·메시지 브로커가 없다. 최초 빌드 의존성 다운로드와 설치된 앱의 LAN 런타임을 구분한다. 개인 Slack 수집을 활성화할 때 해당 PC에서 Slack으로 나가는 HTTPS·WSS 통신이 추가로 필요하다. 로컬망 서버는 이 통신을 중계하지 않는다.
+Core operation has no external authentication, CDN, cloud, font-server, or broker dependency. Initial build downloads are separate from installed LAN runtime. Personal Slack collection requires outbound HTTPS/WSS from that PC; the LAN server does not proxy it.
 
-Linux의 개인 Slack 토큰 저장에는 잠금 해제된 Secret Service(예: GNOME Keyring·호환 서비스)가 필요하다. macOS·Windows는 각 OS 자격증명 저장소를 사용한다. 보안 저장소가 없거나 잠겼으면 토큰 저장이 실패하며 평문으로 대체하지 않는다. 서버 환경 파일에 개인 Slack 토큰을 추가할 필요가 없다. 개인 연결의 구체적인 설정과 로컬 보관 정책은 [커넥터 문서](connectors.md)를 따른다.
+On Linux, personal Slack token storage requires an unlocked Secret Service, such as GNOME Keyring or a compatible service. macOS/Windows use their OS credential stores. Missing or locked secure storage causes token saving to fail; there is no plaintext fallback. Personal Slack tokens do not belong in the server environment file. See [connectors](connectors.md) for configuration and local retention.
 
-## 운영 정책
+## Retention and backups
 
-매시간 만료 세션과 보관 기간을 넘긴 메시지·알림·고아 수신 확인을 정리한다. 만료된 메시지는 정리 시간 전이라도 실시간 조회에서 제외한다. 현재 오래된 디자인 파일과 사용자·기기 레코드의 자동 삭제 기능은 없다. 사용량과 디스크 공간을 점검한다.
+Every hour, the server removes expired sessions, messages/notifications beyond retention, and orphan receipts. Expired messages are excluded from delivery even before cleanup. Old design files and user/device records do not have automatic deletion; monitor disk use.
 
-SQLite WAL 사용 중 DB 파일 하나만 복사하면 최근 트랜잭션을 잃을 수 있다. 서버를 정지한 상태에서 전체 데이터 디렉터리를 백업하거나 SQLite의 일관된 백업 기능과 디자인 디렉터리 스냅샷을 함께 사용한다. 초기 버전에 백업 CLI·자동 복원 도구는 포함하지 않았다.
+Copying only the main SQLite file while WAL is active can lose recent transactions. Stop the server and back up the entire data directory, or use a consistent SQLite backup together with a design-directory snapshot. A backup CLI and automatic restore tool are not included.
 
-로그아웃은 해당 토큰을 폐기하고 소켓이 다음 검증 주기에 종료된다. 기기 전체 폐기·비밀번호 변경·초대 코드별 계정 승인 관리 UI는 후속 작업이다. 클라이언트 세션은 OS WebView의 로컬 저장소에 있으며 OS 자격증명 보관함 연동은 아직 없다. PC 사용자 계정과 프로필 접근 권한으로 보호해야 한다.
+Logout revokes the token, and its socket closes at the next validation interval. Device-wide revocation, password changes, and per-invite approval management have no UI yet. LAN session tokens use the OS WebView's local storage, not the OS credential store. Protect the OS account and browser profile permissions.

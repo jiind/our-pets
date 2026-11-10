@@ -1,16 +1,16 @@
-name: 기능 제안
-description: 사용 상황과 기대하는 개선을 알려 주세요.
+name: Feature request
+description: Describe your use case and desired improvement.
 title: 'feat: '
 body:
   - type: textarea
     id: problem
     attributes:
-      label: 사용 상황과 문제
+      label: Use case and problem
     validations:
       required: true
   - type: textarea
     id: behavior
     attributes:
-      label: 원하는 동작
+      label: Desired behavior
     validations:
       required: true

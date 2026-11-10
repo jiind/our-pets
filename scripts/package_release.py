@@ -71,17 +71,17 @@ def release_notes() -> None:
     # 2. 자동 빌드와 실제 실행 검증·서명을 명확히 구분한다.
     text = f'''# Our Pets {check_versions()}
 
-PR CI와 태그 버전 검사를 통과한 소스로 생성한 초기 배포 패키지입니다.
+Packages built from source that passed PR CI and tag-version validation.
 
-- 데스크톱: Linux x64 DEB·AppImage, Windows x64 NSIS, macOS Intel·Apple Silicon 공용 DMG.
-- 서버: Linux amd64·arm64, Windows amd64, macOS amd64·arm64 ZIP.
-- SHA256SUMS.txt와 각 플랫폼의 고지 ZIP을 함께 확인해 주세요.
-- Windows 코드 서명·Apple Developer ID 서명·공증은 구성하지 않았습니다. OS가 경고하거나 설치를 제한할 수 있습니다.
-- CI 빌드 성공은 실제 투명 창·클릭 통과·포커스·보행 검증을 뜻하지 않습니다. 플랫폼별 실행 조건과 배포 전 확인 항목은 소스의 docs/platforms.md를 확인해 주세요.
-- 런타임 라이브러리·폰트·캐릭터는 별도 고지를 따릅니다. 이 설명은 모든 의존성의 법률적 호환성 심사 완료를 의미하지 않습니다.
-- 기본 메시지·알림은 접속 중 받은 것만 표시하며 오프라인 기록을 재생하지 않습니다.
+- Desktop: Linux x64 DEB/AppImage, Windows x64 NSIS, and macOS universal DMG for Intel and Apple Silicon.
+- Server: Linux amd64/arm64, Windows amd64, and macOS amd64/arm64 ZIPs.
+- Verify SHA256SUMS.txt and the platform notice ZIPs alongside the installers.
+- Windows code signing and Apple Developer ID signing/notarization are not configured. The OS may warn or restrict installation.
+- Successful CI builds do not verify transparency, click-through, focus, or walking on every OS. See docs/platforms.md for runtime requirements and validation before distribution.
+- Libraries, fonts, and characters retain their individual terms. This release does not establish a completed legal review of all dependencies.
+- Messages and notifications are real-time only; offline history is not replayed.
 
-이 릴리즈는 초안입니다. 설치·OS 동작을 검토한 뒤 게시해 주세요.
+This release is a draft. Review installation and OS behavior before publishing.
 '''
     (ROOT / 'release-notes.md').write_text(text, encoding='utf-8')
 

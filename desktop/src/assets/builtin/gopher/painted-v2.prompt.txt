@@ -1,13 +1,13 @@
-경로 안내: 파일 경로는 공개용 예시이며 실제 사용자 경로와 생성 작업 ID를 포함하지 않습니다.
-생성일: 2026-11-09
-생성 도구: 내장 image_gen.imagegen, transparent_background=true
-입력 역할: 기존 ginger-companion-v2.png는 그림체 참고이며 편집 대상이 아님.
-새 산출물: painted-v2.png, 4열 × 4행 16자세. 원본 PNG를 편집 없이 복사.
-기존 픽셀 원본은 보존하지만 강아지·고퍼의 실행 렌더링에서는 사용하지 않음.
-저알파 잔여는 고양이와 같은 렌더링 메모리 정리만 사용함.
-출력 위치: /home/example/.codex/generated_images/sample-session/sample-image.png
+Path note: all absolute paths are public examples; real usernames and generation job IDs are omitted.
+Created: 2026-11-09
+Tool: built-in image_gen.imagegen, transparent_background=true
+Reference: ginger-companion-v2.png for visual style; the reference itself was not edited.
+Output: painted-v2.png, four columns, four rows, sixteen poses. Original PNG copied unchanged.
+Original pixel references are retained separately from runtime artwork.
+Low-alpha residue is cleaned only in rendering memory, as for the cat.
+Generated source example: /home/example/.codex/generated_images/sample-session/sample-image.png
 
-최종 프롬프트:
+Exact generation prompt:
 Use case: stylized-concept. Asset type: production transparent desktop pet sprite atlas.
 The attached ginger cat sheet is STYLE REFERENCE ONLY: match its polished soft hand-painted 2.5D cartoon character illustration, smooth antialiased silhouettes, appealing expressive face and consistent gentle upper-left lighting. Generate an ENTIRELY NEW character sheet, do not include a cat.
 ONE SQUARE transparent PNG, exactly FOUR columns and FOUR rows (16 equally sized invisible cells), left-to-right top-to-bottom. One complete same character per cell. All poses must fit fully within their cell with generous transparent gutters. No grid, labels, words, numbers, background, stage, floor, shadow, checkerboard, props, accessories, pixel art or hard pixel edges.

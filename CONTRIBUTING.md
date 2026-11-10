@@ -1,17 +1,17 @@
-# 기여 안내
+# Contributing
 
-우리 펫은 같은 로컬망의 사용자끼리 사용하는 독립 데스크톱 펫 앱입니다. 개발 환경과 실행 절차는 [README](README.md), 현재 동작과 제한은 [사용 방법](docs/usage.md)과 [플랫폼 상태](docs/platforms.md)를 먼저 확인해 주세요.
+Our Pets is a standalone desktop companion app for people on the same local network. Start with [README](README.md) for setup, the [user guide](docs/usage.md) for behavior, and [platform requirements](docs/platforms.md) for limitations.
 
-## 변경 제안
+## Proposing changes
 
-- 버그는 재현 순서·기대 동작·실제 동작·OS와 X11/Wayland·앱 버전을 적습니다. 비밀번호·토큰·개인 메시지·원본 DB는 첨부하지 않습니다.
-- 기능 제안은 사용 상황과 기대 동작을 설명합니다. 보안 문제는 [비공개 신고 절차](SECURITY.md)를 사용합니다.
-- 이슈 제목은 영어 소문자 `<type>: <summary>`, 본문은 한국어로 작성합니다. 기존 라벨·이슈 유형 중 맞는 것을 선택하며 새 항목은 임의로 만들지 않습니다. 직접 등록하는 이슈는 자신에게 할당합니다.
-- 브랜치는 이슈가 있으면 `<번호>-<type>-<slug>`, 없으면 `<type>/<slug>` 형식의 영어 소문자 kebab-case를 사용합니다. 이슈가 있으면 GitHub Development에서 연결합니다.
+- For bugs, include reproduction steps, expected/actual behavior, app version, OS, and Linux desktop/X11/Wayland details. Do not attach passwords, tokens, personal messages, or raw databases.
+- For features, explain the use case and desired behavior. Report security issues through the [private policy](SECURITY.md).
+- Use lowercase English issue titles in `<type>: <summary>` form. The maintainer's issue workflow uses Korean bodies; reuse existing labels/types and assign newly created issues to the authenticated user. Do not create labels without agreement.
+- Branches use lowercase English kebab-case: `<number>-<type>-<slug>` with an issue, otherwise `<type>/<slug>`. Link issue branches in GitHub Development.
 
-## 코드와 검증
+## Code and checks
 
-설명·문서화 주석은 한국어로 작성합니다. 명시적 함수·메서드·생성자 위에는 역할 설명을, 여러 단계의 처리에는 본문 번호 주석과 단계 간 빈 줄을 둡니다. 중괄호 블록은 여러 줄로 펼칩니다. 기존 모듈 경계를 유지하고 관련 없는 재구성은 피합니다.
+Project documentation is in English. Explanatory code comments follow the repository's Korean-comment convention. Explicit functions/methods/constructors have a role comment above the declaration; multistep bodies also have numbered comments separated by blank lines. Expand brace-delimited blocks onto multiple lines. Preserve module boundaries and avoid unrelated restructuring.
 
 ```bash
 go test -race ./...
@@ -27,12 +27,12 @@ cd src-tauri
 cargo test --locked
 ```
 
-UI 검사는 설치된 Chrome을 사용합니다. 브라우저를 추가 다운로드하지 않습니다. 테스트 서버는 루프백·임시 DB로 격리하고 실사용 계정·Docker·Slack·CLI 인증을 사용하지 않습니다. 테스트 중지 요청이 있는 작업 세션에서는 테스트를 실행하지 말고, 컴파일 확인과 미실행 항목을 PR에 구분해서 기록합니다.
+UI checks use installed Chrome without downloading another browser. Test servers use loopback and temporary databases, not real user accounts, Docker, Slack, or CLI authentication. If a work session explicitly pauses tests, respect that pause and distinguish compilation from unexecuted checks in the PR.
 
-CI의 세 OS 빌드 성공은 실제 투명 창·클릭 통과·포커스·보행 검증을 뜻하지 않습니다. OS별 실제 실행·빌드·미검증 결과를 분리합니다. 메시지·알림의 본문 보관함과 오프라인 재생은 현재 제품 범위에 포함하지 않습니다.
+Successful CI builds on three OSes do not establish transparency, click-through, focus, or walking behavior. Distinguish actual execution, builds, and unverified platforms. Message/notification history and offline replay are outside the current product scope.
 
-CI는 Gitleaks로 현재 파일과 Git 전체 이력의 비밀값을 검사합니다. 발견한 값은 마스킹하며 검사 실패 시 필수 상태가 실패합니다. 실제 토큰은 폐기·교체하고 파일과 이력에서 제거해야 합니다. 개인 경로·이메일 등은 자동 비밀값 검사만으로 모두 탐지되지 않으므로 커밋 전에 별도로 확인합니다.
+CI scans current files and full Git history with Gitleaks. Findings are redacted and fail required status. Revoke/rotate actual leaked credentials and remove them from files/history. Personal paths/emails require additional review because secret scanning does not identify every privacy issue.
 
-## PR
+## Pull requests
 
-문제와 바뀐 동작, 관련 이슈, 실제 수행한 검증과 미검증 항목을 적습니다. 자신의 변경에 필요한 소스·lock 파일·마이그레이션·문서만 포함합니다. 에셋은 원본 출처·정확한 라이선스·변경 내용을 기록하며 프로젝트 자체 코드의 Apache-2.0 고지로 제삼자 라이선스를 대체하지 않습니다. 배포와 버전 변경은 [릴리즈 절차](docs/releasing.md)를 따릅니다.
+Describe the problem, resulting behavior, related issue, performed checks, and remaining gaps. Include only relevant source, lockfiles, migrations, and documentation. For assets, preserve creator/source/license/modification notices; the project's Apache-2.0 license does not replace third-party terms. Follow the [release guide](docs/releasing.md) for versions and distribution.

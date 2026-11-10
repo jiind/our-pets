@@ -1,26 +1,26 @@
-# 펫 디자인과 애니메이션
+# Pet designs and animation
 
-## 펫 등록과 표시
+## Registration and display
 
-`펫` 화면에서 고양이·강아지·고퍼·페리스 또는 직접 추가한 디자인을 선택한다. 처음 등록할 때는 캐릭터를 고르고 `등록 완료`를 누른다. 등록한 펫의 외형 선택은 즉시 저장된다. 사용자당 대표 펫 하나를 사용하며 외형을 바꿔도 펫 ID는 유지한다. 펫 이름표와 메시지·모집의 이름에는 계정 닉네임을 쓴다.
+Choose a cat, dog, Gopher, Ferris, or your own design on the pet page. Initial registration requires selecting a character and completing registration. Subsequent character selections are saved immediately. Each user has one representative pet; appearance changes preserve its ID. Nameplates, messages, and gatherings use the account nickname.
 
-`펫 추가`에서 이름과 PNG 파일 하나를 선택할 수 있다. 추가한 디자인은 선택 목록에 나타난다. 이미 등록된 펫에는 선택 디자인을 바로 적용하고, 최초 등록 전에는 목록에 추가한 뒤 `등록 완료`를 눌러 활성화한다. 펫 표시·숨기기, 친구 펫 표시, 크기 조절은 현재 PC의 설정이며 트레이와 공유한다. 크기 범위는 80~240px다.
+The add-pet dialog takes a name and one PNG file. Added designs appear in the selection list. For a registered pet, the chosen design can be applied immediately; before initial registration, add it to the list and then complete registration. Visibility, peer visibility, and size are PC-local settings shared with the tray. Size ranges from 80 to 240px.
 
-추가 모달의 캐릭터 프롬프트는 일반 PNG 한 장 또는 스프라이트 시트 PNG용 문구를 제공한다. 유형을 골라 읽기 전용 문구를 복사한 뒤 이미지 생성 도구에서 캐릭터 설명을 바꾸어 사용할 수 있다. 앱은 프롬프트를 외부로 보내거나 이미지 생성 서비스를 호출하지 않는다. 내장 캐릭터의 원작·에셋 출처와 라이선스는 펫 화면의 `캐릭터 출처·라이선스`에서 확인한다.
+The character-prompt section offers text for a single-image PNG or a sprite sheet. Copy the read-only text and customize the character description in your image tool. The app does not send prompts to an external generation service. Built-in character attribution is available in the pet page's character credits section and [asset documentation](character-assets.md).
 
-## PNG 규격
+## PNG format
 
-- PNG 한 장 또는 격자형 스프라이트 시트 PNG를 사용한다. ZIP 업로드와 APNG는 지원하지 않는다.
-- 파일은 최대 8 MiB, 디코딩 후 크기는 가로·세로 각각 최대 2048px이다.
-- 실제 PNG 서명과 픽셀을 디코딩해 확인한다. 파일 이름이나 확장자만 PNG인 다른 형식은 허용하지 않는다.
-- 일반 PNG는 전체 이미지를 한 프레임으로 사용한다. 새 걷기 그림을 자동 생성하지 않는다.
-- 한 프레임의 너비·높이는 PNG 전체 크기를 정확히 나누어야 한다. 전체 프레임은 최대 256개다.
-- `idle`, `walk`, `react` 동작은 선택 항목이며, 각 동작은 1~24 FPS를 사용한다. 프레임 번호는 0부터 시작하고 왼쪽 위에서 오른쪽으로, 다음 행 순서로 센다.
-- 누락한 동작은 `idle`, `idle`도 없으면 첫 프레임으로 표시한다.
+- Supply one PNG image or a grid-based sprite-sheet PNG. ZIP uploads and APNG are unsupported.
+- Maximum file size: 8 MiB. Decoded width and height: at most 2048px each.
+- The server validates the PNG signature and decodes pixels; a filename or extension alone is insufficient.
+- A regular PNG is one frame. Walking artwork is not generated automatically.
+- Frame width and height must divide the PNG dimensions exactly. At most 256 frames are allowed.
+- `idle`, `walk`, and `react` animations are optional and run at 1–24 FPS. Frame indices start at zero, proceeding left to right, then onto the next row.
+- A missing action falls back to `idle`, or the first frame if `idle` is absent.
 
-예를 들어 256×128px PNG를 64×64px 프레임으로 나누면 4열×2행의 8프레임(0~7)이 된다. 모달은 PNG 크기와 프레임 배치를 안내하고 대기·걷기·반응 미리보기를 제공한다. 표시 크기와 동작 줄이기 설정을 미리보기에 반영한다.
+For example, a 256×128px PNG with 64×64px frames has four columns, two rows, and eight frames (0–7). The dialog explains the grid and previews idle, walk, and reaction actions, reflecting display size and reduced-motion settings.
 
-서버에 저장되는 디자인 manifest 예:
+Example stored manifest:
 
 ```json
 {
@@ -36,10 +36,10 @@
 }
 ```
 
-PNG 업로드는 디자인 초안을 만들며, 펫 등록은 현재 대표 펫에 적용할 디자인을 선택한다. 업로드가 성공한 뒤 화면 목록 갱신에 실패하면 같은 모달에서 재시도할 수 있고, 성공한 업로드를 다시 보내지 않는다. 서버는 PNG를 내용 해시로 저장하고 디자인 ID와 버전을 관리한다. 인증된 사용자는 서버에 등록된 디자인을 조회할 수 있지만 다른 사용자의 원본을 덮어쓸 수 없다. 클라이언트는 다운로드한 PNG를 IndexedDB에 캐시해 일시적인 서버 연결 중단에도 이미 받은 디자인을 표시할 수 있다. 서버 연결이 불가능한 상태에서는 최초 가입이나 아직 받지 않은 디자인의 다운로드를 할 수 없다.
+Uploading creates a design draft; registration chooses the design for the representative pet. If the upload succeeds but refreshing the list fails, retrying the dialog does not upload the same file again. The server stores PNGs by content hash and manages design IDs and versions. Authenticated users can retrieve registered designs but cannot overwrite another user's originals. Downloaded PNGs are cached in IndexedDB so already-cached artwork remains available during a temporary outage. Initial signup and uncached downloads still require the server.
 
-## 애니메이션과 표시
+## Animation and rendering
 
-단일 PNG는 정지 그림으로 쓰며, 앱은 이동·흔들림·점프 같은 화면 동작을 제공한다. 스프라이트의 `walk`는 펫의 이동 거리에 맞춰 프레임을 진행한다. 미리보기와 펫 창은 같은 디자인 renderer를 사용한다. 등록된 프레임의 공통 불투명 범위를 기준으로 투명 여백을 보정하므로 프레임마다 그림 크기를 별도로 다시 맞추지 않는다. 이 방식은 접지나 원화의 애니메이션 품질을 보장하지 않는다.
+A single PNG remains one drawing; the app can supply movement, sway, and jumps. Sprite-sheet `walk` frames follow movement distance. Previews and pet windows use the same renderer. A shared opaque bounding region across registered frames compensates for transparent margins without resizing each drawing independently. This does not guarantee that the supplied artwork has correct contact points or animation quality.
 
-애니메이션 설정에서 한 칸 크기와 각 동작의 재생 프레임 순서를 입력한다. 예를 들어 생성 프롬프트가 제시하는 1024×1024px, 4열×4행 예시는 256px 프레임 16개다. 이 예시에서 대기는 0~3, 걷기는 4~11, 반응은 12~15를 사용한다. 생성된 파일 크기가 다르면 실제 PNG를 정확히 나누는 프레임 크기로 조정한다.
+Enter the size of one cell and the frame order for each action. The generated-prompt example uses a 1024×1024px, four-by-four sheet: sixteen 256px cells, with idle 0–3, walk 4–11, and reaction 12–15. If the actual output dimensions differ, use cell dimensions that divide the real PNG exactly.

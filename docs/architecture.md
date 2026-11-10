@@ -1,69 +1,69 @@
-# 아키텍처
+# Architecture
 
-우리 펫은 같은 로컬망의 사용자끼리 사용하는 독립 데스크톱 앱이다. Go 서버는 계정·펫·메시지·모집을 관리하고 Tauri 앱은 실제 데스크톱 창, 렌더링, 상호작용과 개인 알림 수집을 담당한다. 기본 기능은 외부 인증·CDN·클라우드 없이 동작한다.
+Our Pets is a standalone desktop application for people on the same local network. The Go server manages accounts, pets, messages, and gatherings. The Tauri application manages desktop windows, rendering, interactions, and personal notification sources. Core features do not require cloud authentication, a CDN, or internet access.
 
-## 구성과 책임
+## Components
 
-서버는 하나의 Go 프로세스로 운영하는 모듈러 모놀리스다. SQLite WAL과 SHA-256으로 식별하는 PNG 파일 저장소를 사용하며 DB 쓰기는 단일 연결에서 직렬화한다. 외부 메시지 브로커는 필요하지 않다.
+The server is a modular monolith running in one Go process. It uses SQLite in WAL mode and a PNG file store addressed by SHA-256. A single database connection serializes writes. No external message broker is required.
 
-| 위치 | 책임 |
+| Location | Responsibility |
 | --- | --- |
-| `internal/identity` | 로컬 계정·가입 코드·비밀번호·기기·세션 |
-| `internal/pets` | 안정적인 펫 ID·디자인 버전·PNG 검증·파일 저장 |
-| `internal/messaging` | 발신 권한·멱등성·전송 시 수신 대상 확정 |
-| `internal/delivery` | 기기별 실시간 전달·수신 확인·WebSocket |
-| `internal/gatherings` | 모집·참여·완료·현재 상태 |
-| `internal/connectors` | 서버 커넥터 계약과 수동 샘플 |
-| `internal/notifications` | 서버 연결·구독·알림 저장·중복 판별 |
-| `internal/server` | HTTP·CIDR·Origin·입력 제한·오류 응답 |
-| `internal/database` | SQLite 스키마와 순차 마이그레이션 |
-| `desktop/src-tauri` | 투명 창·트레이·입력 영역·좌표·펫 이동 |
-| `desktop/src-tauri/src/connectors` | PC의 개인 연결·OS 보안 저장소·임시 알림 |
-| `desktop/src` | 설정 UI·Canvas·메시지 작성·말풍선·상호작용 |
+| `internal/identity` | Local accounts, registration code, passwords, devices, and sessions |
+| `internal/pets` | Stable pet IDs, design versions, PNG validation, and file storage |
+| `internal/messaging` | Sender authorization, idempotency, and recipient snapshots |
+| `internal/delivery` | Per-device real-time delivery, acknowledgments, and WebSocket |
+| `internal/gatherings` | Recruitment, participation, completion, and current state |
+| `internal/connectors` | Server connector contract and manual sample |
+| `internal/notifications` | Server connections, subscriptions, notifications, and deduplication |
+| `internal/server` | HTTP, CIDR and Origin restrictions, input limits, and errors |
+| `internal/database` | SQLite schema and ordered migrations |
+| `desktop/src-tauri` | Transparent windows, tray, input regions, coordinates, and movement |
+| `desktop/src-tauri/src/connectors` | Personal sources, OS credential storage, and temporary notifications |
+| `desktop/src` | Settings UI, Canvas, message composition, bubbles, and interactions |
 
-## 데이터 관계
+## Data relationships
 
-- `User 1—N Device 1—N Session`: 세션과 접속 상태를 사용자·펫의 수명과 분리한다.
-- `User 1—1 Pet`: 대표 펫 하나를 사용한다. 계정 생성 후 펫 등록을 별도로 완료한다. 이름표는 사용자 닉네임이다.
-- `User 1—N PetDesign`, `Pet → currentDesign`: 디자인은 불변 버전이며 업로더 소유권을 확인한다. 동일 파일은 내용 지문으로 공유할 수 있다.
-- `Message → senderPet`, `Message 1—N MessageRecipient → Pet`: 발신자 정보·디자인을 전송 시 스냅샷으로 남기고, 수신 관계는 안정적인 Pet ID를 참조한다.
-- `MessageRecipient`와 `device_receipts`: 펫의 첫 앱 수신과 각 기기의 수신 확인을 분리한다. 읽음 상태를 뜻하지 않는다.
-- `Gathering → hostPet`, `Gathering 1—N GatheringMember → Pet`: 메시지와 별개로 모집 및 참여 상태를 저장한다.
-- `ConnectorConnection 1—N NotificationSubscription → Pet`: 서버 연결과 구독 대상을 분리한다. `ExternalNotification(connectionId,eventId)`로 중복을 판별한다.
+- `User 1—N Device 1—N Session`: session and connection lifetimes are separate from users and pets.
+- `User 1—1 Pet`: each user has one representative pet, registered separately after account creation. The account nickname is displayed on the nameplate.
+- `User 1—N PetDesign`, `Pet → currentDesign`: designs are immutable versions with uploader ownership checks. Identical files can share content-addressed storage.
+- `Message → senderPet`, `Message 1—N MessageRecipient → Pet`: sender identity and design are snapshotted when sending; recipients reference stable pet IDs.
+- `MessageRecipient` and `device_receipts`: the pet's first app receipt and each device's receipt are tracked separately. Neither is a read receipt.
+- `Gathering → hostPet`, `Gathering 1—N GatheringMember → Pet`: gathering and membership state is stored independently of messages.
+- `ConnectorConnection 1—N NotificationSubscription → Pet`: server connections and subscription targets are separate. `ExternalNotification(connectionId,eventId)` identifies duplicate events.
 
-외형 변경·기기 로그아웃·연결 단절은 Pet ID를 바꾸지 않는다. 기본 스키마는 `internal/database/schema.sql`, 후속 변경은 `internal/database/migrations/`에 둔다. 서버 시작 시 `schema_versions`에 따라 순서대로 적용한다.
+Changing a design, signing out, or losing a connection does not change the pet ID. The base schema is `internal/database/schema.sql`; later changes live in `internal/database/migrations/` and are applied in order using `schema_versions` at startup.
 
-## 메시지 전달
+## Message delivery
 
-HTTP API로 발송을 접수하고 WebSocket으로 전달한다. 서버는 세션에서 발신 사용자를 확인하고 발신 펫 소유권을 검증한다. 발신 펫과 멱등성 키의 조합으로 동일 요청을 한 번만 저장하며, 같은 키로 내용을 바꾸면 거절한다.
+HTTP accepts sends and WebSocket delivers events. The server obtains the sender from the authenticated session and verifies pet ownership. The sender pet and idempotency key identify one request; reusing a key with different content is rejected.
 
-| 정책 | 동작·설정 |
+| Policy | Behavior or setting |
 | --- | --- |
-| UI 대상 | 내 펫 메뉴는 전체, 상대 펫 메뉴는 해당 상대 한 명. 서버 `selected` 목록 API는 호환용으로 유지 |
-| 전체 범위 | 접수 시 연결 중인 유효한 펫 전체에서 발신 펫 제외 |
-| 오프라인 | 선택한 상대가 오프라인이면 거절. 재접속·새 기기에 과거 메시지를 재생하지 않음 |
-| 메시지 유효 기간 | `OURPETS_MESSAGE_TTL`, 기본 `1m`. 현재 연결 이후 생성된 이벤트에만 적용 |
-| 서버 보관 기간 | `OURPETS_RETENTION`, 기본 `1h`. 사용자 보관함은 제공하지 않음 |
-| 여러 기기 | 현재 접속한 모든 기기에 각각 전달·확인. 같은 기기의 새 소켓만 이전 소켓을 대체 |
-| 재전송 | 같은 연결에서 미확인 이벤트를 5초 후 재전송. 클라이언트는 ID·만료 시각으로 중복 제거 |
-| 로컬 표시 | 새 카드 대기는 최대 15초. 본문 이력을 localStorage에 보관하지 않음 |
+| UI targets | Own pet: everyone; friend's pet: that friend. The server retains the selected-ID list API for compatibility |
+| Broadcast scope | Valid pets connected when the request is accepted, excluding the sender |
+| Offline behavior | Selected offline recipients are rejected. Reconnection and new devices do not replay old messages |
+| Message lifetime | `OURPETS_MESSAGE_TTL`, default `1m`; only events created after the current connection qualify |
+| Server retention | `OURPETS_RETENTION`, default `1h`; no user inbox is provided |
+| Multiple devices | Each connected device receives and acknowledges independently. A new socket replaces only the previous socket for the same device |
+| Retries | Unacknowledged events are retried after 5 seconds on the same connection; clients deduplicate by ID and expiry |
+| Local display | New cards wait at most 15 seconds. Message bodies are not retained in localStorage |
 
-한 기기의 ACK는 다른 기기의 전달을 제거하지 않는다. 클라이언트는 중복 방지 ID를 저장한 뒤 ACK한다. 보관 기간이 끝나 메시지가 삭제되면 해당 멱등성 키도 제거된다. 영구 멱등성 보관은 제공하지 않는다.
+One device's acknowledgment does not remove another device's delivery. Clients persist deduplication IDs before acknowledging. Deleting an expired stored message also removes its idempotency key; keys are not retained permanently.
 
-답장은 원본 발신 펫 한 명에게만 보낸다. 성공한 전송은 현재 PC에 로컬 확인 이벤트를 표시하며 서버 수신자에 자신을 추가하지 않는다. 받은 메시지는 발신자 펫 위 말풍선과 OS 알림으로 표현한다. 발신자 펫이 숨겨졌거나 표시되지 않으면 OS 알림만 사용한다.
+Replies target only the original sender pet. A successful send creates a local confirmation on the sending PC without adding the sender to server recipients. Incoming text appears above the sender's pet and through OS notifications. If that pet is hidden or unavailable, only the OS notification is used.
 
-## 데스크톱 표현과 상호작용
+## Desktop behavior
 
-설정 창과 비포커스 투명 펫 창을 분리한다. 대표 펫 창이 LAN 소켓 하나를 관리하고 친구 창에는 로컬 이벤트를 전달한다. 친구의 오프라인 전환 시 해당 창을 제거한다. 창 좌표·프레임은 각 PC에서 계산하고 서버로 전송하지 않는다.
+Settings and non-focusable transparent pet windows are separate. The representative pet window owns one LAN socket and forwards local events to peer windows. Offline peer windows are removed. Coordinates and animation frames are computed locally and are not sent to the server.
 
-왼쪽 클릭 쓰다듬기는 모든 펫에 대한 로컬 동작이다. 드래그는 펫의 위치·높이를 바꾸고 놓으면 착지한다. 우클릭 메뉴에서 메시지·모집·상대와 인사·하이파이브를 실행한다. 두 펫의 상호작용은 발신 펫이 수신 펫에게 접근하고 양쪽이 반응한 뒤 발신 펫이 돌아온다. 이 역할은 발신·수신 PC에서 동일하다.
+Left-click petting is local for any pet. Dragging changes position and height; release makes the pet land. Right-click opens messaging, gatherings, and peer interactions. For greetings and high-fives, the sender approaches the recipient, both react, and the sender returns. Those roles are identical on both PCs.
 
-모집 종류는 커피·담배·밥·수다·산책이다. 모집자는 멈추고 참여자의 펫은 그 곁에 머문다. 모집자가 완료하거나 참여자가 취소하면 해제한다. 현재 모집 상태는 재접속 시 동기화하지만 과거 활동 알림은 재생하지 않는다.
+Gatherings support coffee, smoke breaks, meals, chats, and walks. The host stops; accepting pets stay beside it until the host completes or a member leaves. Reconnection synchronizes current gathering state without replaying old activity notifications.
 
-표시·친구 숨기기·펫 크기는 Rust `desktop_controls`가 소유하고 앱·트레이·각 창에 동기화한다. 숨긴 펫을 메시지 때문에 강제로 표시하지 않는다. Canvas는 프레임 공통 여백·발·머리 기준점을 사용하고 보행 프레임은 실제 이동 거리에 연결한다. 유휴·숨김 상태에서는 불필요한 렌더링을 줄인다. 플랫폼별 입력·포커스 제약은 [플랫폼 안내](platforms.md)를 따른다.
+Rust `desktop_controls` owns visibility, peer visibility, and size, synchronizing the app, tray, and windows. Messages never force hidden pets to appear. Canvas uses shared frame bounds and foot/head anchors; walk frames follow actual movement distance. Idle and hidden states reduce unnecessary rendering. See [platform requirements](platforms.md) for input and focus constraints.
 
-## 개인 알림과 커넥터 경계
+## Personal notification boundary
 
-Docker·Slack·Codex·Claude 연결은 로그인한 PC에서 직접 실행하며 LAN 서버의 연결 테이블에 등록하지 않는다. 일반 설정·임시 이벤트는 앱 데이터의 `local-notifications.sqlite3`, Slack 토큰은 OS 보안 저장소에 둔다. 개인 알림은 해당 PC의 내 펫에만 전달한다.
+Docker, Slack, Codex, and Claude sources run directly on the signed-in PC and are not registered in the LAN server's connection table. Ordinary configuration and temporary events use the app's `local-notifications.sqlite3`; Slack tokens use the OS credential store. Personal events target only this PC's own pet.
 
-수집기는 공급자 형식을 공통 알림으로 변환하고 이벤트 중복·재접속·오류를 독립적으로 처리한다. 말풍선·펫 디자인은 공급자 API를 알지 못한다. 외부 시스템 제어·명령 실행·Slack 메시지 작성은 제공하지 않는다. 서버 샘플은 선택적으로 켜는 별도 개발 경로다. 계약과 설정은 [커넥터 안내](connectors.md), HTTP·WebSocket·IPC는 [API 규격](api.md)을 따른다.
+Collectors normalize provider events and independently handle deduplication, reconnects, and errors. Pet designs and bubbles do not interpret provider APIs. External control, command execution, and Slack message writing are not exposed. The optional server sample is a separate development path. See [connectors](connectors.md) and the [HTTP, WebSocket, and IPC specification](api.md).

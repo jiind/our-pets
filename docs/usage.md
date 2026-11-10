@@ -1,42 +1,44 @@
-# 사용 방법
+# User guide
 
-## 서버 연결과 펫 등록
+The current app UI is in Korean. Control names below are described in English.
 
-1. 앱을 열고 운영자가 안내한 서버 주소에 연결한다. 같은 PC에서 기본 서버를 실행했다면 `http://127.0.0.1:9377`을 사용한다.
-2. 계정을 만들거나 로그인한다. 가입 코드는 서버 운영자가 정한 값이며 닉네임이 펫 이름표에 표시된다.
-3. `펫` 화면에서 기본 캐릭터 또는 등록한 PNG를 선택해 대표 펫을 등록한다. 외형을 바꿔도 펫의 수신 ID는 유지된다.
+## Connect and register a pet
 
-서버 준비와 접속 범위 설정은 [운영 안내](operations.md), 개발 실행은 [README](../README.md)를 참고한다.
+1. Open the app and enter the server address supplied by its operator. For the default server on the same PC, use `http://127.0.0.1:9377`.
+2. Create an account or sign in. The server operator supplies the registration code. Your nickname appears on your pet's nameplate.
+3. On the pet page, choose a built-in character or an uploaded PNG and complete registration. Changing appearance preserves the pet's recipient ID.
 
-## 펫 조작
+See [deployment](operations.md) for server setup and access restrictions, and [README](../README.md) for development startup.
 
-| 조작 | 동작 |
+## Pet controls
+
+| Action | Behavior |
 | --- | --- |
-| 왼쪽 클릭 | 소유자와 관계없이 쓰다듬기 |
-| 왼쪽 드래그 | 위치 이동·들기. 놓으면 바닥으로 내려와 착지 |
-| 오른쪽 클릭 | 해당 펫의 메시지·모집·상호작용 메뉴 |
-| 마우스 올리기 | 발아래 닉네임 표시 |
+| Left-click | Pet any character, regardless of ownership |
+| Left-drag | Move or lift it; release to land on the ground |
+| Right-click | Open that pet's messaging, gathering, and interaction menu |
+| Hover | Show its nickname below its feet |
 
-상대 펫 메뉴의 인사·하이파이브는 내 펫이 그 상대에게 다가가 양쪽이 함께 반응하고 돌아오는 동작이다. 내 펫 메뉴에는 표시하지 않는다. 오프라인인 친구 펫은 화면에서 제거된다.
+Greeting and high-five are available on another pet's menu. Your pet approaches that pet, both react, and yours returns. These options are not shown on your own pet. Offline friends disappear from the desktop.
 
-## 메시지와 답장
+## Messages and replies
 
-우클릭 메뉴 아래 입력칸에 텍스트와 이모지를 입력하고 전송한다. 내 펫 메뉴에서는 현재 접속 중인 다른 펫 전체에, 상대 펫 메뉴에서는 그 상대에게만 보낸다. 별도의 다수 선택 화면은 없다.
+Enter text and emoji in the input at the bottom of a pet's right-click menu. Your own pet sends to all other connected pets; a friend's pet sends only to that friend. There is no multi-select recipient screen.
 
-받은 메시지는 발신자 펫 위 말풍선과 OS 알림에 표시된다. 말풍선의 답장으로 원래 발신자에게 응답한다. 친구 펫을 숨겼거나 발신자 창이 없으면 OS 알림만 표시하며 내 펫 위로 옮겨 표시하지 않는다.
+Incoming messages appear above the sender's pet and as OS notifications. Reply from the bubble to address the original sender. If friends are hidden or the sender window is unavailable, only the OS notification is shown; the message is not moved to your own pet.
 
-접속한 여러 기기는 각각 실시간 메시지를 받는다. 오프라인 중 도착한 내용은 재접속 때 표시하지 않고 받은 소식 보관함도 제공하지 않는다. 수신 확인은 사용자가 읽었다는 뜻이 아니다.
+Each connected device receives messages independently. Messages received while offline are not replayed on reconnect, and there is no inbox. App receipt is not a user read receipt.
 
-## 모집과 참여
+## Gatherings
 
-펫 우클릭 메뉴의 깃발에서 커피·담배·밥·수다·산책을 선택한다. 모집자는 멈추며 다른 사용자가 참여하면 그 펫이 모집자 곁에 머문다. 모집자는 완료하고 참여자는 참여 취소로 모임을 끝내거나 나갈 수 있다.
+Use the flag menu to choose coffee, a smoke break, a meal, a chat, or a walk. The host stops moving, and accepting pets gather beside it. The host completes the gathering; participants can leave.
 
-모집 시작은 접속 중인 다른 사용자에게, 참여는 모집자에게, 완료는 참여자에게 OS 알림으로 전달된다. 현재 진행 중인 모집은 다시 연결해도 동기화하지만 과거 활동 알림은 재생하지 않는다.
+Starting a gathering notifies other connected users, joining notifies the host, and completion notifies the participants. Current gatherings synchronize after reconnecting, but old activity notifications do not replay.
 
-## 표시와 알림 설정
+## Display and notification settings
 
-`펫` 화면에서 펫 표시·숨기기, 내 펫만 보기·친구 펫도 보기, 크기를 조절한다. 표시 옵션은 트레이 메뉴와 동기화되며 이 PC에 적용된다. 캐릭터를 선택하면 즉시 적용한다. `펫 추가`에서 PNG를 목록에 등록할 수 있으며 형식은 [PNG·애니메이션 안내](pet-design.md)를 따른다.
+On the pet page, show/hide pets, show only your own or include friends, and adjust size. Display options synchronize with the tray and apply to this PC. Selecting a character applies it immediately. Add PNG designs through the add-pet dialog; see [PNG and animation registration](pet-design.md).
 
-`알림 → 외부 연결`의 + 버튼에서 Docker·Slack·Codex·Claude 개인 연결을 추가한다. 연결은 이 PC에서 실행하고 다른 기기나 친구에게 자동 공유하지 않는다. 자격증명·권한·조회 조건은 [커넥터 안내](connectors.md)를 참고한다.
+On the notifications page, use the + beside external connections to add Docker, Slack, Codex, or Claude. Sources run on this PC and are not automatically shared with friends or other devices. See [connector setup](connectors.md) for credentials, permissions, and query behavior.
 
-`연결된 알람 끄기`는 외부 연결 소식의 말풍선·OS 표시를 중지한다. `OS 알림 끄기`는 메시지·모집을 포함한 모든 OS 알림을 중지하며 말풍선은 유지한다. 중지 중의 알림을 나중에 몰아서 표시하지 않는다. OS 권한과 방해 금지 설정도 실제 배너 표시에 영향을 준다.
+Turning connected alerts off mutes bubbles and OS notifications from external sources. Turning OS notifications off mutes all OS banners, including messages and gatherings, while leaving bubbles enabled. Muted events are not queued for later playback. OS permissions and Do Not Disturb also affect banner visibility.

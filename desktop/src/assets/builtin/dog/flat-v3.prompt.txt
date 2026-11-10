@@ -1,14 +1,14 @@
-경로 안내: 파일 경로는 공개용 예시이며 실제 사용자 경로와 생성 작업 ID를 포함하지 않습니다.
-생성일: 2026-11-09
-도구: 내장 image_gen.imagegen, transparent_background=true
-대상: dog. 비픽셀 평면 2D 원화로 변경.
-입력 1: /home/example/projects/our-pets/desktop/src/assets/builtin/dog/painted-v2.png
-입력 2: gopher/flat-v3.png. 그림체 참고이며 고퍼 자체는 변경하지 않음.
-출력: dog/flat-v3.png, RGBA 1254×1254px, 4열×4행 16자세.
-원본 PNG를 수정 없이 복사하고 이전 원화는 보존.
-생성 원본: /home/example/.codex/generated_images/sample-session/sample-image.png
+Path note: all absolute paths are public examples; real usernames and generation job IDs are omitted.
+Created: 2026-11-09
+Tool: built-in image_gen.imagegen, transparent_background=true
+Target: dog, adapted to non-pixel flat 2D.
+Input 1 example: /home/example/projects/our-pets/desktop/src/assets/builtin/dog/painted-v2.png
+Input 2: gopher/flat-v3.png as a style reference; the Gopher reference itself was not changed.
+Output: dog/flat-v3.png, RGBA 1254×1254px, four columns, four rows, sixteen poses.
+Original PNG copied unchanged; earlier artwork retained.
+Generated source example: /home/example/.codex/generated_images/sample-session/sample-image.png
 
-최종 프롬프트:
+Exact generation prompt:
 Use case: style-transfer. Production transparent desktop-pet PNG animation atlas.
 Image roles: Image 1 is the character identity/pose reference or edit target. Image 2 (cyan flat Go Gopher) is STYLE REFERENCE ONLY. Do not draw a gopher.
 Match image 2's non-pixel FLAT 2D cartoon style: smooth dark ink outlines of consistent weight, simple solid-color areas, readable friendly expression, hand-drawn animation-cel appearance. NO fuzzy fur texture, painterly hair, 3D volume, gradients, plastic/clay/plush material, photorealistic lighting, specular/rim highlights, ambient occlusion or pixel art. Flat white eyes and dark pupils. No sticker border or halo.

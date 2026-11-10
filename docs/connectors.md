@@ -1,63 +1,61 @@
-# 개인 연결
+# Personal notification sources
 
-개인 연결은 데스크톱 앱이 현재 OS 사용자 권한으로 직접 실행한다. 로그인 후 `알림 → 외부 연결`의 + 버튼에서 Docker, Slack, Codex, Claude를 설정할 수 있다. 연결별로 수신 중지·재개, 수정, 삭제를 지원한다. 브라우저 화면에서는 개인 연결을 실행하지 않는다.
+Personal sources run directly in the desktop app under the current OS user. After signing in, use the + beside external connections on the notifications page to add Docker, Slack, Codex, or Claude. Sources can be paused, resumed, edited, and deleted. A browser-only settings preview cannot run them.
 
 ## Docker
 
-1. 연결 추가에서 Docker를 고르고 표시 이름을 정한다. 기본 주소 `local`은 현재 운영체제의 Docker 소켓 또는 파이프를 찾는다.
-2. 필요하면 `unix:///var/run/docker.sock`, `unix:///Users/<user>/.docker/run/docker.sock`, `npipe:////./pipe/docker_engine`, `http://<host>:2375`, `https://<host>:2376`, `tcp://<host>:2375` 같은 주소를 지정한다. HTTP·HTTPS·TCP 주소에는 호스트와 포트만 넣는다. 사용자 이름·비밀번호, API 경로, 쿼리, 프래그먼트는 허용하지 않는다.
-3. 컨테이너 이름이나 ID를 쉼표로 제한할 수 있다. 비우면 전체 컨테이너를 대상으로 한다. 기본 수신 동작은 시작·종료·재시작·상태 검사 변경·중지·삭제이며, 개별 동작을 고르거나 전체 수신을 선택할 수 있다.
+1. Select Docker and set a display name. The default endpoint, `local`, finds the OS Docker socket or named pipe.
+2. Alternatively specify `unix:///var/run/docker.sock`, `unix:///Users/<user>/.docker/run/docker.sock`, `npipe:////./pipe/docker_engine`, `http://<host>:2375`, `https://<host>:2376`, or `tcp://<host>:2375`. HTTP/HTTPS/TCP endpoints allow only host and port, not credentials, API paths, queries, or fragments.
+3. Optionally restrict containers by comma-separated name or ID; empty means all containers. Default actions are start, die, restart, health-status change, stop, and destroy. Select individual actions or explicitly select all.
 
-수집기는 Docker Events API의 버전과 이벤트를 조회한다. 컨테이너 제어, 명령 실행, 이미지 변경은 하지 않는다. 스트림을 연결할 때마다 현재 시각 이후의 이벤트만 받으며, 연결이 끊긴 동안의 과거 이벤트를 재생하지 않는다. 원격 HTTPS 엔드포인트의 인증서 설정은 Docker 환경의 인증서 설정을 따른다. Docker CLI context 자동 전환과 엔드포인트별 인증서 설정 UI는 없다.
+The collector negotiates the Docker API version and reads Events API data. It does not control containers, run commands, or change images. Each stream connection starts at the current time; events from disconnected periods are not replayed. Remote HTTPS certificate configuration follows the local Docker certificate environment. Per-endpoint certificate selection and Docker CLI context switching have no UI.
 
 ## Slack
 
-Slack에는 인터넷 접속이 필요하다. Slack 앱의 Socket Mode를 켜고 `connections:write` 권한이 있는 `xapp-` App-Level Token을 발급한다. `xoxb-` 봇 토큰은 사용할 수 없다. 앱을 워크스페이스에 설치하고 필요한 이벤트 구독·읽기 권한을 준다. 연결 화면에서 표시 이름, 워크스페이스 ID(`T…`), 하나 이상의 대화 ID(`C…`, `D…`, `G…`), 토큰을 입력하고 메시지·앱 멘션·반응 추가·반응 삭제 중 받을 이벤트를 선택한다.
+Slack requires internet access. Enable Socket Mode for your Slack app and create an `xapp-` App-Level Token with `connections:write`; an `xoxb-` bot token cannot replace it. Install the app in the workspace and grant the required event subscriptions and read scopes. Enter a display name, workspace ID (`T…`), at least one conversation ID (`C…`, `D…`, `G…`), and token. Choose messages, app mentions, reaction additions, or reaction removals.
 
-필요한 Slack 이벤트 구독과 읽기 권한은 대화 유형에 따라 다르다.
-
-| 받을 항목 | 이벤트 구독 예 | 읽기 권한 예 |
+| Content | Example event subscription | Example read scope |
 | --- | --- | --- |
-| 공개 채널 메시지 | `message.channels` | `channels:history` |
-| 비공개 채널 메시지 | `message.groups` | `groups:history` |
-| DM·그룹 DM | `message.im`, `message.mpim` | `im:history`, `mpim:history` |
-| 앱 멘션 | `app_mention` | `app_mentions:read` |
-| 반응 | `reaction_added`, `reaction_removed` | `reactions:read` |
+| Public-channel messages | `message.channels` | `channels:history` |
+| Private-channel messages | `message.groups` | `groups:history` |
+| Direct/group messages | `message.im`, `message.mpim` | `im:history`, `mpim:history` |
+| App mentions | `app_mention` | `app_mentions:read` |
+| Reactions | `reaction_added`, `reaction_removed` | `reactions:read` |
 
-앱은 지정한 대화와 이벤트만 저장한다. Socket Mode 수신을 확인(ACK)하기 전에 이벤트를 로컬에 저장하며 저장에 실패하면 재접속해 다시 받는다. 메시지 전송·답장·반응 변경 등 Slack 쓰기 API는 호출하지 않는다. 같은 App-Level Token을 이 PC의 여러 연결에서 중복 사용할 수 없다. 다른 PC나 수집기와 이벤트를 나누어 받을 수 있으므로 모든 곳에서 같은 알림을 받는다고 보장하지 않는다.
+Only selected conversations and events are stored. Events are persisted before the Socket Mode envelope is acknowledged; persistence failure causes reconnection without acknowledgment. Slack message/reply/reaction write APIs are not called. Duplicate App-Level Tokens are rejected on one PC. Slack can distribute events among other PCs or collectors using the same token, so identical notification delivery to every collector is not guaranteed.
 
-## Codex 사용량
+## Codex usage
 
-이 PC에 Codex CLI를 설치하고 `codex login`으로 사용할 ChatGPT 계정에 로그인한 뒤 연결을 추가한다. API 키 사용량이나 조직 결제 사용량은 조회하지 않는다. 기본 사용량 알림 간격은 10%, 조회 간격은 60초이며, 알림 기준은 1~100%, 조회 간격은 30~3600초로 설정할 수 있다. `codex` 실행 파일을 찾지 못하면 실행 파일의 절대 경로를 입력한다. 한 PC에는 Codex 연결 하나만 둘 수 있다.
+Install Codex CLI on this PC and sign in to the intended ChatGPT account with `codex login`, then add a connection. API-key and organization billing usage are not queried. The default alert interval is 10% usage and polling interval is 60 seconds. Set usage thresholds from 1–100% and polling from 30–3600 seconds. If `codex` cannot be found, enter its absolute executable path. One Codex connection is allowed per PC.
 
-`일정 사용량마다 알림`은 연결 후 첫 조회를 기준으로 삼는다. 예를 들어 27%에서 시작하면 30% 사용 시 알린다. `1회 알림`은 한도 주기마다 기준 이상일 때 한 번 알린다. 한도 소진, 사용 가능 복구, 수동 재조회 결과는 각각 켜거나 끌 수 있다. 화면에는 사용률을 100에서 뺀 잔여량을 표시한다. 알림 기준은 사용률이며 현재 대화의 컨텍스트 사용량과는 다르다. 공급자가 제공한 각 한도 창을 표시하며 특정 기간의 한도를 고정 가정하지 않는다. 명시적인 사용 허용 여부가 없으면 사용량 감소나 예상 리셋 시각만으로 복구를 판정하지 않는다.
+Interval mode establishes a baseline on the first query: starting at 27% yields the next notification at 30% for a 10% interval. Once mode alerts once per quota cycle when the threshold is reached. Exhaustion, explicit recovery, and manual-refresh result alerts can be toggled individually. The UI displays **remaining quota** (`100 - usedPercent`); thresholds use consumed quota, not the current conversation's context usage. Each provider-supplied quota window is shown without assuming a fixed duration. Decreasing usage or an estimated reset time alone does not prove recovery when explicit usage permission is absent.
 
-앱은 Codex CLI의 로컬 `app-server`를 사용해 계정 및 사용 한도를 읽는다. 허용된 조회 요청만 수행하고 모델 작업이나 인증 변경은 하지 않는다. CLI 로그인·조회에는 인터넷이 필요하다.
+The app uses the CLI's local `app-server` for account/quota queries. It only performs allowed reads, not model tasks or authentication changes. CLI login and queries require internet access.
 
-## Claude Code 사용량
+## Claude Code usage
 
-연결 추가에서 Claude를 고르고 `상태줄 연결 적용`을 누른다. 기존 사용자 상태줄 명령을 보존하면서 앱의 로컬 브리지를 설정하고, Claude Code가 전달한 사용량을 수신한다. 연결 해제 시 저장한 원래 명령을 복원한다. 설정이 적용 후 다른 내용으로 바뀌었거나 JSON을 읽을 수 없으면 덮어쓰지 않고 수동 확인을 요구한다. Claude Code에서 활동한 뒤 `세션 새로고침`을 눌러 받을 세션을 선택하고 저장한다. 여러 계정의 세션을 한 연결로 섞지 않는다.
+Choose Claude and apply the status-line bridge. The app preserves the user's existing status-line command while receiving usage from Claude Code. Removing the bridge restores the saved command. If settings changed externally or cannot be parsed as JSON, they are not overwritten automatically. After activity in Claude Code, refresh sessions, choose the session, and save the source. Sessions from multiple accounts are not combined.
 
-사용량 알림 간격 또는 주기별 1회, 소진·복구·최신 전달값 알림을 설정할 수 있다. `최신 값 확인`은 마지막으로 전달받은 상태를 확인하며 Claude 원격 서버를 다시 조회하지 않는다. 예상 리셋 시각만으로 복구를 알리지 않는다. 상태줄 연결 해제와 앱 연결 삭제는 별도 동작이다.
+Configure interval or once-per-cycle usage alerts, exhaustion/recovery, and latest-value notifications. Latest-value checking reads the last bridge payload, not Claude's remote servers. An estimated reset time alone does not trigger recovery. Removing the bridge and deleting a source are separate actions.
 
-## 로컬 저장과 개인정보 범위
+## Local storage and privacy
 
-연결 설정·상태·사용량 알림 기준·임시 전달 이벤트는 이 OS 사용자 프로필의 Tauri 앱 데이터 디렉터리 아래 `local-notifications.sqlite3`에 저장한다. Docker·Slack 이벤트는 이 PC의 내 펫에 전달하며 로컬망 서버나 친구 펫으로 동기화하지 않는다. 미확인 전달 이벤트는 최대 15초 보관하고, 확인 후 본문을 지운다. 앱 재시작 뒤 이전 미확인 본문을 재생하지 않는다.
+Connection settings, status, quota baselines, and temporary events live in `local-notifications.sqlite3` beneath the OS user's Tauri app data directory. Personal notifications target this PC's own pet and are not synchronized to the LAN server or friends. Pending events live at most 15 seconds; acknowledgment deletes bodies. App restart does not replay old pending bodies.
 
-Slack 토큰은 macOS Keychain, Windows Credential Manager, Linux Secret Service에 저장한다. OS 보안 저장소를 사용할 수 없으면 저장을 거부하며 평문 파일로 대체하지 않는다. 일반 설정 DB에는 토큰 원문 대신 중복 판별용 지문을 둔다. Codex CLI 인증 파일을 앱이 복사하지 않는다. Claude 사용량 브리지는 원본 대화·인증 토큰을 수집하지 않는다.
+Slack tokens use macOS Keychain, Windows Credential Manager, or Linux Secret Service. If secure storage is unavailable, saving fails; no plaintext fallback is used. The ordinary database stores only a duplicate-detection fingerprint. The app does not copy Codex authentication files. The Claude bridge does not collect conversation bodies or authentication tokens.
 
-연결은 OS 사용자 계정 단위다. 공유 PC에서는 OS 계정을 분리한다. Docker 엔진·Slack 권한·Codex 로그인·Claude 설정에서 허용하지 않은 범위까지 앱이 접근 권한을 넓히지 않는다.
+Connections belong to the OS user. Use separate OS accounts on shared PCs. The app cannot expand permissions beyond the Docker engine, Slack app, Codex login, or Claude configuration.
 
-## 커넥터 작성 계약
+## Authoring a connector
 
-개인 소스는 `desktop/src-tauri/src/connectors/`에서 구현한다. `types.rs`의 `SourceConfig`에 설정·유효성 검사를 정의하고, 공급자 모듈의 수집 함수를 `Engine` 수명주기에 연결한다. 취소 토큰으로 수집·재접속 대기를 종료하고 `Engine.status`로 정제한 연결 상태와 오류를 보고한다. 소스별 오류가 LAN 메시지 소켓이나 다른 수집기를 중단시키지 않게 한다.
+Implement personal sources in `desktop/src-tauri/src/connectors/`. Add configuration and validation to `types.rs`'s `SourceConfig` and connect a provider collector to the `Engine` lifecycle. A cancellation token stops collection and reconnect waits. `Engine.status` reports sanitized state/errors. Provider failure must not stop the LAN message socket or other collectors.
 
-수집 결과는 공통 `Notification`으로 변환해 `Engine.publish`에 전달한다. 필드는 `schemaVersion`, `eventId`, `sourceKind`, `connectionId`, `occurredAt`, `title`, `body`, 선택적인 `resource`·`data`다. 공급자의 고유 필드는 `data`에 두고 자격증명·실행 명령은 넣지 않는다. 안정적인 이벤트 ID가 없으면 공급자별 내용·발생 시각·리소스 지문을 정의한다. 저장소는 연결 ID와 이벤트 ID로 중복을 제거하며 중복 키는 하루 보관한다. 펫 디자인이나 말풍선 렌더러를 바꾸지 않고 소스를 추가한다.
+Normalize events to a common `Notification` and call `Engine.publish`. Fields are `schemaVersion`, `eventId`, `sourceKind`, `connectionId`, `occurredAt`, `title`, `body`, and optional `resource`/`data`. Keep provider-specific fields in `data`; exclude credentials and executable commands. If no stable event ID exists, define a provider-specific fingerprint using content, time, and resource. The store deduplicates connection/event IDs and retains deduplication keys for one day. New sources must not require pet-design or bubble-renderer changes.
 
-서버 커넥터 계약은 `internal/connectors.Connector`다. `Descriptor()`는 종류·규격 버전·설정을, `Validate()`는 설정 검증을, `Run(context,connection,sink,reporter)`은 수집·공통 알림 전달·상태 보고를 담당한다. context 취소로 종료하며 연결과 구독 대상을 분리한다. 서버 자격증명은 `credentialRef`로 참조하고 일반 이벤트에 노출하지 않는다. 개인 소스는 이 서버 계약에 등록하지 않는다.
+The server-side contract is `internal/connectors.Connector`: `Descriptor()` describes kind/version/configuration; `Validate()` checks configuration; `Run(context,connection,sink,reporter)` collects, emits normalized events, and reports status. Context cancellation stops it. Connections and subscription targets remain separate. Server credentials use `credentialRef`, not ordinary events. Personal sources do not register with this server contract.
 
-## 수동 개발 샘플
+## Manual development sample
 
-서버의 `OURPETS_SAMPLE_ENABLED=true`일 때 수동 샘플을 사용할 수 있다. 앱에 샘플 등록 UI는 없다. 인증 후 `POST /api/v1/connectors`에 `{"kind":"sample","config":{}}`로 연결을 만들고, 해당 연결의 `/test-events`에 고유 `idempotencyKey`를 POST하면 한 건을 생성한다. 등록·조회·재시작만으로 자동 발송하지 않는다. 같은 키의 재시도는 중복 알림을 만들지 않는다.
+Enable `OURPETS_SAMPLE_ENABLED=true` on the server to use the manual sample. There is no sample registration UI. Authenticate and POST `{"kind":"sample","config":{}}` to `/api/v1/connectors`, then POST a unique `idempotencyKey` to that connection's `/test-events` endpoint to emit one event. Creation, queries, and restart do not emit automatically. Reusing the key does not create duplicates.
 
-`config:{"fail":true}`는 명시적 발송을 실패시키는 장애 확인 옵션이다. 연결은 `DELETE /api/v1/connectors/{id}`로 삭제한다. 소유자와 구독 권한을 확인하며 샘플을 꺼도 본인 연결 삭제는 허용한다. 이 경로는 개발용 전달 경계 확인 수단이며 Docker·Slack 개인 연결과 구분한다. 상세 요청은 [API 규격](api.md)을 따른다.
+`config:{"fail":true}` deliberately fails explicit emission. Delete your connection with `DELETE /api/v1/connectors/{id}`. Ownership/subscription checks apply; disabling samples still allows deleting an owned connection. This development delivery check is separate from real personal Docker/Slack collectors. See the [API specification](api.md).

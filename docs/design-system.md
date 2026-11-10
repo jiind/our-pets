@@ -1,56 +1,56 @@
-# UI와 모션 규칙
+# UI and motion guidelines
 
-설정·로그인·연결 모달·펫 메뉴·말풍선·모집에서 같은 역할에는 같은 디자인을 적용한다. `desktop/src/ui.css`가 색·글꼴·크기·여백·상태를 관리하고 `style.css`·`workspace.css`는 배치·스크롤·반응형 규칙을 담당한다. 화면별로 같은 요소의 스타일을 중복 정의하지 않는다.
+Settings, authentication, connection dialogs, pet menus, bubbles, and gatherings use consistent styling for equivalent roles. `desktop/src/ui.css` owns color, typography, size, spacing, and states. `style.css` and `workspace.css` own layout, scrolling, and responsiveness. Avoid duplicating equivalent control styles across screens.
 
-## 공통 요소
+## Shared elements
 
-| 역할 | 규칙 |
+| Role | Rule |
 | --- | --- |
-| 글꼴 | 무료 오픈소스 Pretendard를 로컬 번들로 제공 |
-| 기본 버튼·입력 | 14px, 최소 높이 44px, 8×12px 여백, 8px 모서리. 버튼 굵기 600 |
-| 주요 동작 | 공통 `primary`의 초록 배경·흰색 내용. 전송·참여·완료·추가에 동일 적용 |
-| 선택 상태 | 공통 강조 배경·테두리·글자색과 눌림 상태 |
-| 아이콘 버튼 | 기본 32px, SVG 16px. title·접근성 이름·포커스 표시 제공 |
-| 닫기 | SVG X를 원형 버튼 중앙에 정렬. PNG 추가 모달은 제목 줄의 취소·추가 사용 |
-| 본문·라벨 | 14px. 라벨 굵기 600 |
-| 보조 설명 | 12px 보조색. 실제 오류에만 오류색 사용 |
-| 제목 | 화면 26px, 구역 18px, 하위 제목 16px. 펫 위 패널은 14px/600 |
-| 간격 | 4px 배수 토큰. 주로 8·12·16·24·32px, 폼 항목 간 20px |
+| Font | Free/open-source Pretendard, bundled locally |
+| Buttons and inputs | 14px, minimum 44px height, 8×12px padding, 8px radius; button weight 600 |
+| Primary action | Shared green `primary` background with white content for send/join/complete/add |
+| Selected state | Shared accent background, border, text, and pressed state |
+| Icon buttons | Normally 32px with a 16px SVG; title, accessible name, and focus indicator |
+| Close | Center SVG X in a circular button; PNG upload uses top-row cancel/add actions |
+| Body and labels | 14px; label weight 600 |
+| Secondary text | 12px secondary color; error color only for actual errors |
+| Headings | Page 26px, section 18px, subsection 16px; pet panels 14px/600 |
+| Spacing | 4px multiples, normally 8/12/16/24/32px; 20px between form fields |
 
-버튼은 텍스트와 구분되는 표면·테두리를 유지한다. 투명 이미지 버튼에도 호버·키보드 초점을 제공한다. 로딩·실패·비활성 상태를 구분하고 실패하면 입력과 재시도 경로를 유지한다. 서버 표시등은 초록 `#22c55e`, 노랑 `#eab308`, 빨강 `#ef4444`, 대기 회색이다. 서버 주소 옆에는 상태 문구를 반복하지 않되 접근성 이름·도움말로 의미를 제공한다.
+Buttons retain a visible surface/border that distinguishes them from text. Transparent image buttons still need hover and keyboard focus. Distinguish loading, failure, and disabled states; preserve input and retries after failure. Server indicators use green `#22c55e`, yellow `#eab308`, red `#ef4444`, and gray while waiting. The address does not repeat visible status text, but accessible names/tooltips convey meaning.
 
-## 설정 창과 반응형 배치
+## Settings and responsive layout
 
-앱 프레임은 창 높이에 고정한다. 좌측 탐색은 본문 길이와 독립적으로 유지하고 본문만 스크롤한다. 탐색은 마우스로 폭을 조절하거나 접을 수 있으며 접힌 아이콘에도 이름을 제공한다. 별도 우측 inspector는 두지 않는다. 메뉴 전환 시 본문 스크롤을 초기화하고 제목 포커스가 바깥 프레임을 밀지 않게 한다.
+The app frame follows window height. The sidebar stays independent of content length; the main area scrolls. Sidebar width is mouse-resizable and collapsible, with names retained for collapsed icons. There is no separate right inspector. Navigation resets content scroll without letting heading focus move the outer frame.
 
-탐색 메뉴는 `펫`·`알림`으로 본문 제목과 일치시킨다. 서버 주소·표시등은 펫 메뉴 위, 저작권 문구는 로그아웃 아래에 둔다. 접힌 탐색에서는 보조 문구를 숨긴다. 펫은 발바닥, 알림은 종 SVG를 사용한다.
+Pet/notification navigation names match page headings. Server address/status are above pet navigation; copyright is below logout. Collapsed navigation hides secondary text. Use a paw SVG for pets and a bell for notifications.
 
-펫 화면은 표시·친구 보기 제어 아래에 미리보기와 펫 선택을 바로 제공한다. 크기·미리보기 동작은 미리보기 박스 안에서 제목 왼쪽·실제 제어 오른쪽으로 정렬한다. 본문 너비 600px 이상에서는 두 열, 좁으면 위아래로 배치한다. 펫 선택 제목 오른쪽에 새로고침·primary 추가 아이콘을 둔다. 등록된 펫 선택은 즉시 적용하고 불필요한 성공 문구나 저장·취소 버튼을 추가하지 않는다.
+The pet page opens directly to visibility/peer controls, preview, and character selection. Inside the preview, size/action labels align left and their controls align right. At content widths of 600px or more, preview and editor use two columns; narrower content stacks. Character selection has refresh and primary add icons on the right. Registered-pet selection applies immediately, without redundant success messages or save/cancel controls.
 
-알림 화면 제목 오른쪽에 연결된 알람·OS 알림 토글을 두고, 외부 연결 제목 오른쪽에 새로고침·추가 아이콘을 둔다. 연결 추가·수정은 같은 모달을 사용한다. 모달은 제목 연결·Escape·배경 닫기와 입력 간격을 유지한다.
+Notification-source and OS-alert toggles align with the page title. Refresh/add icons align with the external-source heading. Creation/editing share one dialog, with heading association, Escape/backdrop dismissal, and consistent field spacing.
 
-## PNG 추가 모달
+## PNG dialog
 
-최상단 제목 오른쪽에 취소·추가를 배치한다. 입력 순서는 이름, PNG 파일, 애니메이션 설정이다. PNG 파일 도움말에서 일반 PNG와 스프라이트 시트를 구분하고 파일 하나를 선택한다는 점을 설명한다. 파일 선택 버튼은 높이 32px, 파일명과 16px 간격을 두며 제한 안내는 아래 8px·왼쪽 정렬·불투명도 85%로 표시한다.
+Cancel/add actions sit at the top right of the dialog heading. Inputs are ordered name, PNG, animation. Explain regular PNG versus sprite sheet and that both use one file. The file picker uses a 32px button, 16px gap before the filename, and left-aligned limit text 8px below at 85% opacity.
 
-캐릭터 프롬프트는 PNG 도움말 아래, 애니메이션 구분선 위에 둔다. 애니메이션 summary는 PNG 라벨과 같은 크기·굵기·색을 사용한다. 그림 한 칸 크기 제목 아래 너비·높이 입력을 그룹화하고 제목·설명 사이는 4px로 유지한다. 동작 미리보기 버튼 높이 때문에 설명 간격을 늘리지 않는다.
+Character prompts sit below PNG help and above the animation divider. The animation summary matches the PNG label's size, weight, and color. Group width/height beneath the cell-size heading. Keep heading/help spacing at 4px; a preview button must not stretch that gap.
 
-## 펫 위 UI
+## Pet UI
 
-왼쪽 클릭은 쓰다듬기, 드래그는 위치·높이, 우클릭은 메뉴다. 메뉴와 메시지 입력은 펫 위에서 즉시 실행하며 설정 앱으로 보내지 않는다. 메시지 입력·전송은 메뉴 맨 아래에 둔다. 상대 펫 메뉴에만 인사·하이파이브를 제공한다. 모집 진입은 깃발, 종류는 이모지로 표시하고 접근성 이름을 제공한다.
+Left-click pets, dragging moves/lifts, and right-click opens the menu. Menus and message inputs execute directly above the pet rather than opening settings. Message composition is at the menu bottom. Greetings/high-fives appear only on peer menus. Gatherings use a flag entry and emoji choices with accessible names.
 
-닉네임은 평소 숨기고 펫 호버·메뉴 상태에서 발아래에 표시한다. 이름표는 뒤쪽 앱 클릭을 막지 않는 입력 제외 영역이며 긴 이름은 말줄임한다. 말풍선은 캐릭터 기준점과 화면 경계를 따라 배치한다. 외형·크기 변경에도 펫과 UI 사이 거리 및 접지 기준을 유지한다.
+Nicknames are normally hidden and appear below the feet on hover/menu display. Nameplates are excluded from input regions and truncate long text. Bubbles follow character anchors and screen edges. Appearance/size changes preserve relative UI spacing and grounding.
 
-## 모션과 접근성
+## Motion and accessibility
 
-`desktop/src/motion.ts`는 GSAP로 창별 효과·카드 등장·미디어 설정과 정리를 관리한다. 실제 창 이동은 Rust가 담당한다. 메시지 대상·전달 결과·모집 상태는 애니메이션과 독립적으로 결정한다.
+`desktop/src/motion.ts` uses GSAP for per-window effects, card entrance, media preferences, and cleanup. Rust moves actual windows. Message targets, delivery results, and gathering state are independent of animation.
 
-- 메뉴·말풍선은 등장 첫 순간부터 클릭·키보드 입력이 가능해야 한다. 효과 종료를 기다리게 하지 않는다.
-- 새 동작은 이전 타임라인을 교체하고 드래그·숨김·화면 해제 시 효과와 리스너를 정리한다. 다른 창의 효과를 전역 종료하지 않는다.
-- `prefers-reduced-motion`을 반영하며 효과를 줄여도 내용·상태·조작을 유지한다.
-- 변형·투명도 중심의 짧은 효과를 사용하고 숨긴 화면의 렌더링을 줄인다. 보행은 실제 이동 거리에 맞춘다.
-- Canvas의 실제 변형과 알파 영역을 입력 영역에 반영한다. 그림 주변의 큰 사각형을 클릭 영역으로 사용하지 않는다.
-- 말풍선 위에 포인터나 키보드 포커스가 있으면 읽기·답장 중 닫히지 않게 한다. 긴 텍스트는 효과로 분해하지 않고 즉시 읽고 복사할 수 있게 한다.
-- 자동 스크롤 고정·패럴랙스·스크롤 가로채기를 사용하지 않는다. 키보드 초점·Escape 복귀와 폼의 접근성 이름을 유지한다.
+- Menus/bubbles accept pointer and keyboard input from their first visible moment; do not wait for animation completion.
+- New actions replace previous timelines. Dragging, hiding, and unmounting clean up effects/listeners without globally stopping other windows.
+- Respect `prefers-reduced-motion` while preserving content, state, and controls.
+- Prefer short transform/opacity effects, reduce hidden rendering, and tie walking to actual distance.
+- Reflect Canvas transforms and alpha bounds in input regions; do not make surrounding rectangles intercept clicks.
+- Keep bubbles open while hovered or keyboard-focused for reading/replying. Text remains immediately readable and copyable.
+- Avoid scroll hijacking, parallax, and forced scroll pinning. Preserve keyboard focus, Escape return, and accessible form names.
 
-GSAP 런타임 라이선스와 스킬 문서의 라이선스는 별개다. 배포 조건은 [제삼자 고지](../THIRD_PARTY_NOTICES.md)를 따른다.
+The GSAP runtime and skills documentation have separate licenses. See [third-party notices](../THIRD_PARTY_NOTICES.md).

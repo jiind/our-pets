@@ -1,24 +1,24 @@
-name: 버그 보고
-description: 재현 가능한 오류를 알려 주세요.
+name: Bug report
+description: Report a reproducible problem.
 title: 'fix: '
 body:
   - type: textarea
     id: reproduce
     attributes:
-      label: 재현 순서
-      description: 비밀값과 개인 메시지는 제외해 주세요.
+      label: Steps to reproduce
+      description: Exclude secrets and personal messages.
     validations:
       required: true
   - type: textarea
     id: behavior
     attributes:
-      label: 기대 동작과 실제 동작
+      label: Expected and actual behavior
     validations:
       required: true
   - type: textarea
     id: environment
     attributes:
-      label: 실행 환경
-      description: 앱 버전, OS, Linux라면 X11/Wayland와 데스크톱 환경을 적어 주세요.
+      label: Environment
+      description: Include app version, OS, and Linux desktop/X11/Wayland details.
     validations:
       required: true

@@ -1,17 +1,17 @@
-## 문제와 변경 동작
+## Problem and resulting behavior
 
-어떤 상황에서 무엇이 바뀌는지 설명해 주세요.
+Describe the concrete problem and the behavior this change produces.
 
-## 관련 이슈
+## Related issue
 
-해당하면 `Closes #번호`를 적고 Development에도 연결해 주세요.
+Use `Closes #number` when applicable and link it in Development.
 
-## 검증
+## Validation
 
-- 실제 실행한 검사:
-- 빌드만 확인한 OS:
-- 미실행·미검증 항목과 이유:
+- Checks actually executed:
+- Platforms with build-only validation:
+- Unverified behavior/platforms and reasons:
 
-## 배포·데이터·에셋 영향
+## Deployment, data, and assets
 
-마이그레이션·설정 변경·라이선스 고지·기존 펫 ID에 영향이 있으면 적어 주세요. 비밀값과 개인 메시지를 포함하지 마세요.
+Describe migrations, configuration, licensing notices, and effects on stable pet IDs. Do not include secrets or personal messages.
