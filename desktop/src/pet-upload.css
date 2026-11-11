@@ -118,6 +118,10 @@ dialog.pet-upload-dialog[open] {
 .pet-upload-dialog .pet-upload-animation-heading > div {
   min-width: 0;
 }
+/* 휴지통은 제목을 포함한 라벨 중앙이 아니라 입력창과 같은 아래 기준선에 맞춘다. */
+.pet-upload-dialog .pet-upload-animation > .pet-upload-animation-heading {
+  align-items: flex-end;
+}
 .pet-upload-dialog .pet-upload-animation-heading h3 {
   margin: 0;
   font-size: var(--text-subheading);
@@ -133,6 +137,8 @@ dialog.pet-upload-dialog[open] {
 }
 .pet-upload-dialog [data-animation-roles] {
   margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 .pet-upload-dialog .pet-upload-animation-heading p {
   margin: var(--space-1) 0 0;

@@ -118,6 +118,10 @@ button .ui-icon {
   width: var(--space-5);
   height: var(--space-5);
 }
+/* 휴지통의 선은 위치와 버튼 상태에 관계없이 공통 삭제 색상으로 표시한다. */
+.ui-icon-trash {
+  stroke: var(--danger);
+}
 /* 같은 X 동작은 말풍선·메뉴·작성·모집·대화상자에서 같은 원형 버튼이다. */
 button.menu-close, button.dialog-close, button.bubble-close {
   display: grid;

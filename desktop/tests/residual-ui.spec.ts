@@ -71,6 +71,13 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
   await expect(dialog.locator('[name=walkFPS]')).toHaveValue('8');
   await expect(dialog.locator('[name=reactFrames]')).toHaveValue('12,13,14,15');
   await expect(dialog.locator('[name=reactFPS]')).toHaveValue('6');
+  const firstAnimation = dialog.locator('[data-animation-row]').first();
+  await expect(firstAnimation.getByRole('button', { name: '미리보기', exact: true })).toHaveCount(0);
+  const nameBounds = await firstAnimation.locator('[data-animation-name]').boundingBox();
+  const trashBounds = await firstAnimation.locator('[data-animation-remove]').boundingBox();
+  expect(Math.abs(nameBounds!.y - trashBounds!.y)).toBeLessThan(1);
+  expect(Math.abs(nameBounds!.height - trashBounds!.height)).toBeLessThan(1);
+  await firstAnimation.screenshot({ path: '/tmp/our-pets-animation-row.png' });
   await dialog.locator('[name=frameWidth]').fill('100');
   await dialog.locator('[name=frameHeight]').fill('128');
   await expect(dialog.locator('[data-frame-guide]')).toContainText('나누어떨어지게');
@@ -90,7 +97,7 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
   await dialog.locator('[data-animation-settings] > summary').click();
   await expect(dialog.locator('[name=walkFrames]')).toHaveValue('4,5,6,7');
   await expect(dialog.locator('[name=walkFPS]')).toHaveValue('6');
-  await dialog.locator('[data-preview-mode=walk]').click();
+  await dialog.locator('[data-action]').selectOption('walk');
   await expect(dialog.locator('[data-preview-note]')).toContainText('선택한 동작을 실제 펫 크기로 미리 보여요');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(dialog.locator('[data-preview-note]')).toContainText('동작 줄이기 설정에 따라 정지 상태');
@@ -181,7 +188,7 @@ test('직접 등록한 펫은 원본 PNG를 고정한 채 수정·삭제하고 �
   await custom.locator('[data-animation-frames]').fill('5,6');
   await custom.locator('[data-animation-fps]').fill('1');
   const customID = await custom.getAttribute('data-animation-row') || '';
-  await custom.getByRole('button', { name: '미리보기', exact: true }).click();
+  await add.locator('[data-action]').selectOption(customID);
   await expect(add.locator('[data-action]')).toHaveValue(customID);
   const customImage = await add.locator('canvas[aria-label="추가할 펫의 모습"]').evaluate((element: HTMLCanvasElement) => element.toDataURL());
   await add.getByRole('button', { name: '추가', exact: true }).click();

@@ -68,11 +68,6 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       syncAnimationPreviewChoices();
       void refreshPreview();
     },
-    onPreview: key => {
-      action.value = key;
-      actionStarted = Date.now();
-      void refreshPreview();
-    },
   });
 
   // 등록한 이름과 내부 ID를 미리보기 선택지에 함께 반영한다.

@@ -23,5 +23,5 @@ export function icon(name: 'mail' | 'brush' | 'inbox' | 'link' | 'bell' | 'move'
     move: '<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/>',
     settings: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/><circle cx="12" cy="12" r="5"/>',
   };
-  return `<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
+  return `<svg class="ui-icon${name === 'trash' ? ' ui-icon-trash' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
 }
