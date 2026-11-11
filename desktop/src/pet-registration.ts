@@ -73,7 +73,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
 
   const displaySettings = mountPetDisplaySettings(root.querySelector<HTMLElement>('[data-display-settings]')!, root.querySelector<HTMLElement>('[data-size-control]')!, message => feedback(message, true));
   const uploadDialog = mountPetUpload(root, {
-    onUpdated: async (previous, design) => {
+    onUpdated: async (previous, design, isCurrent) => {
       // 1. 교체된 불변 버전은 목록에서 제거하고 기존 선택만 새 버전으로 옮긴다.
       assertAccount();
       catalogueVersion += 1;
@@ -81,18 +81,23 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       if (selectedDesignID === previous.id) {
         selectedDesignID = design.id;
       }
+      if (pet?.design?.id === previous.id) {
+        pet = { ...pet, design };
+      }
+      const revision = ++draftRevision;
+      updateCatalogue();
 
       // 2. 서버가 반영한 대표 펫과 미리보기를 확인해 같은 기기에도 갱신한다.
       const current = await api<RegisteredPet>('/me/pet');
       assertAccount();
-      if (disposed) {
+      if (disposed || !isCurrent() || revision !== draftRevision) {
         return;
       }
       pet = current;
       updateCatalogue();
       updateView();
       await refreshPreview();
-      if (current.registered) {
+      if (current.registered && isCurrent() && revision === draftRevision) {
         await options.onRegistered(current);
       }
     },
