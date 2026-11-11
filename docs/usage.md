@@ -31,6 +31,8 @@ Enter text and emoji in the input at the bottom of a pet's right-click menu. You
 
 Incoming messages appear above the sender's pet and as OS notifications. Reply from the bubble to address the original sender. If friends are hidden or the sender window is unavailable, only the OS notification is shown; the message is not moved to your own pet.
 
+Bubbles grow vertically to fit their content without scrollbars. Text that exceeds the available screen height uses previous/next controls. Resizing preserves the current reading position, and a new message starts from its beginning.
+
 Each connected device receives messages independently. Messages received while offline are not replayed on reconnect, and there is no inbox. App receipt is not a user read receipt.
 
 ## Gatherings

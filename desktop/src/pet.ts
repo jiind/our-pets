@@ -9,6 +9,7 @@ import { petMotion, type Gesture } from './motion';
 import { watchDisplay } from './preferences';
 import { mountPetComposer } from './pet-compose';
 import { mountMenuMessage } from './pet-menu-message';
+import { mountBubblePages } from './pet-bubble';
 import { setPetInput } from './pet-input';
 import { mountRecruitment } from './recruitment';
 import { recruitmentOptions, type Design, type Gathering, type Pet, type PetEvent, type RegisteredPet } from './types';
@@ -121,6 +122,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   canvas.setAttribute('aria-controls', menu.id);
   canvas.setAttribute('aria-expanded', 'false');
   const bubble = root.querySelector<HTMLElement>('.pet-bubble')!;
+  const bubblePages = mountBubblePages(bubble);
   const reaction = root.querySelector<HTMLElement>('.reaction')!;
   const connectionNotice = root.querySelector<HTMLElement>('.pet-connection')!;
   const label = document.createElement('span');
@@ -806,7 +808,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const visualHeight = drawPet(canvas, image, design, reacting ? 'react' : movingNow ? 'walk' : 'idle', motionPreference.matches ? 0 : now, { animationId: reacting && gesture === 'pat' ? clickedAnimationId : undefined, walking: movingNow, direction, gesture: reacting ? gesture : undefined, elapsed: now - reactionStart, reduced: motionPreference.matches, mirrored: mirroredGesture, pose: motion.pose, resting: offline || (grouped && !movingNow), distance: nativeDistance, speed: nativeSpeed, paired: pairedReaction, elevation: liftHeight, carried, builtin });
     const anchors = petAnchors(canvas, image, design);
     root.style.setProperty('--pet-visual-height', `${anchors.headHeight}px`);
-    root.style.setProperty('--pet-overlay-space', `${Math.max(48, root.clientHeight - 30 - liftHeight - anchors.headHeight - 20 - topInset)}px`);
+    const overlaySpace = root.clientHeight - 30 - liftHeight - anchors.headHeight - 20 - topInset;
+    root.style.setProperty('--pet-overlay-space', `${Math.max(48, overlaySpace)}px`);
     updateBubbleActions();
     if (!bubble.hidden && now > bubbleUntil) {
       bubble.hidden = true;
@@ -824,7 +827,11 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         bubble.dataset.eventId = event.id;
         const sender = bubble.querySelector<HTMLElement>('.bubble-sender')!;
         sender.replaceChildren();
-        sender.textContent = event.outgoing ? event.outgoing.mode === 'all' ? '모두에게 보낸 메시지' : `${event.outgoing.recipientName || '상대'}에게 보낸 ${event.replyToMessageId ? '답장' : '메시지'}` : event.sender ? event.sender.userName || event.sender.petName : externalNotificationTitle(event.notification);
+        const senderName = document.createElement('span');
+        senderName.className = 'bubble-sender-name';
+        senderName.textContent = event.outgoing ? event.outgoing.mode === 'all' ? '모두에게 보낸 메시지' : `${event.outgoing.recipientName || '상대'}에게 보낸 ${event.replyToMessageId ? '답장' : '메시지'}` : event.sender ? event.sender.userName || event.sender.petName : externalNotificationTitle(event.notification);
+        sender.title = senderName.textContent;
+        sender.append(senderName);
         if (event.sender?.designId) {
           const expectedID = event.id;
           bubble.dataset.eventId = expectedID;
@@ -847,13 +854,13 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
           drawPet(avatar, null, null, 'idle', 0, { builtin: event.sender.builtinId });
           sender.prepend(avatar);
         }
-        bubble.querySelector<HTMLElement>('p:not(.bubble-state)')!.textContent = event.kind === 'interaction' ? (event.body === 'highfive' ? '🙌 내 펫과 하이파이브!' : '👋 친구 펫과 인사해요!') : event.body || event.notification?.body || '';
+        bubblePages.setText(event.kind === 'interaction' ? (event.body === 'highfive' ? '🙌 내 펫과 하이파이브!' : '👋 친구 펫과 인사해요!') : event.body || event.notification?.body || '');
         bubble.hidden = false;
-        bubble.querySelector<HTMLElement>('.pet-bubble-content')!.scrollTop = 0;
         motion.reveal(bubble);
         bubbleUntil = now + 12000;
       }
     }
+    bubblePages.fit(overlaySpace, root.clientHeight - topInset - 20);
     const receivingProblem = !!session() && !!connectionState && connectionState !== '연결됨' && now - connectionStartedAt > 3000;
     connectionNotice.hidden = !!targetID || preview || connectionDismissed || !receivingProblem || !menu.hidden || composer.visible() || recruitment.visible() || !bubble.hidden;
     const hovered = isTauri() && !preview ? nativeHovered : canvas.matches(':hover');
@@ -957,11 +964,20 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const accept = bubble.querySelector<HTMLButtonElement>('.bubble-accept')!;
     const leave = bubble.querySelector<HTMLButtonElement>('.bubble-leave')!;
     accept.hidden = !currentEvent?.proposalKind || !!currentEvent.outgoing || accepted;
-    accept.textContent = currentEvent?.proposalKind === 'coffee' ? '같이 마실래요' : '같이 먹을래요';
+    const acceptLabel = currentEvent?.proposalKind === 'coffee' ? '같이 마실래요' : '같이 먹을래요';
+    if (accept.textContent !== acceptLabel) {
+      accept.textContent = acceptLabel;
+    }
     leave.hidden = !group || (!host && !accepted);
-    leave.textContent = host ? '제안 끝내기' : '함께하기 그만두기';
+    const leaveLabel = host ? '제안 끝내기' : '함께하기 그만두기';
+    if (leave.textContent !== leaveLabel) {
+      leave.textContent = leaveLabel;
+    }
     const state = bubble.querySelector<HTMLElement>('.bubble-state')!;
-    state.textContent = bubbleMessage || (group ? `${accepted ? '✓ 수락했어요 · ' : ''}${group.members.length ? `함께하는 친구: ${group.members.map(member => member.userName).join(', ')}` : '수락할 친구를 기다리고 있어요'}` : '');
+    const stateLabel = bubbleMessage || (group ? `${accepted ? '✓ 수락했어요 · ' : ''}${group.members.length ? `함께하는 친구: ${group.members.map(member => member.userName).join(', ')}` : '수락할 친구를 기다리고 있어요'}` : '');
+    if (state.textContent !== stateLabel) {
+      state.textContent = stateLabel;
+    }
     if (group && !bubble.hidden) {
       bubbleUntil = Math.max(bubbleUntil, Date.now() + 1000);
     }
