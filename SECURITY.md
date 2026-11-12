@@ -2,11 +2,11 @@
 
 The current beta is maintained against the latest main and release. Long-term security support for older versions is not provided.
 
-## Known upstream advisory
+## GLib iterator security backport
 
-The Linux GTK 3 stack includes `glib 0.18.5`, affected by [GHSA-wrw7-89jp-8q8g / RUSTSEC-2024-0429](https://github.com/advisories/GHSA-wrw7-89jp-8q8g). Its `VariantStrIter` implementation has an unsound FFI out-pointer argument that can cause undefined behavior or a null-pointer crash. Upstream fixes start at `glib 0.20.0`.
+The Linux GTK 3 stack uses a vendored `glib 0.18.5` with the official fix for [GHSA-wrw7-89jp-8q8g / RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html). The vulnerable implementation passed an immutable output pointer to a mutating C function, causing undefined behavior and optimized-build crashes. Our snapshot backports the [upstream two-line correction](https://github.com/gtk-rs/gtk-rs-core/commit/05dff0ee696f9bcd8617cd48c4b812d046d440cb) and retains the GTK 3-compatible API.
 
-Our Pets does not directly call `VariantStrIter` or `array_iter_str`. This is not a claim that every transitive runtime path has been proven unaffected. GTK/GDK/WebKitGTK dependencies currently require the 0.18 series, so upgrading this package independently is not a compatible fix. The dependency warning remains unresolved and is disclosed for the beta; it has not been suppressed or treated as a successful remediation.
+Cargo overrides this package throughout the desktop dependency graph. CI verifies the source hashes, exact backport, lockfile origin and license notices, and executes all affected iterator methods through actual GLib FFI in a release build. See the [patch provenance and maintenance instructions](desktop/src-tauri/vendor/glib-0.18.5/PATCH.md). Version-only scanners can still identify the original version number; the local source and optimized regression results establish the applied fix. The unpatched registry release must not re-enter the graph. Replace the snapshot when the complete GTK dependency graph supports an upstream patched release.
 
 ## Private reporting
 

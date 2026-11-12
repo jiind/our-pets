@@ -3,6 +3,7 @@
 mod connectors;
 mod desktop_controls;
 mod elevation;
+mod gathering_layout;
 mod locomotion;
 mod message_bubbles;
 mod pointer;
@@ -38,6 +39,8 @@ struct PetState {
     message_ready: bool,
     local_reacting: bool,
     visual_width: Option<f64>,
+    nameplate_width: Option<f64>,
+    gathering_overflow: bool,
     visual_height: Option<f64>,
     hand_reach: Option<f64>,
     hand_height: Option<f64>,
@@ -79,6 +82,8 @@ fn initial_state(hidden: bool) -> PetState {
         message_ready: false,
         local_reacting: false,
         visual_width: None,
+        nameplate_width: None,
+        gathering_overflow: false,
         visual_height: None,
         hand_reach: None,
         hand_height: None,
@@ -546,6 +551,32 @@ fn sync_peers(
     desktop_controls::apply(&app, &state, false, false)
 }
 
+// 현재 모집자의 화면에 표시하지 못한 참여자 수를 반환한다.
+#[tauri::command]
+fn gathering_overflow(
+    window: tauri::WebviewWindow,
+    state: tauri::State<Shared>,
+) -> Result<usize, String> {
+    // 1. 펫 창에서 요청한 모집 상태만 읽는다.
+    if !is_pet(window.label()) {
+        return Err("펫 창에서만 모집 상태를 확인할 수 있습니다".into());
+    }
+
+    // 2. 이 창의 모집에 참여하지만 화면에 표시되지 않은 펫을 센다.
+    let all = state.lock().map_err(|error| error.to_string())?;
+    Ok(all
+        .windows
+        .values()
+        .filter(|pet| {
+            pet.gathering_overflow
+                && pet
+                    .attachment
+                    .as_ref()
+                    .is_some_and(|attachment| attachment.host == window.label())
+        })
+        .count())
+}
+
 // 펫을 잡은 지점 기준으로 좌우 이동과 바닥 위 높이 드래그를 시작한다.
 #[tauri::command]
 fn drag_pet(window: tauri::WebviewWindow, state: tauri::State<Shared>) -> Result<(), String> {
@@ -582,6 +613,7 @@ fn set_regions(
     menu_open: Option<bool>,
     reacting: Option<bool>,
     visual_width: Option<f64>,
+    nameplate_width: Option<f64>,
     visual_height: Option<f64>,
     hand_reach: Option<f64>,
     hand_height: Option<f64>,
@@ -618,6 +650,11 @@ fn set_regions(
             visual_width.filter(|width| width.is_finite() && (1.0..=240.0).contains(width))
         {
             data.visual_width = Some(width);
+        }
+        if let Some(width) =
+            nameplate_width.filter(|width| width.is_finite() && (0.0..=280.0).contains(width))
+        {
+            data.nameplate_width = Some(width);
         }
         if let Some(height) =
             visual_height.filter(|height| height.is_finite() && (1.0..=240.0).contains(height))
@@ -696,7 +733,7 @@ fn pet_work_area(window: tauri::WebviewWindow) -> Result<serde_json::Value, Stri
 
     // 2. 창 위쪽이 작업영역 밖이면 웹 팝업도 같은 여백을 피하도록 전달한다.
     Ok(
-        serde_json::json!({ "width": work.size.width as f64 / scale, "height": work.size.height as f64 / scale, "scaleFactor": scale, "overlayTop": ((work.position.y - position.y).max(0) as f64 / scale) }),
+        serde_json::json!({ "width": work.size.width as f64 / scale, "height": work.size.height as f64 / scale, "scaleFactor": scale, "workTop": work.position.y, "overlayTop": ((work.position.y - position.y).max(0) as f64 / scale) }),
     )
 }
 
@@ -819,12 +856,33 @@ fn start_motion(app: tauri::AppHandle, state: Shared) {
                 if !is_pet(&label) {
                     continue;
                 }
-                let Some((mut data, pet_size)) = state.lock().ok().and_then(|all| {
-                    all.windows
-                        .get(&label)
-                        .cloned()
-                        .map(|pet| (pet, all.preferences.pet_size))
-                }) else {
+                let Some((mut data, pet_size, gathering_width)) =
+                    state.lock().ok().and_then(|all| {
+                        let pet = all.windows.get(&label)?.clone();
+                        let host = pet
+                            .attachment
+                            .as_ref()
+                            .map(|attachment| attachment.host.as_str());
+                        let width = all
+                            .windows
+                            .values()
+                            .filter(|other| {
+                                !other.hidden
+                                    && host.is_some()
+                                    && other.attachment.as_ref().is_some_and(|attachment| {
+                                        Some(attachment.host.as_str()) == host
+                                    })
+                            })
+                            .map(|other| {
+                                other
+                                    .visual_width
+                                    .unwrap_or(all.preferences.pet_size as f64)
+                                    .max(other.nameplate_width.unwrap_or(0.0))
+                            })
+                            .fold(0.0_f64, f64::max);
+                        Some((pet, all.preferences.pet_size, width))
+                    })
+                else {
                     continue;
                 };
                 if data.hidden || data.dragging || data.lift.active() {
@@ -893,6 +951,7 @@ fn start_motion(app: tauri::AppHandle, state: Shared) {
                     || hit
                     || data.motion.awaiting_layout();
                 let mut goal = None;
+                let mut overflow = None;
                 let mut desired = (0.0, 0.0);
                 let maximum_speed = (pet_size as f64 * 0.22).clamp(18.0, 48.0);
                 if let Some(attachment) = &data.attachment {
@@ -913,19 +972,34 @@ fn start_motion(app: tauri::AppHandle, state: Shared) {
                                 host.current_monitor(),
                             ) {
                                 let work = monitor.work_area();
-                                let stride = (pet_size as f64 * 0.62 * scale) as i32;
-                                let x = desktop_controls::neighbor_x(
-                                    host_pos.x,
-                                    work.position.x,
-                                    work.position.x
-                                        + work.size.width.saturating_sub(size.width) as i32,
-                                    stride,
-                                    attachment.index,
-                                );
                                 let y = host_pos.y + host_size.height as i32 - size.height as i32
                                     + (30.0 * (scale - host_scale)).round() as i32;
-                                goal = Some((x, y));
-                                desired = ((x - pos.x) as f64 / scale, (y - pos.y) as f64 / scale);
+                                let stride_x = ((gathering_width + 16.0) * scale.max(host_scale))
+                                    .ceil() as i32;
+                                let stride_y = gathering_layout::row_stride(
+                                    pet_size as f64,
+                                    scale.max(host_scale),
+                                );
+                                let minimum_y = work.position.y - size.height as i32
+                                    + ((pet_size as f64 + 64.0) * scale).ceil() as i32;
+                                let destination = gathering_layout::position(
+                                    (host_pos.x, y),
+                                    (
+                                        work.position.x,
+                                        work.position.x
+                                            + work.size.width.saturating_sub(size.width) as i32,
+                                    ),
+                                    minimum_y,
+                                    stride_x,
+                                    stride_y,
+                                    attachment.index,
+                                );
+                                overflow = Some(destination.is_none());
+                                if let Some((x, y)) = destination {
+                                    goal = Some((x, y));
+                                    desired =
+                                        ((x - pos.x) as f64 / scale, (y - pos.y) as f64 / scale);
+                                }
                             }
                         }
                     } else {
@@ -948,6 +1022,37 @@ fn start_motion(app: tauri::AppHandle, state: Shared) {
                             > stopping_time
                     {
                         desired.0 = data.direction as f64 * 1000.0;
+                    }
+                }
+                // 자리가 부족한 창만 잠시 숨기고 자리가 생기거나 모집이 끝나면 복원한다.
+                let overflow = overflow.or_else(|| data.attachment.is_none().then_some(false));
+                if let Some(overflow) =
+                    overflow.filter(|overflow| *overflow != data.gathering_overflow)
+                {
+                    let result = if overflow { pet.hide() } else { pet.show() };
+                    if result.is_ok() {
+                        let host = data
+                            .attachment
+                            .as_ref()
+                            .map(|attachment| attachment.host.clone());
+                        let count = state.lock().ok().map(|mut all| {
+                            if let Some(current) = all.windows.get_mut(&label) {
+                                current.gathering_overflow = overflow;
+                            }
+                            all.windows
+                                .values()
+                                .filter(|pet| {
+                                    pet.gathering_overflow
+                                        && pet.attachment.as_ref().is_some_and(|attachment| {
+                                            Some(&attachment.host) == host.as_ref()
+                                        })
+                                })
+                                .count()
+                        });
+                        if let (Some(host), Some(count)) = (host, count) {
+                            let _ = app.emit_to(&host, "gathering-overflow", count);
+                        }
+                        data.gathering_overflow = overflow;
                     }
                 }
                 if locked || data.reduced_motion || (data.attachment.is_some() && goal.is_none()) {
@@ -989,7 +1094,7 @@ fn start_motion(app: tauri::AppHandle, state: Shared) {
                         work.size.width,
                         work.size.height,
                     ));
-                    let bounded = clamp_position(
+                    let mut bounded = clamp_position(
                         target.0,
                         target.1,
                         size.width,
@@ -999,6 +1104,17 @@ fn start_motion(app: tauri::AppHandle, state: Shared) {
                         work.size.width,
                         work.size.height,
                     );
+                    if data
+                        .attachment
+                        .as_ref()
+                        .is_some_and(|attachment| attachment.index > 0)
+                    {
+                        let minimum_y = work.position.y - size.height as i32
+                            + ((pet_size as f64 + 64.0) * scale).ceil() as i32;
+                        bounded.1 = target
+                            .1
+                            .clamp(minimum_y.min(work.position.y), work.position.y);
+                    }
                     if bounded != target {
                         let expected = maximum_speed * seconds * scale + 2.0 * scale;
                         layout_warp |= (bounded.0 - pos.x).abs() as f64 > expected
@@ -1157,6 +1273,7 @@ fn main() {
             desktop_controls::set_desktop_preferences,
             desktop_controls::set_pet_registered,
             desktop_controls::sync_gatherings,
+            gathering_overflow,
             connectors::local_notifications,
             connectors::local_ack_notification,
             system_notifications::system_notification_settings,

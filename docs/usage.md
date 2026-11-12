@@ -41,9 +41,15 @@ Use the flag menu to choose coffee, a smoke break, a meal, a chat, or a walk. Th
 
 Starting a gathering notifies other connected users, joining notifies the host, and completion notifies the participants. Current gatherings synchronize after reconnecting, but old activity notifications do not replay.
 
+Gathered pets reserve space for their artwork and nickname and use additional rows when one row is full. If the selected size cannot fit everyone on the screen, the host's badge and gathering panel show how many participants are temporarily not displayed. They remain members and reappear when space becomes available or the gathering ends. Reducing the pet size can make more participants visible.
+
 ## Display and notification settings
 
 On the pet page, show/hide pets, show only your own or include friends, and adjust size. Display options synchronize with the tray and apply to this PC. Selecting a character applies it immediately. Add PNG designs through the add-pet dialog; see [PNG and animation registration](pet-design.md).
+
+Signing out temporarily hides all desktop pets without changing this PC's display preference. After signing in again, pets reappear if they were shown before sign-out. If you explicitly hid them, they stay hidden until you choose to show them.
+
+The desktop displays up to 32 online peer pets at a time, prioritizing your active gathering and recruitment hosts. Messages from a sender without a visible window can still produce OS notifications; they do not force that pet to appear.
 
 On the notifications page, use the + beside external connections to add Docker, Slack, Codex, or Claude. Sources run on this PC and are not automatically shared with friends or other devices. See [connector setup](connectors.md) for credentials, permissions, and query behavior.
 

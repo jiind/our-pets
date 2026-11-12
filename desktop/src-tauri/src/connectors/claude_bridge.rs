@@ -377,6 +377,18 @@ fn previous_output(command: &str, bytes: Vec<u8>) {
     }
 }
 
+// 공통 창 라벨을 상태줄에서 공급자 이름 없이 표시한다.
+fn statusline_window(window: &CodexWindow) -> String {
+    format!(
+        " · {} {}% 남음",
+        window
+            .label
+            .strip_prefix("Claude · ")
+            .unwrap_or(&window.label),
+        100 - window.used_percent
+    )
+}
+
 // CLI 상태줄 모드에서는 GUI·네트워크·인증 저장소를 열지 않고 선언형 사용량만 기록한다.
 pub fn handle_cli() -> bool {
     // 1. 전용 인자일 때만 stdin을 읽고 일반 데스크톱 실행과 분리한다.
@@ -415,11 +427,7 @@ pub fn handle_cli() -> bool {
                 }
             }
             for window in snapshot.usage.windows {
-                display.push_str(&format!(
-                    " · {} {}% 남음",
-                    window.label,
-                    100 - window.used_percent
-                ));
+                display.push_str(&statusline_window(&window));
             }
         }
     }

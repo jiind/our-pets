@@ -211,6 +211,21 @@ pub fn fit(window: &tauri::WebviewWindow) -> Result<(), String> {
     );
     let previous = window.outer_size().map_err(|error| error.to_string())?;
     let position = window.outer_position().map_err(|error| error.to_string())?;
+    let attached = window
+        .app_handle()
+        .state::<Shared>()
+        .lock()
+        .map_err(|error| error.to_string())?
+        .windows
+        .get(window.label())
+        .is_some_and(|pet| {
+            pet.attachment
+                .as_ref()
+                .is_some_and(|attachment| attachment.index > 0)
+        });
+    if attached && previous == size {
+        return Ok(());
+    }
 
     // 2. 크기 변경 전의 발 높이를 유지한 뒤 작업영역 밖 부분만 보정한다.
     let (x, y) = crate::clamp_position(
@@ -259,7 +274,7 @@ pub fn apply(
         let hidden =
             !registered || !preferences.visible || (label != "pet" && !preferences.show_others);
         let mut reset_sequence = None;
-        let needs_alignment = {
+        let (needs_alignment, overflow) = {
             let mut all = state.lock().map_err(|e| e.to_string())?;
             if let Some(pet) = all.windows.get_mut(&label) {
                 pet.hidden = hidden;
@@ -273,15 +288,15 @@ pub fn apply(
                 }
                 let needs = !pet.anchored || align_feet;
                 pet.anchored = true;
-                needs
+                (needs, pet.gathering_overflow)
             } else {
-                false
+                (false, false)
             }
         };
         if needs_alignment {
             align(&window, None)?;
         }
-        if hidden {
+        if hidden || overflow {
             let _ = window.emit_to(
                 window.label(),
                 "pet-elevation",
@@ -392,6 +407,7 @@ pub struct Member {
 // 제안자는 멈추고 수락한 펫은 해당 PC의 제안자 창 옆에 머무르게 한다.
 #[tauri::command]
 pub fn sync_gatherings(
+    app: tauri::AppHandle,
     state: tauri::State<Shared>,
     local_pet_id: String,
     groups: Vec<Group>,
@@ -442,28 +458,38 @@ pub fn sync_gatherings(
             }
         }
     }
-    Ok(())
-}
-
-// 화면 가장자리에서는 빈 방향부터 자리를 배정해 제안자 위로 겹쳐 쌓이지 않게 한다.
-pub fn neighbor_x(host: i32, minimum: i32, maximum: i32, stride: i32, index: usize) -> i32 {
-    let stride = stride.max(1);
-    let right_capacity = (maximum - host).max(0) / stride;
-    let left_capacity = (host - minimum).max(0) / stride;
-    let mut left = 0;
-    let mut right = 0;
-    let mut offset = 0;
-    for _ in 0..index {
-        if right <= left && right < right_capacity {
-            right += 1;
-            offset = right;
-        } else if left < left_capacity {
-            left += 1;
-            offset = -left;
-        } else if right < right_capacity {
-            right += 1;
-            offset = right;
-        }
+    // 3. 현재 참여 관계를 기준으로 화면에 표시하지 못한 인원을 모집자에게 알린다.
+    let notices: Vec<_> = all
+        .windows
+        .iter()
+        .filter(|(_, pet)| {
+            pet.attachment
+                .as_ref()
+                .is_some_and(|attachment| attachment.index == 0)
+        })
+        .map(|(host, _)| {
+            let count = all
+                .windows
+                .values()
+                .filter(|pet| {
+                    pet.gathering_overflow
+                        && pet
+                            .attachment
+                            .as_ref()
+                            .is_some_and(|attachment| &attachment.host == host)
+                })
+                .count();
+            (host.clone(), count)
+        })
+        .collect();
+    let labels: Vec<_> = all.windows.keys().cloned().collect();
+    drop(all);
+    for label in labels {
+        let count = notices
+            .iter()
+            .find(|(host, _)| host == &label)
+            .map_or(0, |(_, count)| *count);
+        let _ = app.emit_to(&label, "gathering-overflow", count);
     }
-    (host + offset * stride).clamp(minimum, maximum.max(minimum))
+    Ok(())
 }

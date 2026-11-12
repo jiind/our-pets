@@ -16,6 +16,8 @@ FILES = {
     'desktop/public/licenses/x11rb-protocol-MIT.txt': 'x11rb-protocol-MIT.txt',
     'desktop/public/licenses/gethostname-Apache-2.0.txt': 'gethostname-Apache-2.0.txt',
     'desktop/public/licenses/gdkx11-MIT.txt': 'gdkx11-MIT.txt',
+    'desktop/public/licenses/glib-MIT.txt': 'glib-MIT.txt',
+    'desktop/public/licenses/glib-COPYRIGHT.txt': 'glib-COPYRIGHT.txt',
     'docs/character-assets.md': 'character-assets.md',
 }
 

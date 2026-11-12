@@ -225,6 +225,13 @@ dialog.pet-upload-dialog[open] {
   gap: var(--space-2);
   margin-left: auto;
 }
+/* 넓고 충분히 높은 창에서는 아래쪽 동작을 편집해도 미리보기를 나란히 유지한다. */
+@media (min-width: 641px) and (min-height: 700px) {
+  .pet-upload-dialog .pet-upload-preview {
+    position: sticky;
+    top: 0;
+  }
+}
 @media (max-width: 640px) {
   .pet-upload-dialog .pet-upload-layout {
     grid-template-columns: minmax(0, 1fr);

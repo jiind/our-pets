@@ -129,6 +129,17 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   label.className = 'pet-nameplate pet-label';
   label.hidden = true;
   root.append(label);
+  const nameMeasure = document.createElement('canvas').getContext('2d')!;
+
+  // 숨겨진 이름표도 같은 글꼴과 안쪽 여백으로 실제 표시 폭을 계산한다.
+  function nameplateWidth(): number {
+    if (!label.textContent) {
+      return 0;
+    }
+    const style = getComputedStyle(label);
+    nameMeasure.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    return Math.min(280, Math.ceil(nameMeasure.measureText(label.textContent).width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)));
+  }
   if (targetID) {
     menu.querySelector('.pet-menu-title')!.textContent = '이 친구의 펫에게';
     canvas.setAttribute('aria-label', '오른쪽 클릭으로 친구 펫 동작 메뉴 열기');
@@ -166,6 +177,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   let connectionDismissed = false;
   let keyboardFocus = false;
   let topInset = 0;
+  let nativeWorkTop = 0;
+  let nativeScale = 1;
   let walking = false;
   let direction = 1;
   let nativeDistance: number | undefined;
@@ -188,6 +201,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   let disconnect = (): void => {};
   let account = '';
   let lastRegions = '';
+  let lastNameplateWidth = -1;
   const queue: PetEvent[] = [];
   const receivedMessages = new Map<string, number>();
   const composer = mountPetComposer(root, preview, () => {
@@ -197,6 +211,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     connectionNotice.hidden = true;
     recruitment.close();
     canvas.setAttribute('aria-expanded', 'true');
+    queueMicrotask(() => fitOverlays());
   }, () => knownPets);
   const menuMessage = mountMenuMessage(menu, preview, targetID, (text, recipient) => composer.sendInline(text, recipient), () => {
     keyboardFocus = true;
@@ -211,6 +226,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     menu.hidden = true;
     bubble.hidden = true;
     connectionNotice.hidden = true;
+    queueMicrotask(() => fitOverlays());
   }, releaseFocus);
 
   // 내 펫에서는 모집을 시작하고 친구 펫에서는 그 친구의 모집에 참여하도록 메뉴를 맞춘다.
@@ -318,6 +334,24 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     }
   };
 
+  // 화면 위쪽의 펫도 메뉴의 제목과 입력을 가시 영역 안에서 조작하게 한다.
+  function fitOverlays(headHeight = parseFloat(root.style.getPropertyValue('--pet-visual-height')) || displayedSize): void {
+    // 1. 머리 위 공간이 부족하면 조작 가능한 최소 높이를 화면 전체에서 확보한다.
+    if (stopped) {
+      return;
+    }
+    const above = root.clientHeight - 30 - liftHeight - headHeight - 20 - topInset;
+    const available = Math.max(0, root.clientHeight - topInset - 20);
+    root.style.setProperty('--pet-overlay-space', `${Math.min(available, Math.max(160, above))}px`);
+
+    // 2. 위로 잘릴 메뉴만 아래로 옮기며 일반 말풍선은 자체 페이지 배치를 유지한다.
+    for (const overlay of root.querySelectorAll<HTMLElement>('.pet-menu,.pet-compose,.pet-connection,.recruitment-panel')) {
+      if (!overlay.hidden) {
+        overlay.style.translate = `0 ${Math.max(0, overlay.offsetHeight - above)}px`;
+      }
+    }
+  }
+
   // OS 작업 영역과 실제 창에 맞춰 펫과 팝업 크기를 제한한다.
   async function fitContent(): Promise<void> {
     // 1. 작은 화면에서는 보이는 펫만 줄이고 저장한 공통 크기는 바꾸지 않는다.
@@ -334,18 +368,25 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     // 2. 작업 영역 위에 가려진 부분을 빼고 메뉴 전체의 스크롤 공간을 확보한다.
     if (isTauri() && !preview) {
       try {
-        const area = await invoke<{ width: number; height: number; overlayTop: number }>('pet_work_area');
+        const area = await invoke<{ width: number; height: number; overlayTop: number; workTop?: number; scaleFactor?: number }>('pet_work_area');
         topInset = Math.max(0, area.overlayTop || 0);
+        nativeWorkTop = Number.isFinite(area.workTop) ? area.workTop! : nativeWorkTop;
+        nativeScale = Number.isFinite(area.scaleFactor) && area.scaleFactor! > 0 ? area.scaleFactor! : 1;
       } catch {
         topInset = 0;
       }
     }
     root.style.setProperty('--pet-top-inset', `${topInset}px`);
+    fitOverlays();
   }
 
   // 현재 표시한 카드나 메뉴만 트레이에서 키보드로 조작할 수 있게 한다.
   async function focusOverlay(kind: 'menu' | 'bubble'): Promise<void> {
     // 1. 숨긴 과거 메시지를 다시 표시하지 않고 현재 조작 대상을 확정한다.
+    await fitContent();
+    if (stopped) {
+      return;
+    }
     if (kind === 'bubble' && bubble.hidden) {
       if (composer.visible()) {
         await composer.focus();
@@ -365,6 +406,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       recruitment.close();
       menu.hidden = false;
       bubble.hidden = true;
+      fitOverlays();
       motion.reveal(menu);
     }
 
@@ -377,13 +419,21 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   }
 
   // 펫 위 메뉴를 열고 알림 카드와 겹치지 않게 한다.
-  function toggleMenu(): void {
+  async function toggleMenu(): Promise<void> {
+    // 1. 이동 직후에도 화면 경계를 확인한 뒤 첫 메뉴 프레임을 표시한다.
+    await fitContent();
+    if (stopped) {
+      return;
+    }
+
+    // 2. 다른 조작창을 닫고 보정된 메뉴만 전환한다.
     releaseFocus();
     composer.close();
     recruitment.close();
     menu.hidden = !menu.hidden;
     canvas.setAttribute('aria-expanded', String(!menu.hidden));
     if (!menu.hidden) {
+      fitOverlays();
       motion.reveal(menu);
       bubble.hidden = true;
     }
@@ -395,15 +445,16 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     if (carried || liftHeight > 0) {
       return;
     }
-    toggleMenu();
+    void toggleMenu().catch(console.error);
   };
   canvas.onkeydown = event => {
     if (event.key === 'Enter' || event.key === ' ' || event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
       event.preventDefault();
-      toggleMenu();
-      if (!menu.hidden) {
-        void focusOverlay('menu').catch(console.error);
-      }
+      void toggleMenu().then(() => {
+        if (!menu.hidden) {
+          return focusOverlay('menu');
+        }
+      }).catch(console.error);
     } else if (event.key === 'Escape') {
       menu.hidden = true;
       bubble.hidden = true;
@@ -528,7 +579,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         if (isTauri() && !preview) {
           await setPetInput(false);
           const anchors = petAnchors(canvas, image, design);
-          await invoke('set_regions', { regions: hitRegions(canvas, root), menuOpen: false, reacting: false, visualWidth: petVisualWidth(displayedSize, image, design, canvas), visualHeight: parseFloat(root.style.getPropertyValue('--pet-visual-height')) || displayedSize, handReach: anchors.handReach, handHeight: anchors.handHeight });
+          await invoke('set_regions', { regions: hitRegions(canvas, root), menuOpen: false, reacting: false, visualWidth: petVisualWidth(displayedSize, image, design, canvas), nameplateWidth: nameplateWidth(), visualHeight: parseFloat(root.style.getPropertyValue('--pet-visual-height')) || displayedSize, handReach: anchors.handReach, handHeight: anchors.handHeight });
         }
         await playPair({ fromID: current.principal.petId, toID: targetID, body: action === 'highfive' ? 'highfive' : 'wave' });
       }
@@ -809,7 +860,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const anchors = petAnchors(canvas, image, design);
     root.style.setProperty('--pet-visual-height', `${anchors.headHeight}px`);
     const overlaySpace = root.clientHeight - 30 - liftHeight - anchors.headHeight - 20 - topInset;
-    root.style.setProperty('--pet-overlay-space', `${Math.max(48, overlaySpace)}px`);
+    fitOverlays(anchors.headHeight);
     updateBubbleActions();
     if (!bubble.hidden && now > bubbleUntil) {
       bubble.hidden = true;
@@ -876,12 +927,14 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       const regions = hitRegions(canvas, root);
       const serialized = JSON.stringify(regions);
       const overlayOpen = !menu.hidden || composer.visible() || recruitment.visible() || !connectionNotice.hidden;
-      if (serialized !== lastRegions || menuState !== overlayOpen || reactionState !== reacting) {
+      const nameWidth = nameplateWidth();
+      if (serialized !== lastRegions || menuState !== overlayOpen || reactionState !== reacting || nameWidth !== lastNameplateWidth) {
         try {
-          await invoke('set_regions', { regions, menuOpen: overlayOpen, reacting, visualWidth: petVisualWidth(displayedSize, image, design, canvas), visualHeight, handReach: anchors.handReach, handHeight: anchors.handHeight });
+          await invoke('set_regions', { regions, menuOpen: overlayOpen, reacting, visualWidth: petVisualWidth(displayedSize, image, design, canvas), nameplateWidth: nameWidth, visualHeight, handReach: anchors.handReach, handHeight: anchors.handHeight });
           menuState = overlayOpen;
           reactionState = reacting;
           lastRegions = serialized;
+          lastNameplateWidth = nameWidth;
         } catch (error) {
           console.error(error);
         }
@@ -1019,6 +1072,26 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   const browserGroups = (event: Event): void => void updateGroups((event as CustomEvent<Gathering[]>).detail);
   window.addEventListener('gatherings-changed', browserGroups);
   const unlistenGroups = isTauri() ? await listen<Gathering[]>('gatherings-changed', event => void updateGroups(event.payload)) : (): void => {};
+  const unlistenOverflow = isTauri() && !preview ? await ownWindow!.listen<number>('gathering-overflow', event => recruitment.setOverflow(event.payload)) : (): void => {};
+  let overflowPending = false;
+  const overflowTimer = isTauri() && !preview ? window.setInterval(() => {
+    const group = recruitment.current();
+    const displayedID = targetID || session()?.principal.petId;
+    if (!isTauri() || preview || !group || group.hostPetId !== displayedID) {
+      recruitment.setOverflow(0);
+      return;
+    }
+    if (!overflowPending) {
+      overflowPending = true;
+      void invoke<number>('gathering_overflow').then(count => {
+        if (!stopped && recruitment.current()?.id === group.id && session()) {
+          recruitment.setOverflow(count);
+        }
+      }).catch(console.error).finally(() => {
+        overflowPending = false;
+      });
+    }
+  }, 1000) : undefined;
   // 늦게 열린 펫 창도 현재 모집을 한 번 읽고 이후에는 실시간 상태 공유를 따른다.
   if ((targetID || (preview && isTauri())) && session() && session()?.principal.petRegistered !== false) {
     const bootstrapAccount = `${serverURL()}/${session()?.token}`;
@@ -1101,6 +1174,10 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       nativeDistance = event.payload.distance;
     }
     nativeSpeed = Math.abs(event.payload.speed || 0);
+  }) : (): void => {};
+  const unlistenPosition = isTauri() && !preview ? await ownWindow!.onMoved(event => {
+    topInset = Math.max(0, (nativeWorkTop - event.payload.y) / nativeScale);
+    fitOverlays();
   }) : (): void => {};
   const unlistenElevation = isTauri() && !preview ? await ownWindow!.listen<{ height: number; carried: boolean; landing: number; sequence: number }>('pet-elevation', event => {
     if (!Number.isFinite(event.payload.sequence) || event.payload.sequence <= elevationSequence) {
@@ -1212,11 +1289,16 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     }
     unlistenCancelled();
     unlistenMotion();
+    unlistenPosition();
     unlistenElevation();
     unlistenHover();
     unlistenDisplay();
     unlistenDismiss();
     unlistenGroups();
+    unlistenOverflow();
+    if (overflowTimer !== undefined) {
+      clearInterval(overflowTimer);
+    }
     unlistenFocusMenu();
     unlistenFocusBubble();
     unlistenRetry();

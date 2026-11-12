@@ -22,6 +22,7 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
   let busy = false;
   let disposed = false;
   let requestKey = crypto.randomUUID();
+  let overflow = 0;
   let feedback = '';
   let feedbackError = false;
   let choosing = false;
@@ -52,7 +53,10 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     badge.hidden = !group;
     const option = group ? recruitmentOptions[group.kind] : undefined;
     badge.textContent = group ? `${option!.icon} ${option!.label} · ${group.hostPetId === (targetID || ownID) ? '모집 중' : '참여 중'} · ${group.members.length}명` : '';
-    badge.setAttribute('aria-label', group ? `${option!.label} ${group.hostPetId === (targetID || ownID) ? '모집' : '참여'} 중 · ${group.members.length}명 참여` : '모집 현황');
+    if (group && overflow > 0) {
+      badge.textContent += ` · ${overflow}명 화면 미표시`;
+    }
+    badge.setAttribute('aria-label', group ? `${option!.label} ${group.hostPetId === (targetID || ownID) ? '모집' : '참여'} 중 · ${group.members.length}명 참여${overflow ? ` · ${overflow}명은 화면에 표시되지 않지만 참여 중` : ''}` : '모집 현황');
     if (panel.hidden) {
       return;
     }
@@ -91,6 +95,9 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     panel.querySelector('h2')!.textContent = `${recruitmentOptions[selected.kind].icon} ${recruitmentOptions[selected.kind].invitation}`;
     panel.querySelector<HTMLElement>('.recruitment-owner')!.textContent = `${owner}님의 모집 · ${selected.members.length}명 참여`;
     panel.querySelector<HTMLElement>('.recruitment-help')!.textContent = host ? '참여한 친구들은 내 펫 옆에서 기다려요. 함께하기를 마치면 완료를 눌러 주세요.' : joined ? '✓ 참여했어요. 내 펫이 모집자 곁에서 함께해요. 모집자가 완료하면 모임이 끝나요.' : '참여하면 내 펫이 모집자 곁으로 가서 함께 기다려요.';
+    if (overflow > 0 && selected.id === group?.id) {
+      panel.querySelector<HTMLElement>('.recruitment-help')!.textContent += ` 화면 공간이 부족해 ${overflow}명은 표시되지 않지만 계속 참여 중이에요.`;
+    }
     const list = panel.querySelector<HTMLUListElement>('ul')!;
     for (const member of selected.members) {
       const item = document.createElement('li');
@@ -256,6 +263,16 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     render();
   }
 
+  // 화면에 표시하지 못한 참여자 수를 모집 표시와 현황에 반영한다.
+  function setOverflow(count: number): void {
+    const next = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+    if (disposed || overflow === next) {
+      return;
+    }
+    overflow = next;
+    render();
+  }
+
   // 다른 펫 위 UI와 겹치지 않게 열린 상태를 알려 준다.
   function visible(): boolean {
     return !panel.hidden;
@@ -268,5 +285,5 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     badge.remove();
     panel.remove();
   }
-  return { start, choose, open, close, focus, update, visible, current, dispose };
+  return { start, choose, open, close, focus, update, setOverflow, visible, current, dispose };
 }

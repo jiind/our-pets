@@ -1,5 +1,17 @@
 use super::*;
 
+// 공통 라벨은 유지하면서 기본 상태줄의 공급자 이름 중복을 제거한다.
+#[test]
+fn statusline_displays_provider_once() {
+    let raw = json!({"session_id":"session","rate_limits":{"five_hour":{"used_percentage":20,"resets_at":2000}}});
+    let snapshot = normalize(&raw, 1_000_000).unwrap();
+    assert_eq!(snapshot.usage.windows[0].label, "Claude · 5시간");
+    assert_eq!(
+        format!("Claude{}", statusline_window(&snapshot.usage.windows[0])),
+        "Claude · 5시간 80% 남음"
+    );
+}
+
 // 상태줄에서 인증·대화·프로젝트 값을 제외하고 소수 사용률을 안전하게 정규화한다.
 #[test]
 fn payload_keeps_only_usage_and_hashed_session() {
