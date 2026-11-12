@@ -324,7 +324,8 @@ async function showHome(): Promise<void> {
     saveSession(null);
     await changed();
     if (isTauri()) {
-      await invoke('pet_control', { action: 'hide' });
+      // 로그아웃은 등록 상태만 해제하고 사용자가 고른 표시 설정은 보존한다.
+      await invoke('set_pet_registered', { registered: false });
     }
     showLogin();
   });

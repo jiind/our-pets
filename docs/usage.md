@@ -45,6 +45,10 @@ Starting a gathering notifies other connected users, joining notifies the host, 
 
 On the pet page, show/hide pets, show only your own or include friends, and adjust size. Display options synchronize with the tray and apply to this PC. Selecting a character applies it immediately. Add PNG designs through the add-pet dialog; see [PNG and animation registration](pet-design.md).
 
+Signing out temporarily hides all desktop pets without changing this PC's display preference. After signing in again, pets reappear if they were shown before sign-out. If you explicitly hid them, they stay hidden until you choose to show them.
+
+The desktop displays up to 32 online peer pets at a time, prioritizing your active gathering and recruitment hosts. Messages from a sender without a visible window can still produce OS notifications; they do not force that pet to appear.
+
 On the notifications page, use the + beside external connections to add Docker, Slack, Codex, or Claude. Sources run on this PC and are not automatically shared with friends or other devices. See [connector setup](connectors.md) for credentials, permissions, and query behavior.
 
 Turning connected alerts off mutes bubbles and OS notifications from external sources. Turning OS notifications off mutes all OS banners, including messages and gatherings, while leaving bubbles enabled. Muted events are not queued for later playback. OS permissions and Do Not Disturb also affect banner visibility.
