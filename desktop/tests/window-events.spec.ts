@@ -31,7 +31,7 @@ test('펫별 이동·높이·호버·닫기 이벤트는 자기 창만 구독한
 
   // 2. 개별 상태는 창에 한정하고 두 펫의 공통 반응·계정 변경은 앱 전체 수신을 유지한다.
   const own = { kind: 'Window', label: `peer-${'a'.repeat(32)}` };
-  for (const event of ['pet-hover', 'pet-motion', 'pet-elevation', 'dismiss-pet-menu', 'pair-motion-cancelled', 'sender-message-bubble', 'focus-pet-menu', 'focus-live-bubble', 'retry-pet-connection']) {
+  for (const event of ['tauri://move', 'gathering-overflow', 'pet-hover', 'pet-motion', 'pet-elevation', 'dismiss-pet-menu', 'pair-motion-cancelled', 'sender-message-bubble', 'focus-pet-menu', 'focus-live-bubble', 'retry-pet-connection']) {
     expect(listeners.find(listener => listener.event === event)?.target, event).toEqual(own);
   }
   for (const event of ['pair-reaction', 'session-changed', 'gatherings-changed', 'outgoing-message']) {

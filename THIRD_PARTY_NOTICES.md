@@ -54,6 +54,10 @@ File paths, source commits, and SHA-256 values are recorded in `desktop/src/asse
 
 Button events are processed in memory for menu dismissal and drag release. Keyboard and pointer-motion events are not collected or stored. Without X11 RECORD, pointer-state polling is used and can miss very short clicks.
 
+## GLib security backport
+
+The desktop includes `glib 0.18.5` from gtk-rs under MIT, with the official `VariantStrIter` output-pointer safety correction backported from gtk-rs-core PR #1343. The full original source, license, copyright and provenance manifest are retained in `desktop/src-tauri/vendor/glib-0.18.5`. Original license and copyright texts are distributed as `desktop/public/licenses/glib-MIT.txt` and `glib-COPYRIGHT.txt`. See [security maintenance](SECURITY.md) for patch verification and removal conditions.
+
 ## Distribution
 
 Tauri resource mappings include `LICENSE`, these notices, Pretendard OFL, and asset/library notices in installers. Releases also include notice ZIPs prepared by `scripts/prepare_notices.py`. Keep the original license texts and attribution when redistributing.

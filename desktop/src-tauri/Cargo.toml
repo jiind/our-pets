@@ -35,3 +35,7 @@ gdkx11 = "0.18"
 cairo-rs = "0.18"
 
 x11rb = { version = "0.13.2", features = ["record"] }
+
+# GTK 3 호환성을 유지하면서 공식 문자열 반복자 메모리 안전성 수정을 적용한다.
+[patch.crates-io]
+glib = { path = "vendor/glib-0.18.5" }
