@@ -1,9 +1,8 @@
 use super::claude_bridge::read_snapshot;
 use super::codex::RefreshRequest;
-use super::codex_usage::evaluate_snapshot;
+use super::codex_usage::{evaluate_snapshot, previous_checked_at};
 use super::types::{now_ms, CodexUsage, Source, SourceConfig};
 use super::{Engine, RunError};
-use serde_json::Value;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
@@ -42,8 +41,7 @@ fn refresh(
     let previous = engine.store.cursor(&source.id).map_err(RunError::new)?;
     let previous_at = previous
         .as_deref()
-        .and_then(|value| serde_json::from_str::<Value>(value).ok())
-        .and_then(|value| value["usage"]["checkedAt"].as_i64());
+        .and_then(|value| previous_checked_at(source, session_key, value));
     if manual.is_none() && previous_at.is_some_and(|at| at >= snapshot.usage.checked_at) {
         engine.status(&source.id, "connected", "");
         return Ok(Some(snapshot.usage));

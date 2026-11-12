@@ -9,6 +9,322 @@ use tokio::{
 };
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
+// 격리된 가짜 CLI의 사용량을 실제 수집기와 공통 알림 저장소까지 전달한다.
+#[cfg(unix)]
+#[tokio::test]
+async fn codex_simulated_stdio_refresh_reaches_notifications() {
+    use std::os::unix::fs::PermissionsExt;
+
+    // 1. 허용된 읽기 요청만 응답하는 독립 실행 파일을 준비한다.
+    let (directory, engine, _, _) = fixture();
+    let executable = directory.path().join("fake-codex");
+    std::fs::write(&executable, r##"#!/usr/bin/python3
+import json, sys
+assert sys.argv[1:] == ['app-server', '--listen', 'stdio://']
+queries = 0
+for line in sys.stdin:
+    request = json.loads(line)
+    method = request.get('method')
+    if method == 'initialized':
+        continue
+    assert method in ('initialize', 'account/read', 'account/rateLimits/read')
+    if method == 'account/read':
+        assert request['params'] == {'refreshToken': False}
+        result = {'account': {'type': 'chatgpt', 'email': 'synthetic@example.invalid'}}
+    elif method == 'account/rateLimits/read':
+        queries += 1
+        result = {'rateLimits': {'limitId': 'codex', 'primary': {'usedPercent': 20 if queries == 1 else 35, 'windowDurationMins': 300}}}
+    else:
+        result = {}
+    print(json.dumps({'id': request['id'], 'result': result}), flush=True)
+"##).unwrap();
+    std::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let config: SourceConfig =
+        serde_json::from_value(json!({"kind":"codex","executable":executable})).unwrap();
+    engine
+        .store
+        .save("codex-one", "Codex", &config, None)
+        .unwrap();
+
+    // 2. 최초 기준과 수동 재조회 결과를 실제 엔진에서 확인한다.
+    engine.start("codex-one").unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while engine.store.source("codex-one").unwrap().state != "connected" {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(engine.store.events(true).unwrap().is_empty());
+    let usage = engine.refresh_codex("codex-one").await.unwrap();
+    assert_eq!(usage.windows[0].used_percent, 35);
+    assert!(!engine.store.events(true).unwrap().is_empty());
+    engine.stop("codex-one").await;
+}
+
+// 없는 실행 파일은 외부 프로세스나 계정 조회 없이 정제된 오류로 처리한다.
+#[tokio::test]
+async fn codex_missing_executable_reports_error_without_starting_process() {
+    let (directory, engine, _, _) = fixture();
+    let missing = directory.path().join("missing-codex");
+    let config: SourceConfig =
+        serde_json::from_value(json!({"kind":"codex","executable":missing})).unwrap();
+    engine
+        .store
+        .save("codex-one", "Codex", &config, None)
+        .unwrap();
+    let source = engine.store.source("codex-one").unwrap();
+    let (_sender, mut requests) = tokio::sync::mpsc::channel(1);
+    let error = codex::run(engine, &source, &CancellationToken::new(), &mut requests)
+        .await
+        .unwrap_err();
+    assert!(error.message.contains("실행 파일"));
+    assert!(!error
+        .message
+        .contains(&missing.to_string_lossy().to_string()));
+}
+
+// 서로 다른 상태줄 세션을 선택할 때 사용량과 알림 기준을 섞지 않는다.
+#[tokio::test]
+async fn claude_selected_session_uses_its_own_snapshot_and_baseline() {
+    // 1. 세션별 상태줄 입력을 정규화하고 독립 파일에 저장한다.
+    let (_directory, engine, _, _) = fixture();
+    let directory = engine.store.directory.join("claude-bridge");
+    std::fs::create_dir_all(&directory).unwrap();
+    let now = now_ms();
+    let first = claude_bridge::normalize(&json!({"session_id":"session-a","rate_limits":{"five_hour":{"used_percentage":20,"resets_at":now/1000+3600}}}), now).unwrap();
+    let second = claude_bridge::normalize(&json!({"session_id":"session-b","rate_limits":{"five_hour":{"used_percentage":80,"resets_at":now/1000+3600}}}), now).unwrap();
+    assert_ne!(first.session_key, second.session_key);
+    for snapshot in [&first, &second] {
+        std::fs::write(
+            directory.join(format!("{}.json", snapshot.session_key)),
+            serde_json::to_vec(snapshot).unwrap(),
+        )
+        .unwrap();
+    }
+    let config = |key: &str| {
+        serde_json::from_value::<SourceConfig>(json!({"kind":"claude","sessionKey":key})).unwrap()
+    };
+    engine
+        .store
+        .save("claude-one", "Claude", &config(&first.session_key), None)
+        .unwrap();
+
+    // 2. 첫 세션을 수집하고 수동 조회의 실제 값과 알림을 확인한다.
+    engine.start("claude-one").unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while engine.store.source("claude-one").unwrap().state != "connected" {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        engine
+            .refresh_usage("claude-one", "claude")
+            .await
+            .unwrap()
+            .windows[0]
+            .used_percent,
+        20
+    );
+    let old_cursor = engine.store.cursor("claude-one").unwrap().unwrap();
+    let old_count = engine.store.events(true).unwrap().len();
+
+    // 3. 세션 교체 후 기존 기준을 재사용하지 않고 선택한 값만 반환한다.
+    engine.stop("claude-one").await;
+    engine
+        .store
+        .save("claude-one", "Claude", &config(&second.session_key), None)
+        .unwrap();
+    engine.start("claude-one").unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while engine.store.source("claude-one").unwrap().state != "connected" {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_ne!(
+        engine.store.cursor("claude-one").unwrap().unwrap(),
+        old_cursor
+    );
+    assert_eq!(engine.store.events(true).unwrap().len(), old_count);
+    assert_eq!(
+        engine
+            .refresh_usage("claude-one", "claude")
+            .await
+            .unwrap()
+            .windows[0]
+            .used_percent,
+        80
+    );
+    assert_eq!(engine.store.events(true).unwrap().len(), old_count + 1);
+    let same_cursor = engine.store.cursor("claude-one").unwrap().unwrap();
+    tokio::time::sleep(Duration::from_millis(2100)).await;
+    assert_eq!(
+        engine.store.cursor("claude-one").unwrap().unwrap(),
+        same_cursor
+    );
+    assert_eq!(engine.store.events(true).unwrap().len(), old_count + 1);
+
+    // 4. 같은 관측값이라도 설정을 바꾸면 새 기준을 세운다.
+    engine.stop("claude-one").await;
+    let changed: SourceConfig = serde_json::from_value(
+        json!({"kind":"claude","sessionKey":second.session_key,"usagePercent":20}),
+    )
+    .unwrap();
+    engine
+        .store
+        .save("claude-one", "Claude", &changed, None)
+        .unwrap();
+    engine.start("claude-one").unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while engine.store.source("claude-one").unwrap().state != "connected" {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_ne!(
+        engine.store.cursor("claude-one").unwrap().unwrap(),
+        same_cursor
+    );
+    assert_eq!(engine.store.events(true).unwrap().len(), old_count + 1);
+    engine.stop("claude-one").await;
+
+    // 5. 더 오래된 유효 관측값도 다른 세션을 선택하면 새 기준으로 읽는다.
+    let mut older = first.clone();
+    older.usage.checked_at = now - 1000;
+    std::fs::write(
+        directory.join(format!("{}.json", older.session_key)),
+        serde_json::to_vec(&older).unwrap(),
+    )
+    .unwrap();
+    engine
+        .store
+        .save("claude-one", "Claude", &config(&first.session_key), None)
+        .unwrap();
+    engine.start("claude-one").unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while engine.store.source("claude-one").unwrap().state != "connected" {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let cursor: Value =
+        serde_json::from_str(&engine.store.cursor("claude-one").unwrap().unwrap()).unwrap();
+    assert_eq!(cursor["usage"]["windows"][0]["usedPercent"], 20);
+    assert_eq!(cursor["usage"]["checkedAt"], now - 1000);
+    assert_eq!(engine.store.events(true).unwrap().len(), old_count + 1);
+    engine.stop("claude-one").await;
+}
+
+// 갱신 후 새 소켓에서 중복 제거와 수신 확인을 검증한다.
+#[tokio::test]
+async fn slack_refresh_reopens_local_socket() {
+    // 1. 서로 다른 티켓을 발급하는 로컬 HTTP와 WebSocket 서버를 준비한다.
+    let (_directory, engine, _, count) = fixture();
+    let source = slack_source(&engine);
+    let http = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let ws = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", http.local_addr().unwrap());
+    let address = ws.local_addr().unwrap();
+    let http_task = tokio::spawn(async move {
+        for index in 0..2 {
+            let (mut socket, _) = http.accept().await.unwrap();
+            assert!(read_request(&mut socket).await.starts_with("POST "));
+            response(
+                &mut socket,
+                "200 OK",
+                "",
+                &json!({"ok":true,"url":format!("ws://{address}/?ticket={index}")}).to_string(),
+            )
+            .await;
+        }
+        assert!(
+            tokio::time::timeout(Duration::from_millis(300), http.accept())
+                .await
+                .is_err()
+        );
+    });
+    let ws_task = tokio::spawn(async move {
+        for index in 0..2 {
+            let (socket, _) = ws.accept().await.unwrap();
+            let mut socket = accept_async(socket).await.unwrap();
+            for event in if index == 0 {
+                vec!["Ev1"]
+            } else {
+                vec!["Ev1", "Ev2"]
+            } {
+                let envelope = format!("{index}-{event}");
+                socket.send(Message::Text(json!({"type":"events_api","envelope_id":envelope,"payload":payload(event,"C123","test")}).to_string().into())).await.unwrap();
+                let ack = socket.next().await.unwrap().unwrap().into_text().unwrap();
+                assert_eq!(
+                    serde_json::from_str::<Value>(&ack).unwrap(),
+                    json!({"envelope_id":envelope})
+                );
+            }
+            if index == 0 {
+                socket
+                    .send(Message::Text(
+                        json!({"type":"disconnect","reason":"refresh_requested"})
+                            .to_string()
+                            .into(),
+                    ))
+                    .await
+                    .unwrap();
+            } else {
+                let _ = socket.next().await;
+            }
+        }
+    });
+
+    // 2. 갱신 후 다시 연결하고 두 번째 이벤트 수신 뒤 작업을 취소한다.
+    let client = reqwest::Client::new();
+    let cancel = CancellationToken::new();
+    assert!(slack::stream(
+        engine.clone(),
+        &source,
+        &cancel,
+        &client,
+        &endpoint,
+        "xapp-fake",
+        true
+    )
+    .await
+    .is_err());
+    let second_cancel = cancel.clone();
+    let second_engine = engine.clone();
+    let second_source = source.clone();
+    let second = tokio::spawn(async move {
+        slack::stream(
+            second_engine,
+            &second_source,
+            &second_cancel,
+            &client,
+            &endpoint,
+            "xapp-fake",
+            true,
+        )
+        .await
+    });
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while count.load(Ordering::SeqCst) < 2 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    cancel.cancel();
+    let _ = second.await.unwrap();
+    ws_task.await.unwrap();
+    http_task.await.unwrap();
+    assert_eq!(engine.store.events(true).unwrap().len(), 2);
+    assert_eq!(count.load(Ordering::SeqCst), 2);
+}
+
 #[derive(Default)]
 struct MemorySecrets(Mutex<HashMap<String, String>>);
 

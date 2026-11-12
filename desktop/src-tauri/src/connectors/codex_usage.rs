@@ -74,6 +74,22 @@ pub fn fingerprint(value: &str) -> String {
     format!("{:x}", Sha256::digest(value.as_bytes()))
 }
 
+// 공급자 설정과 관측 대상을 동일한 기준으로 구분한다.
+fn context_signature(source: &Source, identity: &str) -> String {
+    fingerprint(&format!(
+        "{}:{identity}",
+        serde_json::to_string(&source.config).unwrap_or_default()
+    ))
+}
+
+// 같은 설정과 대상에 속한 이전 관측 시각만 반환한다.
+pub(super) fn previous_checked_at(source: &Source, identity: &str, previous: &str) -> Option<i64> {
+    let state: State = serde_json::from_str(previous).ok()?;
+    (state.version == 1 && state.signature == context_signature(source, identity))
+        .then_some(state.usage?)
+        .map(|usage| usage.checked_at)
+}
+
 // 서버가 제공한 한도 길이를 고정된 5시간·주간 가정 없이 표시한다.
 fn duration_label(minutes: Option<i64>, fallback: &str) -> String {
     match minutes.filter(|value| *value > 0) {
@@ -214,10 +230,7 @@ pub fn evaluate_snapshot(
     if !(1..=100).contains(usage_percent) {
         return Err(RunError::new("사용량 알림 기준은 1~100%로 설정하세요."));
     }
-    let signature = fingerprint(&format!(
-        "{}:{identity}",
-        serde_json::to_string(&source.config).unwrap_or_default()
-    ));
+    let signature = context_signature(source, identity);
     let mut state = previous
         .and_then(|value| serde_json::from_str::<State>(value).ok())
         .filter(|value| value.version == 1 && value.signature == signature)
