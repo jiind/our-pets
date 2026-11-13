@@ -89,6 +89,8 @@ test('말풍선은 고정 폭·최대 높이와 본문 스크롤·자동 닫힘�
     await expect.poll(() => body.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
     expect(await bubble.evaluate(element => element.getBoundingClientRect().height)).toBeLessThanOrEqual(320);
     await expect(bubble.locator('.bubble-pages')).toHaveCount(0);
+    // 등장 이동이 끝난 위치를 기준으로 스크롤이 제목·닫기 영역을 움직이지 않는지 비교한다.
+    await expect.poll(() => bubble.evaluate(element => element.style.transform)).toBe('');
     const header = bubble.locator('.bubble-heading');
     const headerTop = (await header.boundingBox())!.y;
     const closeTop = (await close.boundingBox())!.y;
