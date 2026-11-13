@@ -33,7 +33,7 @@ def cargo_packages() -> list[dict]:
 # 배포 목록 비교에 사용할 공개 설정 지문을 경로·시간 정보 없이 만든다.
 def inputs() -> dict:
     cargo = [p['raw'] for p in cargo_packages() if p['name'] != 'our-pets-desktop']
-    npm = json.loads((ROOT / 'desktop/package-lock.json').read_text())
+    npm = json.loads((ROOT / 'desktop/package-lock.json').read_text(encoding='utf-8'))
     runtime = {name: value for name, value in npm['packages'].items() if name and not value.get('dev')}
     return {'cargo': digest(json.dumps(cargo, sort_keys=True).encode()), 'npm': digest(json.dumps(runtime, sort_keys=True).encode()), 'go.mod': digest((ROOT / 'go.mod').read_bytes()), 'go.sum': digest((ROOT / 'go.sum').read_bytes())}
 
@@ -69,10 +69,10 @@ def validate_expression(expression: str) -> None:
 # 현재 잠금 파일의 모든 Rust·Go와 npm 런타임 의존성을 원문과 함께 수집한다.
 def generate(cargo_metadata: Path | None, go_metadata: Path | None) -> None:
     # 1. 패키지 소스에서 원문을 읽고 패키지에 빠진 고지만 검증된 고정 커밋 사본으로 보완한다.
-    cargo = json.loads(cargo_metadata.read_text() if cargo_metadata else subprocess.check_output(['cargo', 'metadata', '--locked', '--format-version', '1'], cwd=ROOT / 'desktop/src-tauri', text=True))
-    go = json_stream(go_metadata.read_text() if go_metadata else subprocess.check_output(['go', 'list', '-m', '-json', 'all'], cwd=ROOT, text=True))
+    cargo = json.loads(cargo_metadata.read_text(encoding='utf-8') if cargo_metadata else subprocess.check_output(['cargo', 'metadata', '--locked', '--format-version', '1'], cwd=ROOT / 'desktop/src-tauri', text=True))
+    go = json_stream(go_metadata.read_text(encoding='utf-8') if go_metadata else subprocess.check_output(['go', 'list', '-m', '-json', 'all'], cwd=ROOT, text=True))
     override_root = ROOT / 'scripts/license-overrides'
-    overrides = json.loads((override_root / 'provenance.json').read_text())
+    overrides = json.loads((override_root / 'provenance.json').read_text(encoding='utf-8'))
     packages = []
     parts = ['Third-party dependency licenses\n\nThis inventory includes locked Rust/Go dependencies (including build and target-specific dependencies) and npm runtime dependencies. Inclusion is not a claim that every package is linked into every OS binary. Original terms apply. Source URLs and checksums identify exact unmodified upstream sources. The GLib Rust wrapper is patched as documented in THIRD_PARTY_NOTICES.md.\n']
     source_archives = []
@@ -125,12 +125,12 @@ def generate(cargo_metadata: Path | None, go_metadata: Path | None) -> None:
             if not cache.is_file():
                 raise SystemExit('Go MPL 소스 ZIP이 없습니다: ' + path)
             source_archives.append((cache, path.replace('/', '-') + '-' + version + '.zip'))
-    npm = json.loads((ROOT / 'desktop/package-lock.json').read_text())
+    npm = json.loads((ROOT / 'desktop/package-lock.json').read_text(encoding='utf-8'))
     for location, package in sorted(npm['packages'].items()):
         if not location or package.get('dev'):
             continue
         directory = ROOT / 'desktop' / location
-        metadata = json.loads((directory / 'package.json').read_text())
+        metadata = json.loads((directory / 'package.json').read_text(encoding='utf-8'))
         name, version = metadata['name'], metadata['version']
         texts = [(str(p.relative_to(directory)), p.read_bytes()) for p in license_files(directory)]
         if name == 'gsap':
@@ -151,13 +151,13 @@ def generate(cargo_metadata: Path | None, go_metadata: Path | None) -> None:
     for source, name in source_archives:
         shutil.copyfile(source, sources / name)
         files['sources/' + name] = digest(source.read_bytes())
-    MANIFEST.write_text(json.dumps({'inputs': inputs(), 'packages': packages, 'files': files}, indent=2, ensure_ascii=False) + '\n')
-    print(f'의존성 {len(packages)}개와 소스 {len(source_archives)}개 고지를 생성했습니다.')
+    MANIFEST.write_text(json.dumps({'inputs': inputs(), 'packages': packages, 'files': files}, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+    print(f'Generated notices for {len(packages)} dependencies and {len(source_archives)} source archives.')
 
 
 # CI에서는 외부 도구·네트워크 없이 잠금 변경과 배포 원문의 변조·누락을 검사한다.
 def check() -> None:
-    manifest = json.loads(MANIFEST.read_text())
+    manifest = json.loads(MANIFEST.read_text(encoding='utf-8'))
     if manifest['inputs'] != inputs():
         raise SystemExit('의존성 변경 후 고지를 갱신하세요: python3 scripts/dependency_notices.py --update')
     expected_cargo = {(p['name'], p['version']) for p in cargo_packages() if p['name'] != 'our-pets-desktop'}
@@ -173,7 +173,7 @@ def check() -> None:
             raise SystemExit('고지 파일은 공개 고지 디렉터리 안에 있어야 합니다.')
         if not path.is_file() or digest(path.read_bytes()) != expected:
             raise SystemExit('의존성 배포 원문 지문 불일치: ' + name)
-    print(f'의존성 {len(manifest["packages"])}개의 고지와 배포 원문을 확인했습니다.')
+    print(f'Verified notices and original distribution files for {len(manifest["packages"])} dependencies.')
 
 
 # 고지 재생성과 오프라인 무결성 검사를 명시적으로 구분한다.

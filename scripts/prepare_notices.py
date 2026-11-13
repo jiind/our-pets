@@ -57,7 +57,7 @@ def main() -> None:
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     prepare(None if args.check else args.output)
-    print('배포 고지 파일을 확인했습니다.')
+    print('Verified distribution notices.')
 
 
 if __name__ == '__main__':
