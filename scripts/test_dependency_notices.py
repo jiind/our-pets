@@ -1,6 +1,9 @@
 """의존성 변경·원문 누락·미검토 조건을 배포 성공으로 간주하지 않는지 검증한다."""
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -12,6 +15,12 @@ class DependencyNoticesTests(unittest.TestCase):
     # 현재 고지는 실제 잠금 파일과 원문·MPL 소스 지문을 모두 통과해야 한다.
     def test_current_inventory_is_complete(self) -> None:
         notices.check()
+
+    # Windows 기본 출력 인코딩에서도 고지 수집의 성공 로그가 예외를 내지 않아야 한다.
+    def test_notice_collection_on_cp1252_console(self) -> None:
+        result = subprocess.run([sys.executable, str(notices.ROOT / 'scripts/prepare_notices.py'), '--check'], env={**os.environ, 'PYTHONIOENCODING': 'cp1252'}, capture_output=True, text=True, encoding='ascii')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Verified distribution notices.', result.stdout)
 
     # 기존 허용 조건에 없는 라이선스는 수동 검토 없이 허용하지 않는다.
     def test_unknown_license_requires_review(self) -> None:

@@ -7,6 +7,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONUTF8: '1'
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -81,6 +84,9 @@ jobs:
           sudo install -m 644 /tmp/our-pets-source-repositories.list /etc/apt/sources.list.d/our-pets-source.list
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+          # 러너 이미지의 오래된 라이브러리를 현재 소스 저장소와 같은 버전으로 맞춘다.
+          mapfile -t libraries < <(dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' 'lib*' | awk '$2 == "installed" {print $1}')
+          sudo apt-get install -y --only-upgrade --no-install-recommends "${libraries[@]}"
       - name: macOS 두 아키텍처 준비
         if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
