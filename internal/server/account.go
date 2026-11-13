@@ -53,3 +53,26 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request, p model.
 	}
 	return respond(w, 200, map[string]string{"status": "changed"})
 }
+
+// deleteAccount는 비밀번호 재확인 후 본인 계정과 사용하지 않는 PNG를 삭제한다.
+func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request, p model.Principal) error {
+	// 1. 인증된 본인과 현재 비밀번호만 받으며 반복 추측을 제한한다.
+	if !s.allowLogin(r) {
+		return model.Bad(429, "잠시 후 다시 시도하세요")
+	}
+	var in struct {
+		CurrentPassword string `json:"currentPassword"`
+	}
+	if err := decode(r, &in); err != nil {
+		return err
+	}
+	images, err := s.Identity.DeleteAccount(p, in.CurrentPassword)
+	if err != nil {
+		return err
+	}
+
+	// 2. 삭제된 서버 연결 작업을 멈추고 파일 정리에 실패하면 재시도를 안내한다.
+	_ = s.Notifications.PruneDeleted()
+	pending := s.Pets.RemoveUnusedImages(images) != nil
+	return respond(w, 200, map[string]any{"status": "deleted", "pendingFileCleanup": pending})
+}

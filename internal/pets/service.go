@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jiind/our-pets/internal/database"
@@ -24,6 +25,7 @@ const MaxUpload = 8 << 20
 var animationIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,80}$`)
 
 type Service struct {
+	imagesMu  sync.Mutex
 	DB        *sql.DB
 	Directory string
 	Online    func(string) bool
@@ -63,8 +65,8 @@ func (s *Service) Current(p model.Principal) (model.Pet, error) {
 
 // OwnDesigns는 등록 전에 올려 둔 디자인도 다시 선택할 수 있도록 본인 버전을 조회한다.
 func (s *Service) OwnDesigns(p model.Principal) ([]model.Design, error) {
-	// 1. 미적용 디자인을 포함한 본인 버전만 최신순으로 조회한다.
-	rows, err := s.DB.Query(`SELECT id,owner_id,version,name,image_hash,manifest FROM designs WHERE owner_id=? AND NOT EXISTS(SELECT 1 FROM design_retirements WHERE design_id=designs.id) ORDER BY version DESC`, p.UserID)
+	// 1. 미적용 디자인을 포함한 본인 버전만 추가된 순서로 조회한다.
+	rows, err := s.DB.Query(`SELECT id,owner_id,version,name,image_hash,manifest FROM designs WHERE owner_id=? AND NOT EXISTS(SELECT 1 FROM design_retirements WHERE design_id=designs.id) ORDER BY version ASC`, p.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +288,9 @@ func (s *Service) upload(p model.Principal, name string, m model.Manifest, r io.
 	}
 	path := filepath.Join(s.Directory, d.ImageHash+".png")
 
-	// 2. 같은 내용의 파일은 재사용하고 임시 파일을 원자적으로 반영한다.
+	// 2. 업로드와 미사용 파일 삭제를 직렬화하고 임시 파일을 원자적으로 반영한다.
+	s.imagesMu.Lock()
+	defer s.imagesMu.Unlock()
 	temp, err := os.CreateTemp(s.Directory, "upload-*.png")
 	if err != nil {
 		return d, err

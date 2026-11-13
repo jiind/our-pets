@@ -77,7 +77,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       // 1. 교체된 불변 버전은 목록에서 제거하고 기존 선택만 새 버전으로 옮긴다.
       assertAccount();
       catalogueVersion += 1;
-      designs = [design, ...designs.filter(item => item.id !== previous.id && item.id !== design.id)];
+      designs = [...designs.filter(item => item.id !== previous.id && item.id !== design.id), design];
       if (selectedDesignID === previous.id) {
         selectedDesignID = design.id;
       }
@@ -108,7 +108,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       }
       assertAccount();
       catalogueVersion += 1;
-      designs = [design, ...designs.filter(item => item.id !== design.id)];
+      designs = [...designs.filter(item => item.id !== design.id), design];
       catalogueProblem = '';
       if (busy) {
         updateCatalogue();
@@ -275,7 +275,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     }
     const counts = new Map<string, number>(builtinPets.map(option => [option.name, 1]));
     choices.forEach(design => counts.set(design.name, (counts.get(design.name) || 0) + 1));
-    const entries = [...builtinPets.map(option => ({ id: option.selection, label: option.name })), ...Array.from(choices.values()).map(design => ({ id: design.id, label: `${design.name}${(counts.get(design.name) || 0) > 1 ? ` · v${design.version}` : ''}${design.ownerId !== pet?.userId ? ' · 현재 외형' : ''}` }))];
+    const entries = [...builtinPets.map(option => ({ id: option.selection, label: option.name })), ...Array.from(choices.values()).sort((first, second) => first.version - second.version).map(design => ({ id: design.id, label: `${design.name}${(counts.get(design.name) || 0) > 1 ? ` · v${design.version}` : ''}${design.ownerId !== pet?.userId ? ' · 현재 외형' : ''}` }))];
 
     // 2. 사용자 이름은 HTML이 아닌 텍스트로 넣고 선택과 필수 입력을 연결한다.
     const target = root.querySelector<HTMLElement>('[data-characters]')!;

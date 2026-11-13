@@ -122,7 +122,7 @@ button .ui-icon {
 .ui-icon-trash {
   stroke: var(--danger);
 }
-/* 같은 X 동작은 말풍선·메뉴·작성·모집·대화상자에서 같은 원형 버튼이다. */
+/* 닫기 버튼은 같은 조작 크기와 중심 정렬을 공유한다. */
 button.menu-close, button.dialog-close, button.bubble-close {
   display: grid;
   place-items: center;
@@ -144,6 +144,19 @@ button.menu-close .ui-icon, button.dialog-close .ui-icon, button.bubble-close .u
   width: var(--space-5);
   height: var(--space-5);
   pointer-events: none;
+}
+/* 말풍선 닫기는 원형 표면 없이 빨간 X만 표시하고 조작 영역은 보존한다. */
+.pet-bubble button.bubble-close {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--danger);
+  box-shadow: none;
+}
+.pet-bubble button.bubble-close:hover:not(:disabled),
+.pet-bubble button.bubble-close:active:not(:disabled) {
+  background: transparent;
+  color: color-mix(in srgb, var(--danger) 80%, black);
 }
 /* 캐릭터 자체를 누르는 아바타는 이미지 크기와 투명 표면을 유지한다. */
 button.avatar {

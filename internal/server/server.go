@@ -113,6 +113,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/me", wrap(s.auth(func(w http.ResponseWriter, r *http.Request, p model.Principal) error { return respond(w, 200, p) })))
 	mux.HandleFunc("GET /api/v1/me/account", wrap(s.auth(s.account)))
 	mux.HandleFunc("PUT /api/v1/me/account", wrap(s.auth(s.updateAccount)))
+	mux.HandleFunc("DELETE /api/v1/me/account", wrap(s.auth(s.deleteAccount)))
 	mux.HandleFunc("PUT /api/v1/me/password", wrap(s.auth(s.changePassword)))
 	mux.HandleFunc("GET /api/v1/pets", wrap(s.auth(s.listPets)))
 	mux.HandleFunc("GET /api/v1/me/pet", wrap(s.auth(s.currentPet)))
@@ -515,6 +516,12 @@ func (s *Server) Maintain(ctx context.Context) {
 		_, err := s.DB.Exec(`DELETE FROM sessions WHERE expires_at<?; DELETE FROM messages WHERE created_at<?; DELETE FROM external_notifications WHERE created_at<?; DELETE FROM device_receipts WHERE event_id NOT IN(SELECT id FROM messages UNION ALL SELECT id FROM external_notifications); DELETE FROM connector_connections WHERE state='deleted' AND NOT EXISTS(SELECT 1 FROM external_notifications n WHERE n.connection_id=connector_connections.id);`, time.Now().UnixMilli(), cutoff, cutoff)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			slog.Error("보관 데이터 정리 실패", "error", err)
+		}
+		if cleanupErr := s.Notifications.PruneDeleted(); cleanupErr != nil && !errors.Is(cleanupErr, context.Canceled) {
+			slog.Error("삭제한 서버 연결 정리 실패")
+		}
+		if cleanupErr := s.Pets.CleanupUnusedImages(); cleanupErr != nil && !errors.Is(cleanupErr, context.Canceled) {
+			slog.Error("미사용 펫 이미지 정리 실패")
 		}
 		select {
 		case <-ctx.Done():

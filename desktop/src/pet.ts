@@ -9,7 +9,7 @@ import { petMotion, type Gesture } from './motion';
 import { watchDisplay } from './preferences';
 import { mountPetComposer } from './pet-compose';
 import { mountMenuMessage } from './pet-menu-message';
-import { mountBubblePages } from './pet-bubble';
+import { mountBubbleLayout } from './pet-bubble';
 import { setPetInput } from './pet-input';
 import { mountRecruitment } from './recruitment';
 import { recruitmentOptions, type Design, type Gathering, type Pet, type PetEvent, type RegisteredPet } from './types';
@@ -122,7 +122,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   canvas.setAttribute('aria-controls', menu.id);
   canvas.setAttribute('aria-expanded', 'false');
   const bubble = root.querySelector<HTMLElement>('.pet-bubble')!;
-  const bubblePages = mountBubblePages(bubble);
+  const bubbleLayout = mountBubbleLayout(bubble);
   const reaction = root.querySelector<HTMLElement>('.reaction')!;
   const connectionNotice = root.querySelector<HTMLElement>('.pet-connection')!;
   const label = document.createElement('span');
@@ -164,7 +164,6 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   let activeProposal: PetEvent | undefined;
   const motion = petMotion(canvas, root);
   let previousReaction = '';
-  let previousTick = Date.now();
   let suspended = false;
   let petSize = 160;
   let displayedSize = 160;
@@ -198,6 +197,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   let menuState = false;
   let reactionState = false;
   let bubbleUntil = 0;
+  let bubbleClosing = false;
+  const bubbleDuration = 12000;
   let disconnect = (): void => {};
   let account = '';
   let lastRegions = '';
@@ -344,7 +345,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const available = Math.max(0, root.clientHeight - topInset - 20);
     root.style.setProperty('--pet-overlay-space', `${Math.min(available, Math.max(160, above))}px`);
 
-    // 2. 위로 잘릴 메뉴만 아래로 옮기며 일반 말풍선은 자체 페이지 배치를 유지한다.
+    // 2. 위로 잘릴 메뉴만 아래로 옮기며 일반 말풍선은 자체 높이·스크롤 배치를 유지한다.
     for (const overlay of root.querySelectorAll<HTMLElement>('.pet-menu,.pet-compose,.pet-connection,.recruitment-panel')) {
       if (!overlay.hidden) {
         overlay.style.translate = `0 ${Math.max(0, overlay.offsetHeight - above)}px`;
@@ -550,11 +551,36 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       dragging = false;
     }
   };
-  bubble.querySelector('button')!.onclick = () => {
-    bubble.hidden = true;
+  // 수동 닫기와 자동 만료는 같은 퇴장 효과를 거치고 새 알림의 등장을 가리지 않는다.
+  function dismissBubble(): void {
+    // 1. 같은 닫기를 중복 실행하거나 새 이벤트의 말풍선을 이전 완료 콜백으로 숨기지 않는다.
+    if (bubble.hidden || bubbleClosing) {
+      return;
+    }
+    bubbleClosing = true;
     bubbleUntil = 0;
-    releaseFocus();
-  };
+    const eventID = currentEvent?.id;
+
+    // 2. 종료 효과 뒤에만 DOM을 숨기고 현재 펫의 키보드 포커스를 돌려준다.
+    motion.conceal(bubble, () => {
+      if (currentEvent?.id === eventID) {
+        bubble.hidden = true;
+        bubbleClosing = false;
+        releaseFocus();
+      }
+    });
+  }
+
+  // 실제 읽기 입력은 표시 시간을 갱신하되 단순 hover나 포커스로 영구 표시하지 않는다.
+  function keepBubbleVisible(): void {
+    if (!bubble.hidden && !bubbleClosing) {
+      bubbleUntil = Date.now() + bubbleDuration;
+    }
+  }
+  bubble.querySelector('button')!.onclick = dismissBubble;
+  bubble.addEventListener('wheel', keepBubbleVisible, { passive: true });
+  bubble.addEventListener('keydown', keepBubbleVisible);
+  bubble.addEventListener('scroll', keepBubbleVisible, true);
 
   // 선택한 펫 곁에서 메시지 작성·제안·상호작용을 직접 실행한다.
   async function act(action: string): Promise<void> {
@@ -819,7 +845,6 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         motion.stop();
         suspended = true;
       }
-      previousTick = Date.now();
       setTimeout(() => void tick(), 500);
       return;
     }
@@ -849,10 +874,6 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     floorShadow.hidden = liftHeight <= 0;
     floorShadow.style.width = `${displayedSize * .65 / (1 + liftHeight / 800)}px`;
     floorShadow.style.opacity = String(.22 / (1 + liftHeight / 240));
-    if (!bubble.hidden && (bubble.matches(':hover') || bubble.contains(document.activeElement))) {
-      bubbleUntil += now - previousTick;
-    }
-    previousTick = now;
     const displayedID = targetID || session()?.principal.petId;
     const grouped = groups.some(group => group.hostPetId === displayedID || group.members.some(member => member.petId === displayedID));
     const movingNow = !carried && liftHeight === 0 && !landing && !offline && menu.hidden && !composer.visible() && !recruitment.visible() && !motionPreference.matches && (isTauri() ? walking : !grouped && preview && Math.floor(now / 4000) % 2 === 0);
@@ -862,9 +883,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const overlaySpace = root.clientHeight - 30 - liftHeight - anchors.headHeight - 20 - topInset;
     fitOverlays(anchors.headHeight);
     updateBubbleActions();
-    if (!bubble.hidden && now > bubbleUntil) {
-      bubble.hidden = true;
-      releaseFocus();
+    if (!bubble.hidden && !bubbleClosing && now > bubbleUntil) {
+      dismissBubble();
     }
     if (bubble.hidden && menu.hidden && !composer.visible() && !recruitment.visible() && queue.length) {
       let event = queue.shift()!;
@@ -905,13 +925,14 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
           drawPet(avatar, null, null, 'idle', 0, { builtin: event.sender.builtinId });
           sender.prepend(avatar);
         }
-        bubblePages.setText(event.kind === 'interaction' ? (event.body === 'highfive' ? '🙌 내 펫과 하이파이브!' : '👋 친구 펫과 인사해요!') : event.body || event.notification?.body || '');
+        bubbleLayout.setText(event.kind === 'interaction' ? (event.body === 'highfive' ? '🙌 내 펫과 하이파이브!' : '👋 친구 펫과 인사해요!') : event.body || event.notification?.body || '');
+        bubbleClosing = false;
         bubble.hidden = false;
         motion.reveal(bubble);
-        bubbleUntil = now + 12000;
+        bubbleUntil = now + bubbleDuration;
       }
     }
-    bubblePages.fit(overlaySpace, root.clientHeight - topInset - 20);
+    bubbleLayout.fit(overlaySpace, root.clientHeight - topInset - 20);
     const receivingProblem = !!session() && !!connectionState && connectionState !== '연결됨' && now - connectionStartedAt > 3000;
     connectionNotice.hidden = !!targetID || preview || connectionDismissed || !receivingProblem || !menu.hidden || composer.visible() || recruitment.visible() || !bubble.hidden;
     const hovered = isTauri() && !preview ? nativeHovered : canvas.matches(':hover');
@@ -1031,9 +1052,6 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     if (state.textContent !== stateLabel) {
       state.textContent = stateLabel;
     }
-    if (group && !bubble.hidden) {
-      bubbleUntil = Math.max(bubbleUntil, Date.now() + 1000);
-    }
   }
   bubble.querySelector<HTMLButtonElement>('.bubble-accept')!.onclick = () => {
     if (!currentEvent?.proposalKind) {
@@ -1063,8 +1081,10 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       await updateGroups(await api<Gathering[]>('/gatherings'), true);
     }).catch(error => {
       bubbleMessage = accepted ? '종료 요청은 보냈지만 새 상태를 확인하지 못했어요. 연결이 돌아오면 상태가 갱신돼요.' : error instanceof Error ? `${error.message} 다시 눌러 종료할 수 있어요.` : '함께하기를 끝내지 못했어요. 다시 눌러 주세요.';
+      bubbleClosing = false;
       bubble.hidden = false;
-      bubbleUntil = Date.now() + 12000;
+      motion.reveal(bubble);
+      bubbleUntil = Date.now() + bubbleDuration;
     }).finally(() => {
       button.disabled = false;
     });
@@ -1276,6 +1296,9 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     menuMessage.dispose();
     recruitment.dispose();
     releaseFocus();
+    bubble.removeEventListener('wheel', keepBubbleVisible);
+    bubble.removeEventListener('keydown', keepBubbleVisible);
+    bubble.removeEventListener('scroll', keepBubbleVisible, true);
     motion.dispose();
     root.removeEventListener('keydown', escapeMenu);
     disconnect();

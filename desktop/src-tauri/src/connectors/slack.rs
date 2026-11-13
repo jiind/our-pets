@@ -301,6 +301,7 @@ pub fn normalize(source: &Source, payload: &Value) -> Result<Option<Notification
         event_id: bounded(&event_id, 256),
         source_kind: "slack".into(),
         connection_id: source.id.clone(),
+        connection_name: source.name.clone(),
         occurred_at,
         title: format!(
             "Slack · {}",

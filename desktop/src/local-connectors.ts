@@ -41,6 +41,23 @@ function stateLabel(state: string): string {
   return ({ connected: '수신 중', connecting: '연결 중', reconnecting: '재접속 대기', stopped: '중지됨', disabled: '중지됨', waiting: '새 전달 대기' } as Record<string, string>)[state] || '상태 확인 필요';
 }
 
+// 중지·정상·대기·연결 오류를 구분해 상태 배지의 의미 색상을 정한다.
+function stateTone(source: LocalSource): 'success' | 'pending' | 'error' | 'idle' {
+  // 1. 의도적으로 멈춘 연결과 정상 연결은 오류 문구보다 현재 상태를 우선한다.
+  if (['stopped', 'disabled'].includes(source.state)) {
+    return 'idle';
+  }
+  if (source.state === 'connected') {
+    return 'success';
+  }
+
+  // 2. 새 전달을 기다리는 상태와 오류 없는 접속 시도만 대기로 표시한다.
+  if (source.state === 'waiting' || (!source.lastError && ['connecting', 'reconnecting'].includes(source.state))) {
+    return 'pending';
+  }
+  return 'error';
+}
+
 // 원본 오류나 인증정보를 출력하지 않고 원인별 복구 방법만 안내한다.
 function recovery(error: unknown, kind?: LocalConfig['kind']): string {
   // 1. 원본을 화면에 노출하지 않고 중복 연결과 인증 원인만 분류한다.
@@ -251,7 +268,7 @@ export async function mountLocalConnectors(root: HTMLElement): Promise<() => voi
     sourceFingerprint = fingerprint;
 
     // 2. 원본 오류 대신 복구 안내와 연결별 동작을 표시한다.
-    root.querySelector('#local-source-list')!.innerHTML = sources.length ? sources.map(source => `<article class="connector-source" data-source-id="${safe(source.id)}"><div class="section-label"><strong>${safe(source.name)} · ${source.config.kind === 'docker' ? 'Docker' : source.config.kind === 'slack' ? 'Slack' : source.config.kind === 'claude' ? 'Claude' : 'Codex'}</strong><span class="pill">${safe(source.config.kind === 'codex' && source.state === 'connected' ? '조회 연결됨' : stateLabel(source.state))}</span></div><p class="fine ${source.lastError && source.state !== 'waiting' ? 'error' : ''}">${safe(source.lastError ? recovery(source.lastError, source.config.kind) : source.enabled ? '이 PC의 내 펫으로 소식을 받습니다.' : '이 연결의 수신을 중지했어요.')}</p>${source.config.kind === 'codex' ? renderCodexUsage(source.codexUsage, safe) : source.config.kind === 'claude' ? renderCodexUsage(source.claudeUsage, safe, 'Claude') : ''}<p class="source-action-notice" role="status"></p><div class="connector-form-actions"><button type="button" data-source-action="toggle">${source.enabled ? '수신 중지' : '다시 연결'}</button>${source.enabled && source.lastError && source.state !== 'waiting' ? '<button type="button" data-source-action="retry">다시 연결</button>' : ''}${source.config.kind === 'codex' || source.config.kind === 'claude' ? `<button type="button" data-source-action="refresh-usage" ${!source.enabled || !['connected', ...(source.config.kind === 'claude' ? ['waiting'] : [])].includes(source.state) ? 'disabled' : ''}>${source.config.kind === 'claude' ? '최신 값 확인' : '지금 조회'}</button>` : ''}<button type="button" data-source-action="edit" class="quiet">수정</button><button type="button" data-source-action="remove" class="quiet" title="이 연결의 자격증명도 지웁니다">연결 삭제</button></div></article>`).join('') : '<p class="empty">아직 연결이 없어요. 외부 연결 옆 + 버튼으로 Docker·Slack·Codex·Claude를 연결하세요.</p>';
+    root.querySelector('#local-source-list')!.innerHTML = sources.length ? sources.map(source => `<article class="connector-source" data-source-id="${safe(source.id)}"><div class="section-label"><strong>${safe(source.name)} · ${source.config.kind === 'docker' ? 'Docker' : source.config.kind === 'slack' ? 'Slack' : source.config.kind === 'claude' ? 'Claude' : 'Codex'}</strong><span class="pill connector-status" data-tone="${stateTone(source)}">${safe(source.config.kind === 'codex' && source.state === 'connected' ? '조회 연결됨' : stateLabel(source.state))}</span></div><p class="fine ${source.lastError && source.state !== 'waiting' ? 'error' : ''}">${safe(source.lastError ? recovery(source.lastError, source.config.kind) : source.enabled ? '이 PC의 내 펫으로 소식을 받습니다.' : '이 연결의 수신을 중지했어요.')}</p>${source.config.kind === 'codex' ? renderCodexUsage(source.codexUsage, safe) : source.config.kind === 'claude' ? renderCodexUsage(source.claudeUsage, safe, 'Claude') : ''}<p class="source-action-notice" role="status"></p><div class="connector-form-actions"><button type="button" data-source-action="toggle">${source.enabled ? '수신 중지' : '다시 연결'}</button>${source.enabled && source.lastError && source.state !== 'waiting' ? '<button type="button" data-source-action="retry">다시 연결</button>' : ''}${source.config.kind === 'codex' || source.config.kind === 'claude' ? `<button type="button" data-source-action="refresh-usage" ${!source.enabled || !['connected', ...(source.config.kind === 'claude' ? ['waiting'] : [])].includes(source.state) ? 'disabled' : ''}>${source.config.kind === 'claude' ? '최신 값 확인' : '지금 조회'}</button>` : ''}<button type="button" data-source-action="edit" class="quiet">수정</button><button type="button" data-source-action="remove" class="quiet" title="이 연결의 자격증명도 지웁니다">연결 삭제</button></div></article>`).join('') : '<p class="empty">아직 연결이 없어요. 외부 연결 옆 + 버튼으로 Docker·Slack·Codex·Claude를 연결하세요.</p>';
   }
 
   // 연결 목록을 읽지 못해도 공급자 폼과 재시도 버튼을 계속 사용할 수 있게 한다.

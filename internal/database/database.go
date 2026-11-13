@@ -45,7 +45,7 @@ func Open(directory string) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 
 	// 2. 무결성과 WAL을 설정하고 스키마를 트랜잭션으로 반영한다.
-	if _, err = db.Exec("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;"); err == nil {
+	if _, err = db.Exec("PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;"); err == nil {
 		var tx *sql.Tx
 		tx, err = db.Begin()
 		if err == nil {

@@ -39,3 +39,7 @@ Only the final release job uses `contents: write`; it uses `github.token` rather
 Windows code signing and Apple Developer ID signing/notarization are not configured. Do not put credentials in examples or the repository. Producing DMG/NSIS files is separate from trusted signing and real OS execution. Before publishing, follow the [platform requirements and validation checklist](platforms.md). Native Linux Wayland window control is unsupported.
 
 Fonts, characters, GSAP, and other dependencies retain terms separate from the project's Apache-2.0 license. Tauri resource mappings include project/font/asset notices in installers, and the same notices are supplied as release ZIPs. This does not establish a completed legal review of every transitive dependency. Add original notices and check redistribution terms when introducing libraries.
+
+## License and privacy artifacts
+
+Before tagging, run `python3 scripts/dependency_notices.py` and `python3 scripts/prepare_notices.py --check`. Regenerate and review notices after dependency updates. Packages include PRIVACY.md, operator policy template, code-dependency notices and corresponding MPL sources. Linux packaging additionally traces the actual AppImage native libraries and downloads exact distro/runtime sources; failed origin/source verification must block publishing. Keep the generated Linux native-source ZIP alongside the AppImage when publishing or mirroring. See [distribution safeguards](legal.md).

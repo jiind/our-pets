@@ -27,8 +27,12 @@ On Linux, personal Slack token storage requires an unlocked Secret Service, such
 
 ## Retention and backups
 
-Every hour, the server removes expired sessions, messages/notifications beyond retention, and orphan receipts. Expired messages are excluded from delivery even before cleanup. Old design files and user/device records do not have automatic deletion; monitor disk use.
+Every hour, the server removes expired sessions, messages/notifications beyond retention, and orphan receipts. Expired messages are excluded from delivery even before cleanup. Accounts and referenced designs do not expire automatically. Users can delete their own account after password confirmation. Hourly maintenance retries deletion of unreferenced PNGs older than one hour; referenced or identical shared images are retained.
 
 Copying only the main SQLite file while WAL is active can lose recent transactions. Stop the server and back up the entire data directory, or use a consistent SQLite backup together with a design-directory snapshot. A backup CLI and automatic restore tool are not included.
 
-Logout revokes the token, and its socket closes at the next validation interval. Device-wide revocation, password changes, and per-invite approval management have no UI yet. LAN session tokens use the OS WebView's local storage, not the OS credential store. Protect the OS account and browser profile permissions.
+Logout revokes the token, and its socket closes at the next validation interval. Password changes in Account revoke other sessions; account deletion revokes all sessions. Per-invite approval management has no UI yet. LAN session tokens use the OS WebView's local storage, not the OS credential store. Protect the OS account and browser profile permissions.
+
+## Privacy requests
+
+Publish a policy with the actual operator/contact and retention settings using the [operator template](server-privacy-template.md). Account deletion cannot remove old backups or previously delivered copies. Protect and expire backups, and reapply deletion requests after restoration. See [privacy](../PRIVACY.md) and [legal distribution guidance](legal.md).

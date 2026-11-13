@@ -121,3 +121,55 @@ func retireDesign(tx *sql.Tx, id string) error {
 	}
 	return err
 }
+
+// RemoveUnusedImages는 삭제한 디자인의 PNG 중 다른 디자인이 참조하지 않는 파일만 제거한다.
+func (s *Service) RemoveUnusedImages(hashes []string) error {
+	s.imagesMu.Lock()
+	defer s.imagesMu.Unlock()
+	// 1. 파일 경로는 서버가 생성한 SHA-256 형식으로 제한한다.
+	for _, hash := range hashes {
+		if len(hash) != 64 || strings.Trim(hash, "0123456789abcdef") != "" {
+			continue
+		}
+		var references int
+		if err := s.DB.QueryRow(`SELECT COUNT(*) FROM designs WHERE image_hash=?`, hash).Scan(&references); err != nil {
+			return err
+		}
+
+		// 2. 공유 중인 이미지와 사용자 업로드 이외의 파일은 보존한다.
+		if references == 0 {
+			if err := os.Remove(filepath.Join(s.Directory, hash+".png")); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// CleanupUnusedImages는 삭제 실패나 중단된 업로드로 남은 오래된 PNG만 다시 정리한다.
+func (s *Service) CleanupUnusedImages() error {
+	// 1. 진행 중인 업로드와 겹치지 않도록 한 시간 이상 지난 완성 PNG만 고른다.
+	entries, err := os.ReadDir(s.Directory)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	hashes := []string{}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".png") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if time.Since(info.ModTime()) > time.Hour {
+			hashes = append(hashes, strings.TrimSuffix(entry.Name(), ".png"))
+		}
+	}
+
+	// 2. 실제 DB 참조는 삭제 직전에 잠금 안에서 다시 확인한다.
+	return s.RemoveUnusedImages(hashes)
+}

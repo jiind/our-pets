@@ -394,6 +394,18 @@ async function renderView(): Promise<void> {
     const cleanup = await mountAccountSettings(target, async () => {
       await changed();
       await refreshOwnPet();
+    }, async pendingFileCleanup => {
+      localStorage.removeItem(`ourpets.device.${serverURL()}`);
+      saveSession(null);
+      try {
+        await changed();
+        if (isTauri()) {
+          await invoke('set_pet_registered', { registered: false });
+        }
+      } finally {
+        showLogin();
+        notice(pendingFileCleanup ? '계정은 삭제됐어요. 일부 PNG 파일 정리가 지연되어 서버 운영자 확인이 필요합니다.' : '계정을 삭제했어요.');
+      }
     });
     if (generation !== viewGeneration || view !== 'account') {
       cleanup();

@@ -54,3 +54,9 @@ The desktop displays up to 32 online peer pets at a time, prioritizing your acti
 On the notifications page, use the + beside external connections to add Docker, Slack, Codex, or Claude. Sources run on this PC and are not automatically shared with friends or other devices. See [connector setup](connectors.md) for credentials, permissions, and query behavior.
 
 Turning connected alerts off mutes bubbles and OS notifications from external sources. Turning OS notifications off mutes all OS banners, including messages and gatherings, while leaving bubbles enabled. Muted events are not queued for later playback. OS permissions and Do Not Disturb also affect banner visibility.
+
+## Notification cards
+
+External notification titles use `Provider · Connection name · Event title` in both the speech bubble and OS notification; the body contains only the event content. Speech bubbles have a 320 px reading width and grow naturally up to a 320 px total height (or less when screen space is limited). Longer text scrolls only inside the body, leaving the title and red X fixed. Text wraps automatically, including long container identifiers.
+
+Bubbles close after 12 seconds without reading input. Scrolling or keyboard reading restarts that interval; hovering alone does not keep a card open forever. Opening and closing use short motion effects. The existing OS reduced-motion preference skips these effects without adding an app preference. OS notification history/lifetime is controlled by the OS.

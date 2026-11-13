@@ -10,6 +10,7 @@ Base URL: `http://127.0.0.1:9377/api/v1`. JSON uses camelCase; times are UTC Uni
 | --- | --- |
 | `GET /healthz` (outside prefix) | `{status:"ok",service:"our-pets"}` |
 | `POST /register` | `{username,password,displayName,invite,deviceName}` → `{token,principal}` |
+| `DELETE /me/account` | `{currentPassword}` → `{status:"deleted",pendingFileCleanup}`; password-confirmed, rate-limited self-deletion |
 | `POST /login` | `{username,password,deviceId?,deviceName?}` → `{token,principal}` |
 | `POST /logout` | Revoke the current session |
 | `GET /me` | Current user/device/pet IDs and `petRegistered` |
@@ -190,3 +191,5 @@ Message input/send controls are at the menu bottom. Own-pet menus broadcast and 
 `register_message_bubbles({ready})` lets a peer window register only its own readiness. `route_message_bubble({recipientPetId,senderPetId,message})` is representative-pet-only. It validates sender ID, expiry, size, and incoming-message status, then sends `sender-message-bubble({recipientPetId,message})` only to the ready `peer-<senderPetId>` window on this PC. Peers recheck recipient and displayed sender IDs. External source notifications do not use this route.
 
 The recipient's representative pet requests one OS notification; the sender window only displays the bubble. If the sender is hidden, offline, beyond the window cap, or not ready, only OS delivery remains. The message never moves to the recipient's pet or forces a hidden sender to appear. Recent IDs are deduplicated in each window's memory and expired events are not displayed. Replies address the bubble's sender. Server recipients, ACK, per-device delivery, OS notification preferences, and OS permissions remain in force.
+
+Personal external notifications optionally include `connectionName`. New local events populate it from the current configured source name. Both native OS and bubble titles follow `Provider · Connection name · Event title`; legacy events without the optional field omit that segment. Notification bodies are held only in process memory; durable local storage contains configuration, baselines and hashed event keys.

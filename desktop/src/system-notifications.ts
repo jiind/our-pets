@@ -19,18 +19,22 @@ function notify(id: string, title: string, body: string, expiresAt: number): voi
   });
 }
 
-// 커넥터가 제목에 포함한 출처를 보존하고 없는 경우에만 표시 이름을 붙인다.
+// 외부 알림의 종류·사용자 지정 연결 명칭·이벤트 제목을 공통 순서로 구성한다.
 export function externalNotificationTitle(notification: PetEvent['notification']): string {
-  // 1. 공급자 표시 이름과 커넥터가 만든 제목을 확인한다.
+  // 1. 공급자 이름과 설정한 명칭은 제목 한 줄로 정규화한다.
   const source = notification?.sourceKind || '';
   const provider = ({ docker: 'Docker', slack: 'Slack', codex: 'Codex', claude: 'Claude' } as Record<string, string>)[source] || source || '알림';
-  const title = notification?.title.trim() || '새 소식';
+  const name = notification?.connectionName?.replace(/\s+/gu, ' ').trim();
+  let title = notification?.title.replace(/\s+/gu, ' ').trim() || '새 소식';
 
-  // 2. 출처 접두어는 한 번만 붙이고 Dockerfile 같은 일반 단어는 구분한다.
-  const lowerTitle = title.toLowerCase();
-  const lowerProvider = provider.toLowerCase();
-  const hasProvider = lowerTitle === lowerProvider || [' ', '·', ':'].some(separator => lowerTitle.startsWith(lowerProvider + separator));
-  return hasProvider ? title : `${provider} · ${title}`;
+  // 2. 이전 커넥터의 종류 접두어는 제거하되 Dockerfile 같은 단어는 보존한다.
+  const lower = title.toLowerCase();
+  if (lower === provider.toLowerCase()) {
+    title = '';
+  } else if ([' ', '·', ':'].some(separator => lower.startsWith(provider.toLowerCase() + separator))) {
+    title = title.slice(provider.length).replace(/^[\s·:]+/u, '');
+  }
+  return [provider, name, title].filter(Boolean).join(' · ');
 }
 
 // 받은 메시지·연결 알림을 알리고 발신 확인·몸짓에는 OS 알림을 만들지 않는다.

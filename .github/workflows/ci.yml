@@ -76,6 +76,8 @@ jobs:
             echo '설정 예제가 제외되어 있습니다.' >&2
             exit 1
           fi
+      - name: 의존성 라이선스·원문·소스 무결성 확인
+        run: python3 scripts/dependency_notices.py
       - name: 배포 고지 확인
         run: python3 scripts/prepare_notices.py --check
 

@@ -8,6 +8,7 @@ import zipfile
 
 from check_versions import ROOT, check_versions
 from prepare_notices import prepare
+from linux_distribution_sources import collect as collect_linux_sources
 
 OUTPUT = ROOT / 'release-out'
 
@@ -26,8 +27,11 @@ def package_server(platform: str, binary: Path) -> None:
     # 2. 지정한 공개 파일만 압축해 데이터·인증 자료가 섞이지 않게 한다.
     with zipfile.ZipFile(OUTPUT / f'our-pets-server-{version}-{platform}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         archive.write(binary, name)
-        for path in ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'SECURITY.md', 'docs/operations.md', 'docs/platforms.md', 'examples/server.env.example', 'examples/our-pets.service']:
+        for path in ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'SECURITY.md', 'docs/operations.md', 'docs/platforms.md', 'PRIVACY.md', 'docs/server-privacy-template.md', 'examples/server.env.example', 'examples/our-pets.service']:
             archive.write(ROOT / path, path)
+        for file in sorted((ROOT / 'desktop/public/licenses').rglob('*')):
+            if file.is_file():
+                archive.write(file, 'licenses/' + str(file.relative_to(ROOT / 'desktop/public/licenses')))
 
 
 # 현재 OS에서 만든 설치 파일과 별도 배포 고지를 수집한다.
@@ -47,11 +51,15 @@ def package_desktop(platform: str) -> None:
     # 2. 아티팩트 이름 충돌을 피하고 고지를 함께 제공한다.
     for file in packages:
         shutil.copyfile(file, OUTPUT / f'our-pets-desktop-{version}-{platform}{file.suffix}')
+    if platform == 'linux-x64':
+        image = next(file for file in packages if file.suffix == '.AppImage')
+        collect_linux_sources(image, OUTPUT / f'our-pets-linux-native-sources-{version}.zip')
     notices = ROOT / 'desktop/src-tauri/target/release-notices'
     prepare(notices)
     with zipfile.ZipFile(OUTPUT / f'our-pets-notices-{check_versions()}-{platform}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-        for file in sorted(notices.iterdir()):
-            archive.write(file, file.name)
+        for file in sorted(notices.rglob('*')):
+            if file.is_file():
+                archive.write(file, str(file.relative_to(notices)))
 
 
 # 전체 산출물의 SHA-256과 검증 범위를 포함한 릴리즈 설명을 생성한다.
@@ -79,6 +87,7 @@ Packages built from source that passed PR CI and tag-version validation.
 - Verify SHA256SUMS.txt and the platform notice ZIPs alongside the installers.
 - Windows code signing and Apple Developer ID signing/notarization are not configured. The OS may warn or restrict installation.
 - Successful CI builds do not verify transparency, click-through, focus, or walking on every OS. See docs/platforms.md for runtime requirements and validation before distribution.
+- Linux AppImage redistribution must include the native-source ZIP and platform notices alongside the installer.
 - Libraries, fonts, and characters retain their individual terms. This release does not establish a completed legal review of all dependencies.
 - Messages and notifications are real-time only; offline history is not replayed.
 
