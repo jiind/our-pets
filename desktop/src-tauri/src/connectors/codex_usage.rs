@@ -368,6 +368,7 @@ pub fn evaluate_snapshot(
             event_id: format!("{kind}:{}:{}", state.epoch, state.sequence),
             source_kind: kind.into(),
             connection_id: source.id.clone(),
+            connection_name: source.name.clone(),
             occurred_at: now,
             title: format!("{provider} {title}"),
             body: bounded(

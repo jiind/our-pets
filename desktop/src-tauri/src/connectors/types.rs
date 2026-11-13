@@ -257,6 +257,8 @@ pub struct Notification {
     pub event_id: String,
     pub source_kind: String,
     pub connection_id: String,
+    #[serde(default)]
+    pub connection_name: String,
     pub occurred_at: i64,
     pub title: String,
     pub body: String,

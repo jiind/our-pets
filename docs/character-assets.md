@@ -21,7 +21,7 @@ New built-in characters should preserve the grid, foot baseline, action order, a
 
 | Material | Source and terms |
 | --- | --- |
-| Runtime cat and dog artwork | Characters generated for this project |
+| Runtime cat and dog artwork | Characters generated for this project; Apache-2.0 to the extent applicable, see PROJECT-ARTWORK.txt |
 | Original Go Gopher design | [Renée French](https://go.dev/wiki/Gopher), CC BY 4.0. Adapted into non-pixel 2D artwork; credit, license, and modification notice are retained |
 | Original Ferris design | [Karen Rustad Tölva](https://rustacean.net/), CC0 1.0 |
 | Retained dog reference sprites | [Jason of GDN, Dog Spritesheets](https://opengameart.org/content/dog-spritesheets), CC0 |

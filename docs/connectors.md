@@ -12,7 +12,7 @@ The collector negotiates the Docker API version and reads Events API data. It do
 
 ## Slack
 
-Slack requires internet access. Enable Socket Mode for your Slack app and create an `xapp-` App-Level Token with `connections:write`; an `xoxb-` bot token cannot replace it. Install the app in the workspace and grant the required event subscriptions and read scopes. Enter a display name, workspace ID (`T…`), at least one conversation ID (`C…`, `D…`, `G…`), and token. Choose messages, app mentions, reaction additions, or reaction removals.
+Slack requires internet access, an age permitted by Slack (at least 16 under its developer policy), and authorization to access the selected workspace/conversations. Follow the workspace operator's data policy. Enable Socket Mode for your Slack app and create an `xapp-` App-Level Token with `connections:write`; an `xoxb-` bot token cannot replace it. Install the app in the workspace and grant the required event subscriptions and read scopes. Enter a display name, workspace ID (`T…`), at least one conversation ID (`C…`, `D…`, `G…`), and token. Choose messages, app mentions, reaction additions, or reaction removals.
 
 | Content | Example event subscription | Example read scope |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ Slack requires internet access. Enable Socket Mode for your Slack app and create
 | App mentions | `app_mention` | `app_mentions:read` |
 | Reactions | `reaction_added`, `reaction_removed` | `reactions:read` |
 
-Only selected conversations and events are stored. Events are persisted before the Socket Mode envelope is acknowledged; persistence failure causes reconnection without acknowledgment. Slack message/reply/reaction write APIs are not called. Duplicate App-Level Tokens are rejected on one PC. Slack can distribute events among other PCs or collectors using the same token, so identical notification delivery to every collector is not guaranteed.
+Only selected conversations and events are stored. Event deduplication fingerprints and delivery baselines are committed before acknowledgment; bodies are queued only in memory. Storage/queue failure causes reconnection without acknowledgment. Slack message/reply/reaction write APIs are not called. Duplicate App-Level Tokens are rejected on one PC. Slack can distribute events among other PCs or collectors using the same token, so identical notification delivery to every collector is not guaranteed.
 
 ## Codex usage
 
@@ -40,7 +40,7 @@ Configure interval or once-per-cycle usage alerts, exhaustion/recovery, and late
 
 ## Local storage and privacy
 
-Connection settings, status, quota baselines, and temporary events live in `local-notifications.sqlite3` beneath the OS user's Tauri app data directory. Personal notifications target this PC's own pet and are not synchronized to the LAN server or friends. Pending events live at most 15 seconds; acknowledgment deletes bodies. App restart does not replay old pending bodies.
+Connection settings, status, quota baselines, and temporary events live in `local-notifications.sqlite3` beneath the OS user's Tauri app data directory. Personal notifications target this PC's own pet and are not synchronized to the LAN server or friends. Pending bodies live only in process memory for at most 15 seconds; acknowledgment, stop, deletion, or process exit removes them. Legacy persisted body queues are removed and SQLite is compacted on upgrade; old backups and OS notification history require separate cleanup.
 
 Slack tokens use macOS Keychain, Windows Credential Manager, or Linux Secret Service. If secure storage is unavailable, saving fails; no plaintext fallback is used. The ordinary database stores only a duplicate-detection fingerprint. The app does not copy Codex authentication files. The Claude bridge does not collect conversation bodies or authentication tokens.
 
@@ -50,7 +50,7 @@ Connections belong to the OS user. Use separate OS accounts on shared PCs. The a
 
 Implement personal sources in `desktop/src-tauri/src/connectors/`. Add configuration and validation to `types.rs`'s `SourceConfig` and connect a provider collector to the `Engine` lifecycle. A cancellation token stops collection and reconnect waits. `Engine.status` reports sanitized state/errors. Provider failure must not stop the LAN message socket or other collectors.
 
-Normalize events to a common `Notification` and call `Engine.publish`. Fields are `schemaVersion`, `eventId`, `sourceKind`, `connectionId`, `occurredAt`, `title`, `body`, and optional `resource`/`data`. Keep provider-specific fields in `data`; exclude credentials and executable commands. If no stable event ID exists, define a provider-specific fingerprint using content, time, and resource. The store deduplicates connection/event IDs and retains deduplication keys for one day. New sources must not require pet-design or bubble-renderer changes.
+Normalize events to a common `Notification` and call `Engine.publish`. `connectionName` is the configured display name and is refreshed from the source at delivery enqueue. Both bubbles and OS notifications use `Provider · Connection name · Event title`; their body is only the event body. Do not precompose the connection name into event titles. Fields are `schemaVersion`, `eventId`, `sourceKind`, `connectionId`, `occurredAt`, `title`, `body`, and optional `resource`/`data`. Keep provider-specific fields in `data`; exclude credentials and executable commands. If no stable event ID exists, define a provider-specific fingerprint using content, time, and resource. The store deduplicates connection IDs and SHA-256 event fingerprints and retains deduplication keys for one day. New sources must not require pet-design or bubble-renderer changes.
 
 The server-side contract is `internal/connectors.Connector`: `Descriptor()` describes kind/version/configuration; `Validate()` checks configuration; `Run(context,connection,sink,reporter)` collects, emits normalized events, and reports status. Context cancellation stops it. Connections and subscription targets remain separate. Server credentials use `credentialRef`, not ordinary events. Personal sources do not register with this server contract.
 
@@ -59,3 +59,5 @@ The server-side contract is `internal/connectors.Connector`: `Descriptor()` desc
 Enable `OURPETS_SAMPLE_ENABLED=true` on the server to use the manual sample. There is no sample registration UI. Authenticate and POST `{"kind":"sample","config":{}}` to `/api/v1/connectors`, then POST a unique `idempotencyKey` to that connection's `/test-events` endpoint to emit one event. Creation, queries, and restart do not emit automatically. Reusing the key does not create duplicates.
 
 `config:{"fail":true}` deliberately fails explicit emission. Delete your connection with `DELETE /api/v1/connectors/{id}`. Ownership/subscription checks apply; disabling samples still allows deleting an owned connection. This development delivery check is separate from real personal Docker/Slack collectors. See the [API specification](api.md).
+
+For privacy, deletion, OS history and operator policies, see [privacy](../PRIVACY.md) and [distribution safeguards](legal.md).

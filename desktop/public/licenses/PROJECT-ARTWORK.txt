@@ -1,0 +1,14 @@
+Project-generated artwork
+
+The generated cat and dog artwork and project-authored rendering code are available under the Apache License 2.0 to the extent the project holds applicable rights. AI generation does not establish exclusive rights or remove third-party rights. The generation provenance and original references are recorded in desktop/src/assets/builtin/provenance.json.
+
+The Gopher is adapted from Renée French's Go Gopher, licensed under CC BY 4.0:
+https://go.dev/wiki/Gopher
+https://creativecommons.org/licenses/by/4.0/
+Changes: image_gen-generated non-pixel 2D rendering, restrained shading and new poses for desktop animation. Preserve attribution, the license link and this modification notice.
+
+Ferris's original design by Karen Rustad Tölva is CC0:
+https://rustacean.net/
+Project-generated rendering is available under Apache-2.0 to the extent applicable; reference sprite copyright/MIT notices are retained separately. These terms do not replace the original design or reference licenses.
+
+Original/reference artwork and fonts retain their respective terms described in THIRD_PARTY_NOTICES.md. Uploading a user image does not assign its ownership or apply the project code's license to it.

@@ -721,6 +721,7 @@ fn local_store_reopen_ack_and_delete() {
     engine.publish(notification.clone(), None).unwrap();
     let event = engine.store.events(true).unwrap().pop().unwrap();
     assert!(event.local);
+    assert_eq!(event.notification.connection_name, source.name);
     let other_pc = tempfile::tempdir().unwrap();
     assert!(store::Store::open(other_pc.path())
         .unwrap()
@@ -1018,4 +1019,68 @@ async fn live_docker_read_only() {
     .await
     .unwrap();
     println!("실제 Docker Events API의 기존 이벤트 {result}개를 읽었습니다. 외부 상태 변경 없음");
+}
+
+// 외부 알림 본문·자원·이벤트 원문을 SQLite·WAL에 기록하지 않는지 검사한다.
+#[test]
+fn notification_bodies_never_reach_disk() {
+    // 1. 원문을 쉽게 찾을 수 있는 Slack 이벤트를 실제 저장·전달 경계로 보낸다.
+    let (directory, engine, _, _) = fixture();
+    let source = slack_source(&engine);
+    let sentinel = "private-slack-content-7cdb9b0f";
+    let notification = slack::normalize(&source, &payload("private-event-9a1b", "C123", sentinel))
+        .unwrap()
+        .unwrap();
+    engine
+        .store
+        .save(&source.id, "변경한 연결 명칭", &source.config, None)
+        .unwrap();
+    assert!(engine.store.publish(notification, None).unwrap());
+    assert_eq!(
+        engine.store.events(true).unwrap()[0]
+            .notification
+            .connection_name,
+        "변경한 연결 명칭"
+    );
+    assert!(engine.store.events(true).unwrap()[0]
+        .notification
+        .body
+        .contains(sentinel));
+
+    // 2. 열린 DB와 WAL을 포함한 모든 로컬 파일에 본문·이벤트 ID가 없어야 한다.
+    for entry in std::fs::read_dir(directory.path()).unwrap() {
+        let entry = entry.unwrap();
+        if entry.file_type().unwrap().is_file() {
+            let bytes = std::fs::read(entry.path()).unwrap();
+            assert!(!bytes
+                .windows(sentinel.len())
+                .any(|part| part == sentinel.as_bytes()));
+            assert!(!bytes
+                .windows(b"private-event-9a1b".len())
+                .any(|part| part == b"private-event-9a1b"));
+        }
+    }
+    engine.store.enable(&source.id, false).unwrap();
+    assert!(engine.store.events(true).unwrap().is_empty());
+}
+
+// 이전 버전의 평문 큐를 업그레이드할 때 본문 페이지와 WAL까지 정리한다.
+#[test]
+fn legacy_notification_queue_is_removed_on_upgrade() {
+    // 1. 이전 스키마에 실제 본문을 기록한 DB를 만든다.
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("local-notifications.sqlite3");
+    let connection = rusqlite::Connection::open(&path).unwrap();
+    connection.execute_batch("PRAGMA journal_mode=WAL; CREATE TABLE local_events(payload TEXT); INSERT INTO local_events VALUES('legacy-private-payload-2785');").unwrap();
+    drop(connection);
+
+    // 2. 업그레이드 후 큐가 없고 디스크 파일에서도 이전 본문이 보이지 않아야 한다.
+    let store = store::Store::open(directory.path()).unwrap();
+    assert!(store.events(true).unwrap().is_empty());
+    for entry in std::fs::read_dir(directory.path()).unwrap() {
+        let bytes = std::fs::read(entry.unwrap().path()).unwrap();
+        assert!(!bytes
+            .windows(b"legacy-private-payload-2785".len())
+            .any(|part| part == b"legacy-private-payload-2785"));
+    }
 }

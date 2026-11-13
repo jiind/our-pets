@@ -167,6 +167,7 @@ pub fn normalize(
         event_id: key,
         source_kind: "docker".into(),
         connection_id: source.id.clone(),
+        connection_name: source.name.clone(),
         occurred_at: nano / 1_000_000,
         title: bounded(&format!("Docker · {name}"), 200),
         body: bounded(&format!("{name}: {action}"), 8000),

@@ -135,6 +135,10 @@ Project documentation is in English. The app's current UI is in Korean.
 | [Platform requirements](docs/platforms.md) | [UI and motion guidelines](docs/design-system.md) |
 | [Characters and attribution](docs/character-assets.md) | [CI and releases](docs/releasing.md) |
 
+## Privacy
+
+Account → Information and notices provides local privacy and license documents. Server operators provide their own contact, retention and request policy. See [data handling](PRIVACY.md), the [operator policy template](docs/server-privacy-template.md), and [distribution requirements](docs/legal.md).
+
 ## License
 
 Project source code is available under the [Apache License 2.0](LICENSE). Bundled characters, fonts, and libraries retain their respective licenses. See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) for Gopher and Ferris attribution, reference artwork, Pretendard, GSAP, and other dependencies. The GSAP runtime's Standard “No Charge” License is separate from this project's code license and the GSAP Skills documentation license.

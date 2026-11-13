@@ -1,10 +1,12 @@
 use super::types::{now_ms, LocalEvent, Notification, Source, SourceConfig};
 use rusqlite::{params, Connection, OptionalExtension};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 pub struct Store {
     db: Mutex<Connection>,
+    pending: Mutex<Vec<LocalEvent>>,
     started_at: i64,
     pub directory: PathBuf,
 }
@@ -15,7 +17,7 @@ fn storage_error(_: impl std::fmt::Display) -> String {
 }
 
 impl Store {
-    // PC별 연결·미전달 이벤트·복구 지점을 비공개 로컬 DB에 준비한다.
+    // 연결 설정·복구 지점은 DB에, 알림 본문은 프로세스 메모리에만 준비한다.
     pub fn open(directory: &Path) -> Result<Self, String> {
         // 1. 운영체제 사용자 전용 저장 경로와 DB를 만든다.
         std::fs::create_dir_all(directory).map_err(storage_error)?;
@@ -34,19 +36,26 @@ impl Store {
                 .map_err(storage_error)?;
         }
 
-        // 2. 기존 데이터에 멱등적으로 로컬 스키마를 적용한다.
+        // 2. 기존 평문 전달 큐를 지우고 DB에는 설정과 중복 방지 지문만 남긴다.
         db.busy_timeout(std::time::Duration::from_secs(3))
             .map_err(storage_error)?;
-        db.execute_batch("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
+        let legacy: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='local_events')", [], |row| row.get(0)).map_err(storage_error)?;
+        db.execute_batch("PRAGMA secure_delete=ON; PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
           CREATE TABLE IF NOT EXISTS local_sources(id TEXT PRIMARY KEY,name TEXT NOT NULL,config TEXT NOT NULL,enabled INTEGER NOT NULL,state TEXT NOT NULL,last_error TEXT NOT NULL DEFAULT '',credential_fingerprint TEXT UNIQUE,cursor TEXT);
-          CREATE TABLE IF NOT EXISTS local_events(id TEXT PRIMARY KEY,source_id TEXT NOT NULL REFERENCES local_sources(id) ON DELETE CASCADE,event_key TEXT NOT NULL,payload TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,received_at INTEGER,UNIQUE(source_id,event_key));
-          CREATE INDEX IF NOT EXISTS local_pending ON local_events(received_at,expires_at);
-          CREATE INDEX IF NOT EXISTS local_event_retention ON local_events(created_at);
           CREATE TABLE IF NOT EXISTS local_event_keys(source_id TEXT NOT NULL REFERENCES local_sources(id) ON DELETE CASCADE,event_key TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(source_id,event_key));
-          DELETE FROM local_events;
-          PRAGMA user_version=2;").map_err(storage_error)?;
+          DROP TABLE IF EXISTS local_events;
+          PRAGMA user_version=3;").map_err(storage_error)?;
+        if legacy {
+            db.execute("DELETE FROM local_event_keys", [])
+                .map_err(storage_error)?;
+            db.execute_batch(
+                "PRAGMA wal_checkpoint(TRUNCATE); VACUUM; PRAGMA wal_checkpoint(TRUNCATE);",
+            )
+            .map_err(storage_error)?;
+        }
         Ok(Self {
             db: Mutex::new(db),
+            pending: Mutex::new(Vec::new()),
             started_at: now_ms(),
             directory: directory.to_path_buf(),
         })
@@ -128,6 +137,12 @@ impl Store {
         if count != 1 {
             return Err("로컬 연결을 찾을 수 없습니다".into());
         }
+        if !enabled {
+            self.pending
+                .lock()
+                .map_err(storage_error)?
+                .retain(|event| event.notification.connection_id != id);
+        }
         Ok(())
     }
 
@@ -138,6 +153,10 @@ impl Store {
             .map_err(storage_error)?
             .execute("DELETE FROM local_sources WHERE id=?", [id])
             .map_err(storage_error)?;
+        self.pending
+            .lock()
+            .map_err(storage_error)?
+            .retain(|event| event.notification.connection_id != id);
         Ok(())
     }
 
@@ -179,7 +198,7 @@ impl Store {
         Ok(())
     }
 
-    // 공급자 이벤트 한 건을 기존의 공통 전달 경계로 저장한다.
+    // 공급자 이벤트 한 건을 메모리 전달 큐와 영속 중복 방지 경계로 전달한다.
     pub fn publish(
         &self,
         notification: Notification,
@@ -190,7 +209,7 @@ impl Store {
             .map(|count| count > 0)
     }
 
-    // 같은 조회에서 결정한 알림과 기준 상태를 한 트랜잭션으로 저장한다.
+    // 본문은 메모리에만 두고 이벤트 지문과 조회 기준 상태를 원자적으로 저장한다.
     pub fn publish_many(
         &self,
         source_id: &str,
@@ -208,12 +227,25 @@ impl Store {
         let now = now_ms();
         let mut db = self.db.lock().map_err(storage_error)?;
         let tx = db.transaction().map_err(storage_error)?;
-        tx.execute("DELETE FROM local_events WHERE expires_at<=?", [now])
+        tx.execute(
+            "DELETE FROM local_event_keys WHERE created_at<?",
+            [now - 24 * 60 * 60 * 1000],
+        )
+        .map_err(storage_error)?;
+        let mut pending = self.pending.lock().map_err(storage_error)?;
+        pending.retain(|event| event.expires_at > now);
+        let mut added = Vec::new();
+        let connection_name: String = tx
+            .query_row(
+                "SELECT name FROM local_sources WHERE id=?",
+                [source_id],
+                |row| row.get(0),
+            )
             .map_err(storage_error)?;
-        let mut changed = 0;
 
         // 2. 중복 이벤트는 버리고 새로운 알림만 15초 임시 전달 큐에 넣는다.
-        for notification in notifications {
+        for mut notification in notifications {
+            notification.connection_name.clone_from(&connection_name);
             let event = LocalEvent {
                 id: format!("local:{}", uuid::Uuid::new_v4().simple()),
                 r#type: "notification".into(),
@@ -224,10 +256,13 @@ impl Store {
                 local: true,
                 notification,
             };
-            let raw = serde_json::to_string(&event).map_err(storage_error)?;
-            let seen = tx.execute("INSERT OR IGNORE INTO local_event_keys(source_id,event_key,created_at) VALUES(?,?,?)",params![source_id,event.notification.event_id,now]).map_err(storage_error)?;
+            let key = format!(
+                "{:x}",
+                Sha256::digest(event.notification.event_id.as_bytes())
+            );
+            let seen = tx.execute("INSERT OR IGNORE INTO local_event_keys(source_id,event_key,created_at) VALUES(?,?,?)",params![source_id,key,now]).map_err(storage_error)?;
             if seen > 0 && event.notification.occurred_at >= self.started_at {
-                changed += tx.execute("INSERT OR IGNORE INTO local_events(id,source_id,event_key,payload,created_at,expires_at) VALUES(?,?,?,?,?,?)",params![event.id,source_id,event.notification.event_id,raw,now,event.expires_at]).map_err(storage_error)?;
+                added.push(event);
             }
         }
 
@@ -239,46 +274,40 @@ impl Store {
             )
             .map_err(storage_error)?;
         }
+        if pending.len() + added.len() > 2048 {
+            return Err("알림 처리 대기열이 가득 찼습니다. 잠시 후 다시 시도합니다".into());
+        }
         tx.commit().map_err(storage_error)?;
+        let changed = added.len();
+        pending.extend(added);
         Ok(changed)
     }
 
-    // 내 펫 창 또는 보관함에 필요한 로컬 카드만 조회한다.
-    pub fn events(&self, pending: bool) -> Result<Vec<LocalEvent>, String> {
+    // 현재 프로세스에서 아직 만료·수신되지 않은 메모리 알림만 반환한다.
+    pub fn events(&self, pending_only: bool) -> Result<Vec<LocalEvent>, String> {
+        // 1. 영속 중복 방지 지문은 하루 후 정리하고 본문 큐는 15초 만료를 적용한다.
         let db = self.db.lock().map_err(storage_error)?;
-        db.execute(
-            "DELETE FROM local_events WHERE expires_at<=? OR received_at IS NOT NULL",
-            [now_ms()],
-        )
-        .map_err(storage_error)?;
         db.execute(
             "DELETE FROM local_event_keys WHERE created_at<?",
             [now_ms() - 24 * 60 * 60 * 1000],
         )
         .map_err(storage_error)?;
-        if !pending {
+        let mut pending = self.pending.lock().map_err(storage_error)?;
+        pending.retain(|event| event.expires_at > now_ms());
+
+        // 2. 보관함은 제공하지 않으며 한 번에 최대 100개를 현재 펫으로 전달한다.
+        if !pending_only {
             return Ok(Vec::new());
         }
-        let sql = "SELECT payload FROM local_events WHERE received_at IS NULL AND expires_at>? ORDER BY created_at,id LIMIT 100";
-        let mut query = db.prepare(sql).map_err(storage_error)?;
-        let cutoff = now_ms();
-        let rows = query
-            .query_map([cutoff], |r| r.get::<_, String>(0))
-            .map_err(storage_error)?;
-        let mut events = Vec::new();
-        for row in rows {
-            events.push(serde_json::from_str(&row.map_err(storage_error)?).map_err(storage_error)?);
-        }
-        Ok(events)
+        Ok(pending.iter().take(100).cloned().collect())
     }
 
-    // 로컬 펫 앱 수신을 사용자 읽음과 구분해 기록한다.
+    // 앱이 수신한 본문은 메모리에서 제거하되 읽음 상태로 간주하지 않는다.
     pub fn ack(&self, id: &str) -> Result<(), String> {
-        self.db
+        self.pending
             .lock()
             .map_err(storage_error)?
-            .execute("DELETE FROM local_events WHERE id=?", params![id])
-            .map_err(storage_error)?;
+            .retain(|event| event.id != id);
         Ok(())
     }
 

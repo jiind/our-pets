@@ -70,6 +70,15 @@ jobs:
       - name: Linux 패키지 의존성
         if: runner.os == 'Linux'
         run: |
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          lines = Path('/etc/apt/sources.list').read_text().splitlines()
+          source_lines = [line.replace('deb ', 'deb-src ', 1) for line in lines if line.startswith('deb ')]
+          if not source_lines:
+              raise SystemExit('Ubuntu source repositories could not be identified.')
+          Path('/tmp/our-pets-source-repositories.list').write_text('\n'.join(source_lines) + '\n')
+          PYTHON
+          sudo install -m 644 /tmp/our-pets-source-repositories.list /etc/apt/sources.list.d/our-pets-source.list
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
       - name: macOS 두 아키텍처 준비

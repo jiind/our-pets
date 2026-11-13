@@ -38,3 +38,110 @@
 .account-settings [role=status]:empty {
   display: none;
 }
+/* 개인정보·고지는 계정의 보조 영역으로 모으고 위험 동작은 별도 경계로 구분한다. */
+.account-info, .account-delete {
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.account-info-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.account-delete {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+}
+button.account-delete-button {
+  color: var(--danger);
+}
+button.account-delete-confirm {
+  color: var(--surface);
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.legal-dialog, .account-delete-dialog {
+  width: min(800px, calc(100vw - 48px));
+  max-height: calc(100dvh - 48px);
+  box-sizing: border-box;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--ink);
+  background: var(--surface);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.legal-dialog::backdrop, .account-delete-dialog::backdrop {
+  background: #14251d66;
+}
+.legal-dialog header, .account-delete-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.legal-document-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.legal-document-picker select {
+  flex: 1;
+  min-width: 0;
+}
+.legal-document {
+  max-height: 50dvh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.account-delete-dialog form {
+  display: grid;
+  gap: var(--space-4);
+}
+.account-delete-dialog .account-actions {
+  gap: var(--space-2);
+}
+
+.account-delete-dialog input[type=checkbox] {
+  width: auto;
+}
+
+.account-delete-dialog label:has(input[type=checkbox]) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+.account-delete-dialog input[type=checkbox] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+}
+
+.legal-document[data-document-kind=privacy] {
+  white-space: normal;
+}
+.legal-document[data-document-kind=privacy] :is(h3, h4) {
+  margin: var(--space-5) 0 var(--space-2);
+  font-weight: var(--weight-bold);
+}
+.legal-document[data-document-kind=privacy] > :first-child {
+  margin-top: 0;
+}
+.legal-document[data-document-kind=privacy] p {
+  margin: 0 0 var(--space-4);
+}

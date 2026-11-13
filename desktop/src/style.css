@@ -403,7 +403,6 @@ textarea {
   left: 50%;
   transform: translateX(-50%);
   width: 230px;
-  max-height: 180px;
   text-align: left;
 }
 .bubble-sender {
@@ -422,8 +421,6 @@ textarea {
 .pet-bubble p {
   font-size: var(--text-body);
   margin: var(--space-2) 0 0;
-  max-height: 100px;
-  overflow: auto;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -782,7 +779,6 @@ nav {
 }
 .pet-bubble {
   top: 32px;
-  max-height: 245px;
   width: 260px;
 }
 .bubble-sender {
@@ -791,7 +787,6 @@ nav {
 }
 .pet-bubble p {
   font-size: var(--text-body);
-  max-height: 112px;
   margin-top: var(--space-2);
 }
 .bubble-close {
@@ -913,8 +908,13 @@ dialog::backdrop {
   position: absolute;
   z-index: 5;
 }
+/* 말풍선은 읽기 폭을 고정하고 최대 높이까지 내용만큼 세로로 늘어난다. */
 .pet-bubble {
-  max-height: none;
+  box-sizing: border-box;
+  width: 320px;
+  max-width: calc(100% - 24px);
+  height: auto;
+  max-height: 320px;
   display: flex;
   flex-direction: column;
   overflow: visible;
@@ -925,26 +925,43 @@ dialog::backdrop {
   min-height: var(--control-icon-size);
 }
 .pet-bubble-content {
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex-shrink: 1;
   overflow: visible;
 }
 .pet-bubble[data-bubble-fit=false] {
   visibility: hidden;
   pointer-events: none;
 }
-.bubble-pages {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  font-size: var(--text-caption);
-  color: var(--muted);
+/* 스크롤은 테두리 안쪽의 본문에만 두고 제목·닫기·답장 영역은 고정한다. */
+.pet-bubble-content > p:not(.bubble-state) {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: var(--leading-body);
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+  scrollbar-width: thin;
+  scrollbar-color: #7b8a7c99 transparent;
+  padding-right: var(--space-1);
 }
-.pet-bubble p {
-  max-height: none;
-  overflow: visible;
+.pet-bubble-content > p:not(.bubble-state)::-webkit-scrollbar {
+  width: 6px;
+}
+.pet-bubble-content > p:not(.bubble-state)::-webkit-scrollbar-thumb {
+  background: #7b8a7c99;
+  border-radius: 999px;
+}
+.pet-bubble-content > p:not(.bubble-state)::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pet-bubble :is(.bubble-heading, .bubble-state, .bubble-actions) {
+  flex-shrink: 0;
 }
 .bubble-sender {
   overflow-wrap: anywhere;

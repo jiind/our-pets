@@ -275,3 +275,24 @@ func (s *Service) Publish(ctx context.Context, n model.Notification) error {
 	}
 	return tx.Commit()
 }
+
+// PruneDeleted는 계정 삭제로 DB에서 사라진 연결의 수집 작업도 정지한다.
+func (s *Service) PruneDeleted() error {
+	// 1. 시작과 같은 잠금 순서로 현재 작업과 DB 연결의 존재를 대조한다.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, cancel := range s.running {
+		var exists int
+		err := s.DB.QueryRow(`SELECT 1 FROM connector_connections WHERE id=? AND state!='deleted'`, id).Scan(&exists)
+		if err != nil && err != sql.ErrNoRows {
+			return err
+		}
+
+		// 2. 다른 계정의 유효한 연결은 유지하고 삭제한 연결만 취소한다.
+		if err == sql.ErrNoRows {
+			cancel()
+			delete(s.running, id)
+		}
+	}
+	return nil
+}

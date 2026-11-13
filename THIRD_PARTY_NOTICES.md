@@ -1,6 +1,6 @@
 # Third-party notices
 
-The project's Apache-2.0 license applies to its own code. Fonts, artwork, and dependencies retain their individual terms. This document and the original notice texts are included in distribution packages; it is not a completed legal compatibility review of every Go, Rust, and npm transitive dependency.
+The project's Apache-2.0 license applies to its own code. Fonts, artwork, and dependencies retain their individual terms. This document and the original notice texts are included in distribution packages. The locked code-dependency inventory, source URLs, license expressions and original texts are provided in `desktop/public/licenses/dependency-inventory.json` and `dependencies.txt`; corresponding MPL sources are included in `licenses/sources/`. This is not a certification of arbitrary future dependency or jurisdiction compatibility. See [distribution safeguards](docs/legal.md).
 
 ## Font
 
@@ -20,13 +20,13 @@ Native title bars, tray rendering, and emoji appearance are supplied by the OS. 
 - Runtime package terms: Standard “No Charge” License, https://gsap.com/standard-license
 - The MIT license for GSAP Skills documentation is separate from the runtime license.
 - Only the used core is bundled; the app does not load GSAP from a CDN.
-- Original copyright/terms references are also retained in `desktop/public/licenses/GSAP-NOTICE.txt`.
+- Original copyright/terms references are retained in `desktop/public/licenses/GSAP-NOTICE.txt`, with the official conditions in `GSAP-Standard-License.txt`. Production JavaScript retains a post-minification GSAP notice banner; bundled frontend notices are emitted to `licenses/frontend.txt`.
 
 ## Character artwork and references
 
 Runtime characters use `desktop/src/assets/builtin/<id>/cel-v4.png` for cat, dog, Gopher, and Ferris. These non-pixel 2D sheets were generated/edited with image_gen using thin colored lines and restrained cel shading. `cat/cel-v4-master.png` is the shared style reference. Original PNGs, prompts, reference inputs, and hashes are retained with the assets and in `provenance.json`.
 
-The cat and dog are project-generated characters. The Gopher adapts Renée French's original Go Gopher with new rendering and poses; original attribution, CC BY 4.0 terms, and modification notices are retained. Ferris adapts Karen Rustad Tölva's original design and retains its source and reference-sprite notices.
+The cat and dog are project-generated characters, available under Apache-2.0 to the extent the project holds applicable rights; see `desktop/public/licenses/PROJECT-ARTWORK.txt`. AI generation does not establish exclusive rights or waive underlying third-party conditions. The Gopher adapts Renée French's original Go Gopher with new rendering and poses; original attribution, CC BY 4.0 terms, and modification notices are retained. Ferris adapts Karen Rustad Tölva's original design and retains its source and reference-sprite notices.
 
 | Material | Creator and terms | Source |
 | --- | --- | --- |
@@ -61,3 +61,5 @@ The desktop includes `glib 0.18.5` from gtk-rs under MIT, with the official `Var
 ## Distribution
 
 Tauri resource mappings include `LICENSE`, these notices, Pretendard OFL, and asset/library notices in installers. Releases also include notice ZIPs prepared by `scripts/prepare_notices.py`. Keep the original license texts and attribution when redistributing.
+
+Linux AppImage releases also provide a separate native-source ZIP containing traced package copyright notices, exact Ubuntu sources and AppImage runtime sources. Native GTK/WebKit libraries have their own terms, distinct from Rust wrapper licenses. See [Linux distribution requirements](docs/legal.md#linux-appimage).

@@ -58,8 +58,8 @@ describe('메시지·개인 알림의 OS 전달 경계', () => {
   it.each([
     ['docker', 'Docker · 컨테이너', 'Docker · 컨테이너'],
     ['slack', 'Slack · 멘션', 'Slack · 멘션'],
-    ['codex', 'Codex 한도 소진', 'Codex 한도 소진'],
-    ['claude', 'Claude 사용량 알림', 'Claude 사용량 알림'],
+    ['codex', 'Codex 한도 소진', 'Codex · 한도 소진'],
+    ['claude', 'Claude 사용량 알림', 'Claude · 사용량 알림'],
     ['docker', '컨테이너', 'Docker · 컨테이너'],
     ['docker', 'Dockerfile 변경', 'Docker · Dockerfile 변경'],
   ])('외부 알림 출처 %s의 제목 %s를 한 번만 표시한다', (sourceKind, title, expected) => {
@@ -95,4 +95,15 @@ describe('모집 OS 알림의 수신자', () => {
     notifyGatheringActivity(legacy);
     expect(runtime.invoke).not.toHaveBeenCalled();
   });
+  it.each([
+    ['docker', '개발 서버', 'Docker · 컨테이너 종료', 'Docker · 개발 서버 · 컨테이너 종료'],
+    ['slack', '팀 채널', 'Slack · 멘션', 'Slack · 팀 채널 · 멘션'],
+    ['codex', '개인 계정', 'Codex 사용량 알림', 'Codex · 개인 계정 · 사용량 알림'],
+    ['claude', '작업 세션', 'Claude 최신 사용량 확인', 'Claude · 작업 세션 · 최신 사용량 확인'],
+  ])('외부 연결 %s는 사용자 지정 명칭과 이벤트 제목을 같은 순서로 알린다', (sourceKind, connectionName, title, expected) => {
+    const event: PetEvent = { ...message(), type: 'notification', sender: undefined, kind: 'external', body: '', notification: { schemaVersion: 1, sourceKind, connectionId: 'named-source', connectionName, eventId: 'named-event', occurredAt: Date.now(), title, body: '알림 본문' } };
+    notifyReceivedMessage(event);
+    expect(runtime.invoke).toHaveBeenCalledWith('show_system_notification', expect.objectContaining({ title: expected, body: '알림 본문' }));
+  });
+
 });

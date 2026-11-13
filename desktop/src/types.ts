@@ -53,7 +53,7 @@ export interface PetEvent {
   kind: 'text' | 'emoji' | 'interaction' | 'external';
   body: string;
   sender?: { userId: string; userName: string; petId: string; petName: string; designId?: string; builtinId?: string };
-  notification?: { schemaVersion: number; title: string; body: string; sourceKind: string; connectionId: string; eventId: string; occurredAt: number };
+  notification?: { schemaVersion: number; title: string; body: string; sourceKind: string; connectionId: string; connectionName?: string; eventId: string; occurredAt: number };
   createdAt: number;
   expiresAt: number;
 }

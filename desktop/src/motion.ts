@@ -31,11 +31,12 @@ export function reactionTimeline(target: gsap.TweenTarget, action: Gesture, paus
 }
 
 // 펫과 해당 창의 카드만 관리하고 미디어 설정 변경·재생 중단·화면 해제 시 효과를 정리한다.
-export function petMotion(canvas: HTMLCanvasElement, root: HTMLElement): { react: (action: Gesture) => void; reveal: (element: HTMLElement) => void; stop: () => void; dispose: () => void; pose: CharacterPose } {
+export function petMotion(canvas: HTMLCanvasElement, root: HTMLElement): { react: (action: Gesture) => void; reveal: (element: HTMLElement) => void; conceal: (element: HTMLElement, onHidden: () => void) => void; stop: () => void; dispose: () => void; pose: CharacterPose } {
   // 1. 실제 요소 참조와 창별 미디어 컨텍스트로 다른 펫의 효과를 건드리지 않는다.
   const pose: CharacterPose = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 };
   let reaction: gsap.core.Timeline | undefined;
   const cards = new Map<HTMLElement, gsap.core.Tween>();
+  const settlements = new Map<HTMLElement, () => void>();
   let reduced = true;
   const media = gsap.matchMedia();
 
@@ -46,6 +47,8 @@ export function petMotion(canvas: HTMLCanvasElement, root: HTMLElement): { react
     cards.forEach(tween => tween.kill());
     cards.forEach((_, element) => gsap.set(element, { clearProps: 'transform,opacity,visibility' }));
     cards.clear();
+    settlements.forEach(finish => finish());
+    settlements.clear();
     Object.assign(pose, { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 });
     gsap.set(canvas, { clearProps: 'transform' });
   }
@@ -66,11 +69,30 @@ export function petMotion(canvas: HTMLCanvasElement, root: HTMLElement): { react
     // 메뉴와 말풍선은 시작 순간부터 포커스·클릭을 허용하며 짧게 등장한다.
     reveal: element => {
       cards.get(element)?.kill();
+      settlements.delete(element);
       if (reduced) {
         gsap.set(element, { clearProps: 'transform,opacity,visibility' });
         return;
       }
       const tween = gsap.fromTo(element, { autoAlpha: .01, y: 7 }, { autoAlpha: 1, y: 0, duration: .18, ease: 'power2.out', overwrite: 'auto', clearProps: 'transform,opacity,visibility' });
+      cards.set(element, tween);
+    },
+    // 말풍선은 짧게 흐려진 뒤 숨기며 새 등장·모션 설정 변경은 이전 종료를 안전하게 정리한다.
+    conceal: (element, onHidden) => {
+      cards.get(element)?.kill();
+      settlements.delete(element);
+      if (reduced) {
+        gsap.set(element, { clearProps: 'transform,opacity,visibility' });
+        onHidden();
+        return;
+      }
+      settlements.set(element, onHidden);
+      const tween = gsap.to(element, { autoAlpha: 0, y: 4, duration: .16, ease: 'power2.in', overwrite: 'auto', onComplete: () => {
+        cards.delete(element);
+        settlements.delete(element);
+        gsap.set(element, { clearProps: 'transform,opacity,visibility' });
+        onHidden();
+      } });
       cards.set(element, tween);
     },
     // 드래그·숨김 등 직접 조작은 진행 중인 효과를 즉시 정리한다.

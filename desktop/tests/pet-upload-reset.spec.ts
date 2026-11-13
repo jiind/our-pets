@@ -40,6 +40,48 @@ async function sprite(page: Page, size: number, emptyFrame?: number): Promise<{ 
   return { name: `example-${size}.png`, mimeType: 'image/png', buffer: Buffer.from(url.split(',')[1], 'base64') };
 }
 
+test('펫 선택 목록은 기본 펫 다음에 등록한 순서로 쌓이고 새로고침 후에도 유지된다', async ({ page, isolatedServer }) => {
+  // 1. 실제 추가 모달에서 세 PNG를 순서대로 등록한다.
+  const failures: string[] = [];
+  page.on('pageerror', error => failures.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      failures.push(message.text());
+    }
+  });
+  page.on('response', response => {
+    if (response.status() >= 400) {
+      failures.push(`${response.status()} ${response.url()}`);
+    }
+  });
+  await workspace(page, isolatedServer);
+  const original = await page.locator('[data-characters] label').allTextContents();
+  const names = ['추가 1', '추가 2', '추가 3'];
+  const file = await sprite(page, 1024);
+  for (const name of names) {
+    await page.getByRole('button', { name: '펫 추가', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '펫 추가', exact: true });
+    await dialog.getByRole('textbox', { name: '이름', exact: true }).fill(name);
+    await dialog.locator('input[type=file]').setInputFiles(file);
+    await expect(dialog.locator('canvas')).toBeVisible();
+    await dialog.getByRole('button', { name: '추가', exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('radio', { name, exact: true })).toBeChecked();
+    await expect(page.getByRole('button', { name: '펫 추가', exact: true })).toBeEnabled();
+    await expect(page.locator('[data-characters] label')).toHaveText([...original, ...names.slice(0, names.indexOf(name) + 1)]);
+  }
+
+  // 2. 서버 목록 재조회와 전체 화면 재진입에서도 기본·추가 순서를 보존한다.
+  await page.getByRole('button', { name: '등록된 펫 목록 새로고침', exact: true }).click();
+  await expect(page.getByRole('button', { name: '등록된 펫 목록 새로고침', exact: true })).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('[data-characters] label')).toHaveText([...original, ...names]);
+  await page.reload();
+  await expect(page.locator('[data-characters] label')).toHaveText([...original, ...names]);
+  await expect(page.getByRole('radio', { name: '추가 3', exact: true })).toBeChecked();
+  await page.screenshot({ path: '/tmp/our-pets-catalogue-addition-order.png', fullPage: true });
+  expect(failures).toEqual([]);
+});
+
 test('펫 추가 취소·Escape는 파일과 입력을 비우고 새 시트는 올바른 기본값과 그림으로 시작한다', async ({ page, isolatedServer }) => {
   // 1. 처음 선택한 시트와 사용자 동작·크기를 변경한 뒤 취소한다.
   await workspace(page, isolatedServer);

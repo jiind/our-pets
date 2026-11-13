@@ -19,7 +19,7 @@ class DesktopPackageTests(unittest.TestCase):
         self.output = self.root / 'release-out'
 
         # 2. 버전과 고지만 고정하고 실제 파일 복사·체크섬 코드는 사용한다.
-        for name, value in [('ROOT', self.root), ('OUTPUT', self.output), ('check_versions', lambda: '1.2.3-beta.1'), ('prepare', self.prepare_notices)]:
+        for name, value in [('ROOT', self.root), ('OUTPUT', self.output), ('check_versions', lambda: '1.2.3-beta.1'), ('prepare', self.prepare_notices), ('collect_linux_sources', self.collect_linux_sources)]:
             replacement = patch.object(package_release, name, value)
             replacement.start()
             self.addCleanup(replacement.stop)
@@ -28,6 +28,11 @@ class DesktopPackageTests(unittest.TestCase):
     def prepare_notices(self, output: Path) -> None:
         output.mkdir(parents=True, exist_ok=True)
         (output / 'NOTICE.txt').write_text('Packaging test notice\n')
+
+    # 네이티브 소스 수집 경계를 고정해 패키징 검사는 네트워크에 의존하지 않는다.
+    def collect_linux_sources(self, appimage: Path, output: Path) -> None:
+        self.assertEqual(appimage.suffix, '.AppImage')
+        output.write_bytes(b'native source fixture')
 
     # Tauri가 만드는 공백 포함 원본 파일명을 재현한다.
     def create_bundle(self, platform: str, suffix: str, name: str = 'Our Pets') -> None:
@@ -76,7 +81,7 @@ class DesktopPackageTests(unittest.TestCase):
 
         # 2. 각 이름이 그대로 업로드 가능하며 내용 지문과 일치해야 한다.
         entries = (self.output / 'SHA256SUMS.txt').read_text().splitlines()
-        self.assertEqual(len(entries), 3)
+        self.assertEqual(len(entries), 4)
         for entry in entries:
             digest, name = entry.split('  ', 1)
             self.assertIsNotNone(re.fullmatch(r'[A-Za-z0-9._-]+', name))
