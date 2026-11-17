@@ -76577,9 +76577,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-=== cargo: tokio-util 0.7.19 ===
+=== cargo: tokio-util 0.7.20 ===
 License expression: MIT
-Source: https://static.crates.io/crates/tokio-util/tokio-util-0.7.19.crate
+Source: https://static.crates.io/crates/tokio-util/tokio-util-0.7.20.crate
 
 --- LICENSE ---
 MIT License
@@ -97408,8 +97408,8 @@ func TestToolsCopyright(t *testing.T) {
 }
 
 
-=== go: modernc.org/cc/v4 v4.30.3 ===
-Source: https://proxy.golang.org/modernc.org/cc/v4/@v/v4.30.3.zip
+=== go: modernc.org/cc/v4 v4.30.6-0.20261101114202-1b9d1a076f6b ===
+Source: https://proxy.golang.org/modernc.org/cc/v4/@v/v4.30.6-0.20261101114202-1b9d1a076f6b.zip
 
 --- LICENSE ---
 Copyright (c) 2014 The CC Authors. All rights reserved.
@@ -97468,8 +97468,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-=== go: modernc.org/ccgo/v4 v4.37.0 ===
-Source: https://proxy.golang.org/modernc.org/ccgo/v4/@v/v4.37.0.zip
+=== go: modernc.org/ccgo/v4 v4.38.1 ===
+Source: https://proxy.golang.org/modernc.org/ccgo/v4/@v/v4.38.1.zip
 
 --- LICENSE ---
 Copyright (c) 2017 The CCGO Authors. All rights reserved.
@@ -97870,8 +97870,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-=== go: modernc.org/libc v1.79.0 ===
-Source: https://proxy.golang.org/modernc.org/libc/@v/v1.79.0.zip
+=== go: modernc.org/libc v1.80.1 ===
+Source: https://proxy.golang.org/modernc.org/libc/@v/v1.80.1.zip
 
 --- AUTHORS ---
 # This file lists authors for copyright purposes.  This file is distinct from
@@ -98923,8 +98923,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-=== go: modernc.org/sqlite v1.61.1 ===
-Source: https://proxy.golang.org/modernc.org/sqlite/@v/v1.61.1.zip
+=== go: modernc.org/sqlite v1.62.0 ===
+Source: https://proxy.golang.org/modernc.org/sqlite/@v/v1.62.0.zip
 
 --- AUTHORS ---
 # This file lists authors for copyright purposes.  This file is distinct from
@@ -99043,7 +99043,7 @@ and license texts it points at are the ones you have to carry with you.
 | [Go](https://github.com/golang/go) | -- | BSD-3-Clause | modernc.org/libc | [N1](#N1) |
 | [go-netdb](https://github.com/dominikh/go-netdb) | -- | MIT | modernc.org/libc | [N1](#N1) |
 | [golang.org/x/sys](https://pkg.go.dev/golang.org/x/sys) | v0.49.0 | BSD-3-Clause | github.com/google/pprof, github.com/mattn/go-isatty, modernc.org/libc, modernc.org/memory, `go.mod` | [L3](#L3) |
-| [modernc.org/libc](https://pkg.go.dev/modernc.org/libc) | v1.79.0 | BSD-3-Clause | `go.mod` | [L4](#L4) |
+| [modernc.org/libc](https://pkg.go.dev/modernc.org/libc) | v1.80.1 | BSD-3-Clause | `go.mod` | [L4](#L4) |
 | [modernc.org/mathutil](https://pkg.go.dev/modernc.org/mathutil) | v1.7.1 | BSD-3-Clause | modernc.org/fileutil, modernc.org/libc, modernc.org/memory, `go.mod` | [L4](#L4) |
 | [modernc.org/memory](https://pkg.go.dev/modernc.org/memory) | v1.12.1 | BSD-3-Clause, attribution reference | modernc.org/libc, `go.mod` | [L4](#L4), [L2](#L2), [L5](#L5), [L6](#L6) |
 | [musl libc](https://musl.libc.org/) | -- | MIT | modernc.org/libc | [N1](#N1) |
@@ -99088,8 +99088,8 @@ this one.
 | [golang.org/x/mod](https://pkg.go.dev/golang.org/x/mod) | v0.42.0 | BSD-3-Clause | modernc.org/libc | [L3](#L3) |
 | [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) | v0.24.0 | BSD-3-Clause | modernc.org/libc | [L3](#L3) |
 | [golang.org/x/tools](https://pkg.go.dev/golang.org/x/tools) | v0.52.0 | BSD-3-Clause | modernc.org/libc | [L3](#L3) |
-| [modernc.org/cc/v4](https://pkg.go.dev/modernc.org/cc/v4) | v4.30.3 | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
-| [modernc.org/ccgo/v4](https://pkg.go.dev/modernc.org/ccgo/v4) | v4.37.0 | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
+| [modernc.org/cc/v4](https://pkg.go.dev/modernc.org/cc/v4) | v4.30.6-0.20261101114202-1b9d1a076f6b | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
+| [modernc.org/ccgo/v4](https://pkg.go.dev/modernc.org/ccgo/v4) | v4.38.1 | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
 | [modernc.org/gc/v2](https://pkg.go.dev/modernc.org/gc/v2) | v2.6.5 | BSD-3-Clause | modernc.org/libc | [L16](#L16) |
 | [modernc.org/gc/v3](https://pkg.go.dev/modernc.org/gc/v3) | v3.2.0 | BSD-3-Clause | modernc.org/libc | [L16](#L16) |
 | [modernc.org/goabi0](https://pkg.go.dev/modernc.org/goabi0) | v0.2.0 | BSD-3-Clause | modernc.org/libc | [L17](#L17) |
