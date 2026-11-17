@@ -1,9 +1,9 @@
 {
   "inputs": {
-    "cargo": "a89dafc30ec576585fa5a3337ac227b1bd727617e1d2502cb948d7dba1a0f6b1",
+    "cargo": "03fe552a1abaef5714288e1f449a131a0a43baf8e2388228e67faa9439595e9c",
     "npm": "dcaa0fa935e052f4684356520cf9b2d2df79c9daf104e9a9343a71b1cb2a905a",
-    "go.mod": "a64b6b1fafffb6f1a38e37cc08dd4d11d12eb21e6414218a9f10ac58dbe1333b",
-    "go.sum": "556536f802893b50fc89d895958b9a8f398069597b6af009cac567e483d46db0"
+    "go.mod": "babec04a57108da76b80481ee034e2e3cc69ba7888fe93f04c29512699249165",
+    "go.sum": "446fc30f7e3ee5f4cce9cc387ce7ebe7187bfc20706303eacb2345cf780909a5"
   },
   "packages": [
     {
@@ -2520,14 +2520,6 @@
     },
     {
       "ecosystem": "cargo",
-      "name": "ppv-lite86",
-      "version": "0.2.21",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/ppv-lite86/ppv-lite86-0.2.21.crate",
-      "checksum": "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
-    },
-    {
-      "ecosystem": "cargo",
       "name": "precomputed-hash",
       "version": "0.1.1",
       "license": "MIT",
@@ -2648,35 +2640,11 @@
     },
     {
       "ecosystem": "cargo",
-      "name": "rand",
-      "version": "0.9.5",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/rand/rand-0.9.5.crate",
-      "checksum": "b9ef1d0d795eb7d84685bca4f72f3649f064e6641543d3a8c415898726a57b41"
-    },
-    {
-      "ecosystem": "cargo",
-      "name": "rand_chacha",
-      "version": "0.9.0",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/rand_chacha/rand_chacha-0.9.0.crate",
-      "checksum": "d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb"
-    },
-    {
-      "ecosystem": "cargo",
       "name": "rand_core",
       "version": "0.10.1",
       "license": "MIT OR Apache-2.0",
       "source": "https://static.crates.io/crates/rand_core/rand_core-0.10.1.crate",
       "checksum": "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
-    },
-    {
-      "ecosystem": "cargo",
-      "name": "rand_core",
-      "version": "0.9.5",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/rand_core/rand_core-0.9.5.crate",
-      "checksum": "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
     },
     {
       "ecosystem": "cargo",
@@ -3409,18 +3377,18 @@
     {
       "ecosystem": "cargo",
       "name": "tauri-plugin",
-      "version": "2.6.3",
+      "version": "2.7.2",
       "license": "Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/tauri-plugin/tauri-plugin-2.6.3.crate",
-      "checksum": "74be5dd4bed9afbd145e5716b5fa2ec28cbc29c34ffa61c258c9273d896c8020"
+      "source": "https://static.crates.io/crates/tauri-plugin/tauri-plugin-2.7.2.crate",
+      "checksum": "67fb21a77e8f94e8beb3325e583102488659365af0a3948b7ea244c5b779c291"
     },
     {
       "ecosystem": "cargo",
       "name": "tauri-plugin-notification",
-      "version": "2.4.0",
+      "version": "2.8.1",
       "license": "Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/tauri-plugin-notification/tauri-plugin-notification-2.4.0.crate",
-      "checksum": "ad2fd40946aef810c4be9fd33a2d1b9b397cb79042b2d21c81a0a8f204354fd1"
+      "source": "https://static.crates.io/crates/tauri-plugin-notification/tauri-plugin-notification-2.8.1.crate",
+      "checksum": "14a226bfb8189ec4ab2c1936e66330ad06c44d9f6c54a674338208491dee177f"
     },
     {
       "ecosystem": "cargo",
@@ -3593,10 +3561,10 @@
     {
       "ecosystem": "cargo",
       "name": "tokio-util",
-      "version": "0.7.19",
+      "version": "0.7.20",
       "license": "MIT",
-      "source": "https://static.crates.io/crates/tokio-util/tokio-util-0.7.19.crate",
-      "checksum": "494815d09bf52b5548659851081238f0ca39ff638363907596da739561c62c52"
+      "source": "https://static.crates.io/crates/tokio-util/tokio-util-0.7.20.crate",
+      "checksum": "e464cf451ba96ebfc6f9b6542f17ee8b8956e33f1e40d9690624e59d7a7f8a4b"
     },
     {
       "ecosystem": "cargo",
@@ -4480,22 +4448,6 @@
     },
     {
       "ecosystem": "cargo",
-      "name": "zerocopy",
-      "version": "0.8.63",
-      "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/zerocopy/zerocopy-0.8.63.crate",
-      "checksum": "e5fe1f8f1b06191a00962174c61aa5005e0bb391a6d80d07e24d115c01a92ed8"
-    },
-    {
-      "ecosystem": "cargo",
-      "name": "zerocopy-derive",
-      "version": "0.8.63",
-      "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/zerocopy-derive/zerocopy-derive-0.8.63.crate",
-      "checksum": "863ad3ac83293fb4d740aedbfdc9240dd8d1a50c1099acd76ce80ce7c7230c7f"
-    },
-    {
-      "ecosystem": "cargo",
       "name": "zerofrom",
       "version": "0.1.8",
       "license": "Unicode-3.0",
@@ -4681,18 +4633,18 @@
     {
       "ecosystem": "go",
       "name": "modernc.org/cc/v4",
-      "version": "v4.30.3",
+      "version": "v4.30.6-0.20261101114202-1b9d1a076f6b",
       "license": "See original texts",
-      "source": "https://proxy.golang.org/modernc.org/cc/v4/@v/v4.30.3.zip",
-      "checksum": "h1:aDq8gIX1X7+VFgO/JYYji6pLWL2H4tv3g8WatT3KCys="
+      "source": "https://proxy.golang.org/modernc.org/cc/v4/@v/v4.30.6-0.20261101114202-1b9d1a076f6b.zip",
+      "checksum": "h1:WE5SLOURcNd8s6uPR/n4WV4weQxxYKi5OpEZkfNVvdE="
     },
     {
       "ecosystem": "go",
       "name": "modernc.org/ccgo/v4",
-      "version": "v4.37.0",
+      "version": "v4.38.1",
       "license": "See original texts",
-      "source": "https://proxy.golang.org/modernc.org/ccgo/v4/@v/v4.37.0.zip",
-      "checksum": "h1:BAuJCUtIHIxFIYaFhqXIw5YaoMBlNCUlFovejHfMip4="
+      "source": "https://proxy.golang.org/modernc.org/ccgo/v4/@v/v4.38.1.zip",
+      "checksum": "h1:wdxJVBuFT8JufZnnQyS6Bbz3NOWhViD0xJOGR96Bpd4="
     },
     {
       "ecosystem": "go",
@@ -4729,10 +4681,10 @@
     {
       "ecosystem": "go",
       "name": "modernc.org/libc",
-      "version": "v1.79.0",
+      "version": "v1.80.1",
       "license": "See original texts",
-      "source": "https://proxy.golang.org/modernc.org/libc/@v/v1.79.0.zip",
-      "checksum": "h1:9Dvvv++bAMSkSuBzuOFAatbTV5OIoq6Y6FohmD3e7q8="
+      "source": "https://proxy.golang.org/modernc.org/libc/@v/v1.80.1.zip",
+      "checksum": "h1:ejn7HtTV3GknNKbklqWQ1nvUrfX8mTxs1D+xp/JQwy4="
     },
     {
       "ecosystem": "go",
@@ -4769,10 +4721,10 @@
     {
       "ecosystem": "go",
       "name": "modernc.org/sqlite",
-      "version": "v1.61.1",
+      "version": "v1.62.0",
       "license": "See original texts",
-      "source": "https://proxy.golang.org/modernc.org/sqlite/@v/v1.61.1.zip",
-      "checksum": "h1:TBEE49wz7VlxS+qXRXMQiPUZYOXHJ4ku83daYv1fe04="
+      "source": "https://proxy.golang.org/modernc.org/sqlite/@v/v1.62.0.zip",
+      "checksum": "h1:gMaCjSM1qpl+iOjiWhR1LYP3zqrYDI+5GYLGt6veP2g="
     },
     {
       "ecosystem": "go",
@@ -4808,7 +4760,7 @@
     }
   ],
   "files": {
-    "dependencies.txt": "680ddf90f6dcc8dcb23db1809f742d4ffa0428e66ddef6bdeea0d9c161d36799",
+    "dependencies.txt": "d9308b36dcfa3169f8486757e8ff00865e4ce870c5a60a17aa5ea65f77effbfb",
     "sources/cssparser-0.37.0.crate": "8c9cdaae01d5ed7882b04d795e7f752f46ff52d2fa3b50a20d28c464510bba98",
     "sources/cssparser-0.38.0.crate": "11119743ad110e8c1bdccd930d7f5c30c99e5fc76a7b63ec9807e84eef0c5f59",
     "sources/cssparser-macros-0.7.1.crate": "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a",
@@ -4817,6 +4769,6 @@
     "sources/selectors-0.38.0.crate": "8adfa1c298912827b8a28b223b3b874357397ae706e6190acd9bf28cee99114d",
     "sources/selectors-0.41.0.crate": "8322aebea94a6cc288ff884e8a49bdbceef60206c400c6c46d22e62fc4fd91a6",
     "sources/github.com-hashicorp-golang-lru-v2-v2.0.7.zip": "2eb92ff13970bccd460efae14255bfc03bb51474da0137e477a60f95561acc30",
-    "sources/modernc.org-sqlite-v1.61.1.zip": "237eb215ed62c4a3ba65ddc8fd35a3f9b229ea2c7a49b3053c17e45b11496711"
+    "sources/modernc.org-sqlite-v1.62.0.zip": "6cbc7a2a7713bac4ca9c02acea551ea20d07f0d7b6062ef448b086622889e3a4"
   }
 }
