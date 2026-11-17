@@ -1,6 +1,6 @@
 {
   "inputs": {
-    "cargo": "a89dafc30ec576585fa5a3337ac227b1bd727617e1d2502cb948d7dba1a0f6b1",
+    "cargo": "ae440ebb878cecd4d370050a25dc02205ea10f5f6d5e833589209908c381fe01",
     "npm": "dcaa0fa935e052f4684356520cf9b2d2df79c9daf104e9a9343a71b1cb2a905a",
     "go.mod": "a64b6b1fafffb6f1a38e37cc08dd4d11d12eb21e6414218a9f10ac58dbe1333b",
     "go.sum": "556536f802893b50fc89d895958b9a8f398069597b6af009cac567e483d46db0"
@@ -2520,14 +2520,6 @@
     },
     {
       "ecosystem": "cargo",
-      "name": "ppv-lite86",
-      "version": "0.2.21",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/ppv-lite86/ppv-lite86-0.2.21.crate",
-      "checksum": "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
-    },
-    {
-      "ecosystem": "cargo",
       "name": "precomputed-hash",
       "version": "0.1.1",
       "license": "MIT",
@@ -2648,35 +2640,11 @@
     },
     {
       "ecosystem": "cargo",
-      "name": "rand",
-      "version": "0.9.5",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/rand/rand-0.9.5.crate",
-      "checksum": "b9ef1d0d795eb7d84685bca4f72f3649f064e6641543d3a8c415898726a57b41"
-    },
-    {
-      "ecosystem": "cargo",
-      "name": "rand_chacha",
-      "version": "0.9.0",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/rand_chacha/rand_chacha-0.9.0.crate",
-      "checksum": "d3022b5f1df60f26e1ffddd6c66e8aa15de382ae63b3a0c1bfc0e4d3e3f325cb"
-    },
-    {
-      "ecosystem": "cargo",
       "name": "rand_core",
       "version": "0.10.1",
       "license": "MIT OR Apache-2.0",
       "source": "https://static.crates.io/crates/rand_core/rand_core-0.10.1.crate",
       "checksum": "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
-    },
-    {
-      "ecosystem": "cargo",
-      "name": "rand_core",
-      "version": "0.9.5",
-      "license": "MIT OR Apache-2.0",
-      "source": "https://static.crates.io/crates/rand_core/rand_core-0.9.5.crate",
-      "checksum": "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
     },
     {
       "ecosystem": "cargo",
@@ -3409,18 +3377,18 @@
     {
       "ecosystem": "cargo",
       "name": "tauri-plugin",
-      "version": "2.6.3",
+      "version": "2.7.2",
       "license": "Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/tauri-plugin/tauri-plugin-2.6.3.crate",
-      "checksum": "74be5dd4bed9afbd145e5716b5fa2ec28cbc29c34ffa61c258c9273d896c8020"
+      "source": "https://static.crates.io/crates/tauri-plugin/tauri-plugin-2.7.2.crate",
+      "checksum": "67fb21a77e8f94e8beb3325e583102488659365af0a3948b7ea244c5b779c291"
     },
     {
       "ecosystem": "cargo",
       "name": "tauri-plugin-notification",
-      "version": "2.4.0",
+      "version": "2.8.1",
       "license": "Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/tauri-plugin-notification/tauri-plugin-notification-2.4.0.crate",
-      "checksum": "ad2fd40946aef810c4be9fd33a2d1b9b397cb79042b2d21c81a0a8f204354fd1"
+      "source": "https://static.crates.io/crates/tauri-plugin-notification/tauri-plugin-notification-2.8.1.crate",
+      "checksum": "14a226bfb8189ec4ab2c1936e66330ad06c44d9f6c54a674338208491dee177f"
     },
     {
       "ecosystem": "cargo",
@@ -4480,22 +4448,6 @@
     },
     {
       "ecosystem": "cargo",
-      "name": "zerocopy",
-      "version": "0.8.63",
-      "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/zerocopy/zerocopy-0.8.63.crate",
-      "checksum": "e5fe1f8f1b06191a00962174c61aa5005e0bb391a6d80d07e24d115c01a92ed8"
-    },
-    {
-      "ecosystem": "cargo",
-      "name": "zerocopy-derive",
-      "version": "0.8.63",
-      "license": "BSD-2-Clause OR Apache-2.0 OR MIT",
-      "source": "https://static.crates.io/crates/zerocopy-derive/zerocopy-derive-0.8.63.crate",
-      "checksum": "863ad3ac83293fb4d740aedbfdc9240dd8d1a50c1099acd76ce80ce7c7230c7f"
-    },
-    {
-      "ecosystem": "cargo",
       "name": "zerofrom",
       "version": "0.1.8",
       "license": "Unicode-3.0",
@@ -4808,7 +4760,7 @@
     }
   ],
   "files": {
-    "dependencies.txt": "680ddf90f6dcc8dcb23db1809f742d4ffa0428e66ddef6bdeea0d9c161d36799",
+    "dependencies.txt": "381613054066d4c633805131ad837100df07ecc29beef12be65927515e354294",
     "sources/cssparser-0.37.0.crate": "8c9cdaae01d5ed7882b04d795e7f752f46ff52d2fa3b50a20d28c464510bba98",
     "sources/cssparser-0.38.0.crate": "11119743ad110e8c1bdccd930d7f5c30c99e5fc76a7b63ec9807e84eef0c5f59",
     "sources/cssparser-macros-0.7.1.crate": "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a",
