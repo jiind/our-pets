@@ -1,6 +1,6 @@
 {
   "inputs": {
-    "cargo": "a89dafc30ec576585fa5a3337ac227b1bd727617e1d2502cb948d7dba1a0f6b1",
+    "cargo": "f8b81453626ead231c13b819a7a1f46bb03af01d6ac61977c7424bc15b7c61e3",
     "npm": "dcaa0fa935e052f4684356520cf9b2d2df79c9daf104e9a9343a71b1cb2a905a",
     "go.mod": "a64b6b1fafffb6f1a38e37cc08dd4d11d12eb21e6414218a9f10ac58dbe1333b",
     "go.sum": "556536f802893b50fc89d895958b9a8f398069597b6af009cac567e483d46db0"
@@ -3593,10 +3593,10 @@
     {
       "ecosystem": "cargo",
       "name": "tokio-util",
-      "version": "0.7.19",
+      "version": "0.7.20",
       "license": "MIT",
-      "source": "https://static.crates.io/crates/tokio-util/tokio-util-0.7.19.crate",
-      "checksum": "494815d09bf52b5548659851081238f0ca39ff638363907596da739561c62c52"
+      "source": "https://static.crates.io/crates/tokio-util/tokio-util-0.7.20.crate",
+      "checksum": "e464cf451ba96ebfc6f9b6542f17ee8b8956e33f1e40d9690624e59d7a7f8a4b"
     },
     {
       "ecosystem": "cargo",
@@ -4808,7 +4808,7 @@
     }
   ],
   "files": {
-    "dependencies.txt": "680ddf90f6dcc8dcb23db1809f742d4ffa0428e66ddef6bdeea0d9c161d36799",
+    "dependencies.txt": "d63ec05b321e2e927f94a6607fd53a069e7dbc08941d9d3fd62f4f3d4a47c79f",
     "sources/cssparser-0.37.0.crate": "8c9cdaae01d5ed7882b04d795e7f752f46ff52d2fa3b50a20d28c464510bba98",
     "sources/cssparser-0.38.0.crate": "11119743ad110e8c1bdccd930d7f5c30c99e5fc76a7b63ec9807e84eef0c5f59",
     "sources/cssparser-macros-0.7.1.crate": "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a",

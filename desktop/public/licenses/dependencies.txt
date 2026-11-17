@@ -77373,9 +77373,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-=== cargo: tokio-util 0.7.19 ===
+=== cargo: tokio-util 0.7.20 ===
 License expression: MIT
-Source: https://static.crates.io/crates/tokio-util/tokio-util-0.7.19.crate
+Source: https://static.crates.io/crates/tokio-util/tokio-util-0.7.20.crate
 
 --- LICENSE ---
 MIT License
