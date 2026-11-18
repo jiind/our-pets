@@ -674,10 +674,10 @@ fn set_regions(
         use gtk::prelude::*;
         let widget = window.gtk_window().map_err(|e| e.to_string())?;
         if let Some(surface) = widget.window() {
-            let shape = cairo::Region::create();
+            let shape = gtk::cairo::Region::create();
             for r in regions {
                 shape
-                    .union_rectangle(&cairo::RectangleInt::new(r.x, r.y, r.width, r.height))
+                    .union_rectangle(&gtk::cairo::RectangleInt::new(r.x, r.y, r.width, r.height))
                     .map_err(|e| e.to_string())?;
             }
             surface.input_shape_combine_region(&shape, 0, 0);
