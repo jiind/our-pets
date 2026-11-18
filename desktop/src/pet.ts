@@ -1,3 +1,4 @@
+import { fragment, html, msg, setAttribute, setText, t } from './i18n';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -96,8 +97,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   const ownWindow = isTauri() ? getCurrentWindow() : undefined;
   root.classList.add('pet-stage');
   root.hidden = !targetID;
-  root.innerHTML = `<div class="pet-menu" data-hit hidden aria-label="펫 동작 메뉴">
-    <div class="pet-menu-heading"><span class="pet-menu-title">무엇을 할까요?</span><button data-action="close" class="menu-close" aria-label="펫 메뉴 닫기">${icon('close')}</button></div>
+  root.innerHTML = html`<div class="pet-menu" data-hit hidden aria-label="펫 동작 메뉴">
+    <div class="pet-menu-heading"><span class="pet-menu-title">무엇을 할까요?</span><button data-action="close" class="menu-close" aria-label="펫 메뉴 닫기">${fragment(() => icon('close'))}</button></div>
     <div class="pet-menu-body">
     <p class="pet-menu-status" hidden></p>
 
@@ -108,10 +109,10 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     </div>
   </div>
   <article class="pet-bubble" data-hit hidden tabindex="-1" aria-label="현재 도착한 소식" aria-live="polite">
-    <div class="bubble-heading"><button class="bubble-close" aria-label="알림 닫기">${icon('close')}</button><div class="bubble-sender"></div></div>
+    <div class="bubble-heading"><button class="bubble-close" aria-label="알림 닫기">${fragment(() => icon('close'))}</button><div class="bubble-sender"></div></div>
     <div class="pet-bubble-content"><p></p><p class="bubble-state"></p><div class="bubble-actions"><button class="bubble-reply" hidden>답장하기</button><button class="bubble-accept" hidden>같이하기</button><button class="bubble-leave" hidden>함께하기 그만두기</button></div></div>
   </article>
-  <section class="pet-connection" data-hit hidden role="status" aria-label="소식 수신 문제"><button class="menu-close" aria-label="연결 안내 닫기">${icon('close')}</button><strong>소식을 받을 수 없어요</strong><p></p><button class="connection-retry">다시 연결</button><button class="connection-login" hidden>다시 로그인</button></section>
+  <section class="pet-connection" data-hit hidden role="status" aria-label="소식 수신 문제"><button class="menu-close" aria-label="연결 안내 닫기">${fragment(() => icon('close'))}</button><strong>소식을 받을 수 없어요</strong><p></p><button class="connection-retry">다시 연결</button><button class="connection-login" hidden>다시 로그인</button></section>
   <div class="reaction" hidden aria-live="polite"></div>
   <span class="pet-floor-shadow" aria-hidden="true" hidden></span>
   <canvas class="pet-canvas" width="160" height="160" role="button" tabindex="0" aria-label="오른쪽 클릭으로 내 펫 동작 메뉴 열기" aria-keyshortcuts="Enter Space Shift+F10"></canvas>`;
@@ -141,8 +142,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     return Math.min(280, Math.ceil(nameMeasure.measureText(label.textContent).width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)));
   }
   if (targetID) {
-    menu.querySelector('.pet-menu-title')!.textContent = '이 친구의 펫에게';
-    canvas.setAttribute('aria-label', '오른쪽 클릭으로 친구 펫 동작 메뉴 열기');
+    setText(menu.querySelector('.pet-menu-title')!, () => t('이 친구의 펫에게'));
+    setAttribute(canvas, 'aria-label', () => t('오른쪽 클릭으로 친구 펫 동작 메뉴 열기'));
     menu.querySelector<HTMLButtonElement>('[data-action=highfive]')!.hidden = false;
     menu.querySelector<HTMLElement>('.pet-menu-row')!.hidden = false;
     menu.querySelector<HTMLButtonElement>('[data-action=wave]')!.hidden = false;
@@ -236,13 +237,13 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const group = recruitment.current();
     const joined = group?.members.some(member => member.petId === session()?.principal.petId);
     const button = menu.querySelector<HTMLButtonElement>('[data-action=recruit]')!;
-    const caption = group ? (targetID && !joined ? '모집 참여' : '모집 현황') : '모집';
+    const caption = group ? (targetID && !joined ? t('모집 참여') : t('모집 현황')) : t('모집');
 
     // 2. 친구의 모집이 있을 때만 참여 메뉴를 표시하고 모집 진입은 깃발로 통일한다.
     button.hidden = !!targetID && !group;
-    button.querySelector('[data-recruit-label]')!.textContent = caption;
-    button.querySelector('[data-recruit-icon]')!.textContent = '🚩';
-    button.setAttribute('aria-label', group ? `${recruitmentOptions[group.kind].label} ${caption}` : '모집 종류 선택');
+    setText(button.querySelector('[data-recruit-label]')!, () => caption);
+    setText(button.querySelector('[data-recruit-icon]')!, () => '🚩');
+    setAttribute(button, 'aria-label', () => group ? `${recruitmentOptions[group.kind].label} ${caption}` : t('모집 종류 선택'));
   }
 
   // 접속 중인 펫만 표시하며 내 모임의 제안자와 참여자부터 창 한도를 적용한다.
@@ -288,7 +289,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   // 실패할 때만 수신 상태를 공유하고 상시 연결 배지는 표시하지 않는다.
   function publishConnection(state = connectionState): void {
     if (state === '연결 확인 중' && connectionState && connectionState !== '연결됨' && Date.now() - connectionStartedAt > 3000) {
-      state = '재연결 중';
+      state = t('재연결 중');
     }
     connectionState = state;
     root.dataset.connection = state;
@@ -316,7 +317,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     connectionStartedAt = Date.now();
     disconnect();
     account = '';
-    publishConnection('재연결 중');
+    publishConnection(t('재연결 중'));
     await refresh();
   }
   connectionNotice.querySelector<HTMLButtonElement>('.menu-close')!.onclick = () => {
@@ -325,7 +326,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     releaseFocus();
   };
   connectionNotice.querySelector<HTMLButtonElement>('.connection-retry')!.onclick = () => {
-    void retryConnection().catch(error => publishConnection(error instanceof Error ? error.message : '다시 연결하지 못했어요. 잠시 뒤 재시도해 주세요.'));
+    void retryConnection().catch(error => publishConnection(error instanceof Error ? error.message : t('다시 연결하지 못했어요. 잠시 뒤 재시도해 주세요.')));
   };
   connectionNotice.querySelector<HTMLButtonElement>('.connection-login')!.onclick = () => {
     if (isTauri()) {
@@ -487,7 +488,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     reactionStart = Date.now();
     reactUntil = reactionStart + (selected ? selected.animation.frames.length / selected.animation.fps * 1000 : 3300);
     gesture = 'pat';
-    reaction.textContent = '💕 기분 좋아요!';
+    setText(reaction, () => t('💕 기분 좋아요!'));
     reaction.hidden = false;
   }
   let down: { x: number; y: number; pointerID: number } | undefined;
@@ -594,12 +595,12 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         return;
       }
       if (targetID && groups.some(group => group.hostPetId === (session()?.principal.petId || '') || group.members.some(member => member.petId === session()?.principal.petId))) {
-        throw new Error('함께하기를 마친 뒤 인사할 수 있어요.');
+        throw new Error(t('함께하기를 마친 뒤 인사할 수 있어요.'));
       }
       if (targetID) {
         const current = session();
         if (!current) {
-          throw new Error('로그인 후 친구 펫과 상호작용할 수 있습니다.');
+          throw new Error(t('로그인 후 친구 펫과 상호작용할 수 있습니다.'));
         }
         await api('/messages', { method: 'POST', body: JSON.stringify({ senderPetId: current.principal.petId, mode: 'selected', petIds: [targetID], kind: 'interaction', body: action, idempotencyKey: crypto.randomUUID() }) });
         if (isTauri() && !preview) {
@@ -609,12 +610,12 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         }
         await playPair({ fromID: current.principal.petId, toID: targetID, body: action === 'highfive' ? 'highfive' : 'wave' });
       }
-      reaction.textContent = action === 'highfive' ? '🙌 하이파이브를 보냈어요!' : '👋 함께 인사해요!';
+      setText(reaction, () => action === 'highfive' ? t('🙌 하이파이브를 보냈어요!') : t('👋 함께 인사해요!'));
       reaction.hidden = false;
     } else if (action === 'recruit') {
       if (targetID) {
         if (!recruitment.current()) {
-          throw new Error('이 친구의 모집이 종료됐어요.');
+          throw new Error(t('이 친구의 모집이 종료됐어요.'));
         }
         recruitment.open();
       } else {
@@ -629,7 +630,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     button.onclick = () => {
       button.disabled = true;
       void act(button.dataset.action!).catch(error => {
-        reaction.textContent = error instanceof Error ? error.message : '다시 시도해 주세요.';
+        setText(reaction, () => error instanceof Error ? error.message : t('다시 시도해 주세요.'));
         reactionStart = Date.now();
         reactUntil = reactionStart + 3300;
         gesture = 'pat';
@@ -688,7 +689,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       reactionStart = Date.now();
       reactUntil = reactionStart + 3300;
       gesture = event.body === 'highfive' ? 'highfive' : 'wave';
-      reaction.textContent = event.body === 'highfive' ? '🙌 하이파이브!' : '👋 반가워요!';
+      setText(reaction, () => event.body === 'highfive' ? t('🙌 하이파이브!') : t('👋 반가워요!'));
       if (event.sender && session() && !composer.visible() && !recruitment.visible() && !keyboardFocus && menu.hidden) {
         void playPair({ fromID: event.sender.petId, toID: session()!.principal.petId, body: event.body === 'highfive' ? 'highfive' : 'wave' }).catch(console.error);
       }
@@ -785,10 +786,11 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       root.dataset.offline = String(offline);
       menuMessage.setOffline(offline);
       if (targetID && own) {
-        menu.querySelector<HTMLElement>('.pet-menu-title')!.textContent = own.ownerName || own.name;
+        const friend = own;
+        setText(menu.querySelector<HTMLElement>('.pet-menu-title')!, () => friend.ownerName || friend.name);
         const status = menu.querySelector<HTMLElement>('.pet-menu-status')!;
         status.hidden = !offline;
-        status.textContent = '오프라인 · 접속하면 대화할 수 있어요.';
+        setText(status, () => t('오프라인 · 접속하면 대화할 수 있어요.'));
         menu.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => {
           button.disabled = offline && button.dataset.action !== 'close';
         });
@@ -805,8 +807,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     }
     // 4. 캐시 복구 때도 이름표에는 소유자 닉네임을 표시하고 키보드 접근 이름도 맞춘다.
     builtin = own?.builtinId || 'cat';
-    label.textContent = own?.ownerName || own?.name || '';
-    canvas.setAttribute('aria-label', `${own?.ownerName || own?.name || (targetID ? '친구 펫' : '내 펫')} 동작 메뉴 · 오른쪽 클릭 또는 Enter`);
+    setText(label, () => own?.ownerName || own?.name || '');
+    setAttribute(canvas, 'aria-label', () => msg`${own?.ownerName || own?.name || (targetID ? t('친구 펫') : t('내 펫'))} 동작 메뉴 · 오른쪽 클릭 또는 Enter`);
     if (own && !own.design && design) {
       design = null;
       image = null;
@@ -900,8 +902,8 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
         sender.replaceChildren();
         const senderName = document.createElement('span');
         senderName.className = 'bubble-sender-name';
-        senderName.textContent = event.outgoing ? event.outgoing.mode === 'all' ? '모두에게 보낸 메시지' : `${event.outgoing.recipientName || '상대'}에게 보낸 ${event.replyToMessageId ? '답장' : '메시지'}` : event.sender ? event.sender.userName || event.sender.petName : externalNotificationTitle(event.notification);
-        sender.title = senderName.textContent;
+        setText(senderName, () => event.outgoing ? event.outgoing.mode === 'all' ? t('모두에게 보낸 메시지') : msg`${event.outgoing.recipientName || t('상대')}에게 보낸 ${event.replyToMessageId ? t('답장') : t('메시지')}` : event.sender ? event.sender.userName || event.sender.petName : externalNotificationTitle(event.notification));
+        setAttribute(sender, 'title', () => senderName.textContent);
         sender.append(senderName);
         if (event.sender?.designId) {
           const expectedID = event.id;
@@ -911,7 +913,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
             if (bubble.dataset.eventId === expectedID) {
               const avatar = document.createElement('img');
               avatar.src = url;
-              avatar.alt = '발신 펫';
+              setAttribute(avatar, 'alt', () => t('발신 펫'));
               avatar.onload = () => URL.revokeObjectURL(url);
               sender.prepend(avatar);
             } else {
@@ -925,7 +927,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
           drawPet(avatar, null, null, 'idle', 0, { builtin: event.sender.builtinId });
           sender.prepend(avatar);
         }
-        bubbleLayout.setText(event.kind === 'interaction' ? (event.body === 'highfive' ? '🙌 내 펫과 하이파이브!' : '👋 친구 펫과 인사해요!') : event.body || event.notification?.body || '');
+        bubbleLayout.setText(event.kind === 'interaction' ? (event.body === 'highfive' ? t('🙌 내 펫과 하이파이브!') : t('👋 친구 펫과 인사해요!')) : event.body || event.notification?.body || '');
         bubbleClosing = false;
         bubble.hidden = false;
         motion.reveal(bubble);
@@ -940,7 +942,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     label.hidden = !showName;
     root.dataset.nameVisible = String(showName);
     if (!connectionNotice.hidden) {
-      connectionNotice.querySelector<HTMLElement>('p')!.textContent = `${connectionState}. 연결이 돌아오면 새 소식부터 받아요.`;
+      setText(connectionNotice.querySelector<HTMLElement>('p')!, () => msg`${connectionState}. 연결이 돌아오면 새 소식부터 받아요.`);
       connectionNotice.querySelector<HTMLButtonElement>('.connection-login')!.hidden = !connectionState.includes('로그인');
       connectionNotice.querySelector<HTMLButtonElement>('.connection-retry')!.hidden = connectionState.includes('로그인');
     }
@@ -1009,13 +1011,13 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       activeProposal = { ...currentEvent, expiresAt: active.expiresAt };
     }
     if (!active && old.some(group => group.id === currentEvent?.id.replace(/^sent:/, ''))) {
-      bubbleMessage = '함께하기가 끝났어요.';
+      bubbleMessage = t('함께하기가 끝났어요.');
     }
     if (!targetID && active && (!old.some(group => group.id === active.id) || JSON.stringify(old.find(group => group.id === active.id)?.members) !== JSON.stringify(active.members))) {
       const id = currentEvent?.id.replace(/^sent:/, '');
       if (id !== active.id) {
         const host = knownPets.find(pet => pet.id === active.hostPetId);
-        const card: PetEvent = activeProposal?.id.replace(/^sent:/, '') === active.id ? activeProposal : { id: active.id, type: 'message', kind: 'text', proposalKind: active.kind === 'coffee' ? 'coffee' : 'meal', body: active.hostPetId === ownID ? '함께할 친구를 기다리고 있어요.' : '수락했어요. 제안한 친구 곁으로 갈게요.', sender: { userId: host?.userId || '', petId: active.hostPetId, userName: host?.ownerName || '친구', petName: host?.name || '제안한 펫' }, outgoing: active.hostPetId === ownID ? { mode: 'selected', recipientCount: 0 } : undefined, createdAt: Date.now(), expiresAt: active.expiresAt };
+        const card: PetEvent = activeProposal?.id.replace(/^sent:/, '') === active.id ? activeProposal : { id: active.id, type: 'message', kind: 'text', proposalKind: active.kind === 'coffee' ? 'coffee' : 'meal', body: active.hostPetId === ownID ? t('함께할 친구를 기다리고 있어요.') : t('수락했어요. 제안한 친구 곁으로 갈게요.'), sender: { userId: host?.userId || '', petId: active.hostPetId, userName: host?.ownerName || t('친구'), petName: host?.name || t('제안한 펫') }, outgoing: active.hostPetId === ownID ? { mode: 'selected', recipientCount: 0 } : undefined, createdAt: Date.now(), expiresAt: active.expiresAt };
         activeProposal = card;
         prioritize(card);
       }
@@ -1038,19 +1040,19 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
     const accept = bubble.querySelector<HTMLButtonElement>('.bubble-accept')!;
     const leave = bubble.querySelector<HTMLButtonElement>('.bubble-leave')!;
     accept.hidden = !currentEvent?.proposalKind || !!currentEvent.outgoing || accepted;
-    const acceptLabel = currentEvent?.proposalKind === 'coffee' ? '같이 마실래요' : '같이 먹을래요';
+    const acceptLabel = currentEvent?.proposalKind === 'coffee' ? t('같이 마실래요') : t('같이 먹을래요');
     if (accept.textContent !== acceptLabel) {
-      accept.textContent = acceptLabel;
+      setText(accept, () => acceptLabel);
     }
     leave.hidden = !group || (!host && !accepted);
-    const leaveLabel = host ? '제안 끝내기' : '함께하기 그만두기';
+    const leaveLabel = host ? t('제안 끝내기') : t('함께하기 그만두기');
     if (leave.textContent !== leaveLabel) {
-      leave.textContent = leaveLabel;
+      setText(leave, () => leaveLabel);
     }
     const state = bubble.querySelector<HTMLElement>('.bubble-state')!;
-    const stateLabel = bubbleMessage || (group ? `${accepted ? '✓ 수락했어요 · ' : ''}${group.members.length ? `함께하는 친구: ${group.members.map(member => member.userName).join(', ')}` : '수락할 친구를 기다리고 있어요'}` : '');
+    const stateLabel = bubbleMessage || (group ? `${accepted ? t('✓ 수락했어요 · ') : ''}${group.members.length ? msg`함께하는 친구: ${group.members.map(member => member.userName).join(', ')}` : t('수락할 친구를 기다리고 있어요')}` : '');
     if (state.textContent !== stateLabel) {
-      state.textContent = stateLabel;
+      setText(state, () => stateLabel);
     }
   }
   bubble.querySelector<HTMLButtonElement>('.bubble-accept')!.onclick = () => {
@@ -1080,7 +1082,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       releaseFocus();
       await updateGroups(await api<Gathering[]>('/gatherings'), true);
     }).catch(error => {
-      bubbleMessage = accepted ? '종료 요청은 보냈지만 새 상태를 확인하지 못했어요. 연결이 돌아오면 상태가 갱신돼요.' : error instanceof Error ? `${error.message} 다시 눌러 종료할 수 있어요.` : '함께하기를 끝내지 못했어요. 다시 눌러 주세요.';
+      bubbleMessage = accepted ? t('종료 요청은 보냈지만 새 상태를 확인하지 못했어요. 연결이 돌아오면 상태가 갱신돼요.') : error instanceof Error ? msg`${error.message} 다시 눌러 종료할 수 있어요.` : t('함께하기를 끝내지 못했어요. 다시 눌러 주세요.');
       bubbleClosing = false;
       bubble.hidden = false;
       motion.reveal(bubble);
@@ -1135,7 +1137,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
       gesture = pair.body;
       mirroredGesture = pair.leftID ? displayedID !== pair.leftID : displayedID === pair.toID;
       menu.hidden = true;
-      reaction.textContent = pair.body === 'highfive' ? '🙌 같이 하이파이브!' : '👋 서로 인사해요!';
+      setText(reaction, () => pair.body === 'highfive' ? t('🙌 같이 하이파이브!') : t('👋 서로 인사해요!'));
     }
   }
   const browserPair = (event: Event): void => reactPair((event as CustomEvent<PairReaction>).detail);
@@ -1252,7 +1254,7 @@ export async function mountPet(root: HTMLElement, preview = false, targetID?: st
   const focusBubble = (): void => void focusOverlay('bubble').catch(console.error);
   const retry = (): void => {
     if (!targetID && !preview) {
-      void retryConnection().catch(error => publishConnection(error instanceof Error ? error.message : '다시 연결하지 못했어요.'));
+      void retryConnection().catch(error => publishConnection(error instanceof Error ? error.message : t('다시 연결하지 못했어요.')));
     }
   };
   const unlistenFocusMenu = isTauri() ? await ownWindow!.listen('focus-pet-menu', focusMenu) : (): void => {};

@@ -44,17 +44,27 @@ test('계정의 정보 및 고지는 로컬 원문·키보드 닫기·포커스 
   await expect(dialog).toBeHidden();
   await expect(open).toBeFocused();
 
-  // 2. 원문 선택은 HTML로 해석하지 않고 배포한 전체 의존성 고지까지 읽는다.
-  await page.getByRole('button', { name: '라이선스·출처', exact: true }).click();
-  await expect(dialog.locator('[data-legal-body]')).toContainText('Apache License');
-  await dialog.getByRole('combobox', { name: '문서', exact: true }).selectOption('dependencies');
-  await expect(dialog.locator('[data-legal-body]')).toContainText('GSAP');
-  await expect(dialog.locator('[data-legal-status]')).toBeEmpty();
-  await dialog.getByRole('combobox', { name: '문서', exact: true }).selectOption('characters');
-  await expect(dialog.locator('[data-legal-body]')).toContainText('Renée French');
-  await expect(dialog.locator('[data-legal-body]')).toContainText('CC BY 4.0');
-  await page.screenshot({ path: '/tmp/our-pets-legal-dialog.png', fullPage: true });
-  await dialog.getByRole('button', { name: '정보 및 고지 닫기', exact: true }).click();
+  // 2. 문서별 버튼으로만 진입하고 모달 안에는 제목과 원문만 표시한다.
+  const documents = [
+    { title: '개인정보 안내', text: 'Privacy and data handling' },
+    { title: '프로젝트 라이선스 · Apache-2.0', text: 'Apache License' },
+    { title: '서드파티 고지', text: 'Third-party notices' },
+    { title: '캐릭터 출처·라이선스', text: 'Renée French' },
+    { title: '폰트 · Pretendard OFL', text: 'SIL OPEN FONT LICENSE' },
+    { title: 'GSAP', text: 'Standard "No Charge" GSAP License' },
+    { title: '코드 의존성 라이선스', text: 'Third-party dependency licenses' },
+  ];
+  await expect(page.locator('.account-info').getByRole('button')).toHaveText(documents.map(document => document.title));
+  for (const document of documents) {
+    const button = page.getByRole('button', { name: document.title, exact: true });
+    await button.click();
+    await expect(dialog.getByRole('heading', { name: document.title, exact: true })).toBeVisible();
+    await expect(dialog.getByRole('combobox')).toHaveCount(0);
+    await expect(dialog.locator('[data-legal-body]')).toContainText(document.text);
+    await expect(dialog.locator('[data-legal-status]')).toBeEmpty();
+    await dialog.getByRole('button', { name: '정보 및 고지 닫기', exact: true }).click();
+    await expect(button).toBeFocused();
+  }
   expect(failures).toEqual([]);
 });
 

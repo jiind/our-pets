@@ -1,3 +1,4 @@
+import { fragment, html, htmlString, initializeLocale, setAttribute, setText, t, translateError } from './i18n';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { emit, listen } from '@tauri-apps/api/event';
 import { api, checkServer, removeLegacyHistory, saveServer, saveSession, serverURL, session } from './api';
@@ -13,6 +14,7 @@ import { mountPetRegistration } from './pet-registration';
 import { mountLocalConnectors } from './local-connectors';
 import { mountSidebar } from './sidebar';
 import { mountAccountSettings } from './account-settings';
+import { mountLanguageSettings } from './language-settings';
 import { mountSystemNotificationToggle } from './system-notifications';
 import { connectedAlertsMuted, setConnectedAlertsMuted } from './notification-preferences';
 
@@ -27,6 +29,7 @@ let accountCleanup: (() => void) | undefined;
 let ownPet: RegisteredPet | undefined;
 let sidebarCleanup: (() => void) | undefined;
 let serverAttempt: AbortController | undefined;
+let languageCleanup: (() => void) | undefined;
 
 // 사용자 입력을 HTML로 해석하지 않고 텍스트로 삽입할 수 있게 변환한다.
 function escape(value: string): string {
@@ -37,7 +40,7 @@ function escape(value: string): string {
 function notice(message: string, error = false): void {
   const target = document.querySelector<HTMLElement>('#notice');
   if (target) {
-    target.textContent = message;
+    setText(target, () => translateError(message));
     target.classList.toggle('error', error);
   }
 }
@@ -48,7 +51,7 @@ function run(task: () => Promise<void>): void {
   const generation = viewGeneration;
   void pending.catch(error => {
     if (generation === viewGeneration) {
-      notice(error instanceof Error ? error.message : '작업에 실패했습니다.', true);
+      notice(error instanceof Error ? error.message : t('작업에 실패했습니다.'), true);
     }
   });
 }
@@ -79,10 +82,10 @@ function showConnectionProblem(state: string): void {
   // 2. 실시간으로만 표시되는 정책과 현재 상태에 맞는 복구 방법을 안내한다.
   const expired = state.includes('세션') || state.includes('로그인');
   const message = document.createElement('p');
-  message.textContent = expired ? '기기 연결을 다시 확인해야 해요. 로그인하면 실시간 소식을 다시 받을 수 있어요.' : '실시간 소식이 잠시 연결되지 않았어요. 자동으로 다시 연결하며, 연결이 끊긴 동안의 소식은 나중에 표시하지 않아요.';
+  setText(message, () => expired ? t('기기 연결을 다시 확인해야 해요. 로그인하면 실시간 소식을 다시 받을 수 있어요.') : t('실시간 소식이 잠시 연결되지 않았어요. 자동으로 다시 연결하며, 연결이 끊긴 동안의 소식은 나중에 표시하지 않아요.'));
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = expired ? '다시 로그인' : '다시 연결';
+  setText(button, () => expired ? t('다시 로그인') : t('다시 연결'));
   button.onclick = () => run(async () => {
     button.disabled = true;
     try {
@@ -110,12 +113,12 @@ function showServerStatus(state = connectionState): void {
     return;
   }
   const status = ownPet?.registered === false ? 'idle' : state === '연결됨' ? 'connected' : !state || state.includes('확인 중') || state === '재연결 중' ? 'connecting' : 'disconnected';
-  const description = status === 'idle' ? '펫 등록 후 실시간 연결' : status === 'connected' ? '실시간 연결됨' : state || '실시간 연결 확인 중';
+  const description = (): string => status === 'idle' ? t('펫 등록 후 실시간 연결') : status === 'connected' ? t('실시간 연결됨') : state ? translateError(state) : t('실시간 연결 확인 중');
 
   // 2. 색만으로 상태를 구분하지 않도록 같은 설명을 도움말과 접근성 이름에 넣는다.
   led.dataset.state = status;
-  led.title = description;
-  led.setAttribute('aria-label', description);
+  setAttribute(led, 'title', description);
+  setAttribute(led, 'aria-label', description);
 }
 
 // 같은 서버와 기기가 방금 남긴 연결 상태만 복원한다.
@@ -142,6 +145,8 @@ async function changed(): Promise<void> {
 function showLogin(register = false, chooseServer = false): void {
   // 1. 현재 화면의 연결과 미리보기 리소스를 해제한다.
   serverAttempt?.abort();
+  languageCleanup?.();
+  languageCleanup = undefined;
   serverAttempt = undefined;
   viewGeneration += 1;
   ownPet = undefined;
@@ -162,16 +167,19 @@ function showLogin(register = false, chooseServer = false): void {
   accountCleanup = undefined;
   app.className = 'login-shell';
   const needsServer = chooseServer || !localStorage.getItem('ourpets.server');
-  const title = needsServer ? '함께할 서버에 연결하기' : register ? '우리 펫에 합류하기' : '오늘도 만나서 반가워요';
-  const description = needsServer ? '먼저 사용할 서버를 연결해 주세요.' : register ? '사용할 계정을 만들어 주세요.' : '';
-  const serverFields = `<label>서버 주소<input name="server" type="url" value="${escape(serverURL())}" placeholder="http://192.168.0.10:9377" required></label><button type="submit" class="primary">서버 연결</button>`;
-  const accountFields = `${register ? '<label>닉네임<input name="displayName" maxlength="80" autocomplete="nickname" required></label>' : ''}<label>아이디<input name="username" autocomplete="username" minlength="3" maxlength="32" required></label><div class="auth-password-field"><label for="auth-password">비밀번호</label><div class="auth-password-input"><input id="auth-password" name="password" type="password" minlength="10" maxlength="256" autocomplete="${register ? 'new-password' : 'current-password'}" spellcheck="false" autocapitalize="off" required><button type="button" class="password-visibility" aria-label="비밀번호 보기" title="비밀번호 보기" aria-controls="auth-password" aria-pressed="false">${icon('eye')}</button></div></div>${register ? '<label>서버 가입 코드<input name="invite" type="password" autocomplete="off" required></label>' : ''}<button type="submit" class="primary">${register ? '계정 만들고 펫 등록하기' : '접속하기'} <span>↗</span></button>`;
-  app.innerHTML = `<section class="login-art"><span class="brand"><img src="/favicon.svg" alt="">우리 펫</span><div class="login-copy"><h1>각자의 화면에서,<br>함께 노는 우리 펫.</h1><p>내 데스크톱에 작은 친구를 데려오세요.<br>친구에게 보내는 메시지도, 반가운 인사도 펫과 함께.</p><div id="login-pet"></div></div><small>같은 네트워크에서 친구와 실시간으로 만나요.</small></section>
-  <section class="login-form"><h2>${title}</h2>${description ? `<p class="muted">${description}</p>` : ''}
-  ${needsServer ? '' : `<div class="auth-server"><span title="${escape(serverURL())}">${escape(serverURL())}</span><a class="auth-server-change" href="#server">서버 변경</a></div>`}
-  <form id="auth">${needsServer ? serverFields : accountFields}</form><p id="notice" role="status" aria-live="polite"></p>
-  ${needsServer ? (localStorage.getItem('ourpets.server') ? '<a id="back-to-auth" class="auth-switch" href="#login">돌아가기</a>' : '') : `<a id="switch-auth" class="auth-switch" href="${register ? '#login' : '#create-account'}">${register ? '로그인' : '계정 만들기'}</a>`}</section>`;
+  const title = (): string => needsServer ? t('함께할 서버에 연결하기') : register ? t('우리 펫에 합류하기') : t('오늘도 만나서 반가워요');
+  const description = (): string => needsServer ? t('먼저 사용할 서버를 연결해 주세요.') : register ? t('사용할 계정을 만들어 주세요.') : '';
+  const serverFields = html`<label>서버 주소<input name="server" type="url" value="${fragment(() => escape(serverURL()))}" placeholder="http://192.168.0.10:9377" required></label><button type="submit" class="primary">서버 연결</button>`;
+  const accountFields = html`${fragment(() => register ? htmlString('<label>닉네임<input name="displayName" maxlength="80" autocomplete="nickname" required></label>') : '')}<label>아이디<input name="username" autocomplete="username" minlength="3" maxlength="32" required></label><div class="auth-password-field"><label for="auth-password">비밀번호</label><div class="auth-password-input"><input id="auth-password" name="password" type="password" minlength="10" maxlength="256" autocomplete="${fragment(() => register ? 'new-password' : 'current-password')}" spellcheck="false" autocapitalize="off" required><button type="button" class="password-visibility" aria-label="비밀번호 보기" title="비밀번호 보기" aria-controls="auth-password" aria-pressed="false">${fragment(() => icon('eye'))}</button></div></div>${fragment(() => register ? htmlString('<label>서버 가입 코드<input name="invite" type="password" autocomplete="off" required></label>') : '')}<button type="submit" class="primary">${fragment(() => register ? t('계정 만들고 펫 등록하기') : t('접속하기'))} <span>↗</span></button>`;
+  app.innerHTML = html`<section class="login-art"><span class="brand"><img src="/favicon.svg" alt="">우리 펫</span><div class="login-copy"><h1>각자의 화면에서,<br>함께 노는 우리 펫.</h1><p>내 데스크톱에 작은 친구를 데려오세요.<br>친구에게 보내는 메시지도, 반가운 인사도 펫과 함께.</p><div id="login-pet"></div></div><small>같은 네트워크에서 친구와 실시간으로 만나요.</small></section>
+  <section class="login-form"><h2>${fragment(() => title())}</h2>${fragment(() => description() ? html`<p class="muted">${fragment(() => description())}</p>` : '')}
+  ${fragment(() => needsServer ? '' : html`<div class="auth-server"><span title="${fragment(() => escape(serverURL()))}">${fragment(() => escape(serverURL()))}</span><a class="auth-server-change" href="#server">서버 변경</a></div>`)}
+  <form id="auth">${fragment(() => needsServer ? serverFields : accountFields)}</form><p id="notice" role="status" aria-live="polite"></p>
+  ${fragment(() => needsServer ? (localStorage.getItem('ourpets.server') ? htmlString('<a id="back-to-auth" class="auth-switch" href="#login">돌아가기</a>') : '') : html`<a id="switch-auth" class="auth-switch" href="${fragment(() => register ? '#login' : '#create-account')}">${fragment(() => register ? t('로그인') : t('계정 만들기'))}</a>`)}</section>`;
   const loginCanvas = document.createElement('canvas');
+  const language = document.createElement('div');
+  document.querySelector('.login-form')!.append(language);
+  languageCleanup = mountLanguageSettings(language, true);
   loginCanvas.width = loginCanvas.height = 180;
   document.querySelector('#login-pet')!.append(loginCanvas);
   drawPet(loginCanvas, null, null, 'idle', 0);
@@ -208,9 +216,9 @@ function showLogin(register = false, chooseServer = false): void {
       password.type = visible ? 'text' : 'password';
       visibility.innerHTML = icon(visible ? 'eye-off' : 'eye');
       visibility.setAttribute('aria-pressed', String(visible));
-      const description = visible ? '비밀번호 숨기기' : '비밀번호 보기';
-      visibility.setAttribute('aria-label', description);
-      visibility.title = description;
+      const description = (): string => visible ? t('비밀번호 숨기기') : t('비밀번호 보기');
+      setAttribute(visibility, 'aria-label', description);
+      setAttribute(visibility, 'title', description);
     };
   }
   if (register && !needsServer) {
@@ -233,7 +241,7 @@ function showLogin(register = false, chooseServer = false): void {
           const attempt = new AbortController();
           serverAttempt = attempt;
           timeout = setTimeout(() => attempt.abort(), 8000);
-          submit.textContent = '연결 확인 중…';
+          setText(submit, () => t('연결 확인 중…'));
           let origin: string;
           try {
             origin = await checkServer(String(new FormData(form).get('server')), attempt.signal);
@@ -241,7 +249,7 @@ function showLogin(register = false, chooseServer = false): void {
             if (generation !== viewGeneration) {
               return;
             }
-            throw new Error(error instanceof Error && /형식/.test(error.message) ? error.message : '서버에 연결할 수 없어요. 주소·서버 실행 상태·접속 허용 범위를 확인해 주세요.');
+            throw new Error(error instanceof Error && error.name === 'InvalidServerAddress' ? error.message : t('서버에 연결할 수 없어요. 주소·서버 실행 상태·접속 허용 범위를 확인해 주세요.'));
           }
           if (generation !== viewGeneration || !form.isConnected) {
             return;
@@ -276,7 +284,7 @@ function showLogin(register = false, chooseServer = false): void {
           submit.disabled = false;
           submit.removeAttribute('aria-busy');
           if (needsServer) {
-            submit.textContent = '서버 연결';
+            setText(submit, () => t('서버 연결'));
           }
         }
       }
@@ -291,6 +299,8 @@ async function showHome(): Promise<void> {
     showLogin();
     return;
   }
+  languageCleanup?.();
+  languageCleanup = undefined;
   sidebarCleanup?.();
   sidebarCleanup = undefined;
   registrationCleanup?.();
@@ -300,7 +310,7 @@ async function showHome(): Promise<void> {
   accountCleanup?.();
   accountCleanup = undefined;
   app.className = 'workspace';
-  app.innerHTML = `<aside class="sidebar"><a class="brand" href="#" aria-label="우리 펫"><img src="/favicon.svg" alt=""><span>우리 펫</span></a><nav aria-label="주 메뉴"><div class="sidebar-server" role="group" aria-label="서버 정보"><span class="sidebar-server-led" role="img" data-state="connecting" aria-label="실시간 연결 확인 중" title="실시간 연결 확인 중"></span><span class="sidebar-server-address fine" title="${escape(serverURL())}">${escape(serverURL())}</span></div><button data-view="studio" title="펫" aria-label="펫">${icon('paw')} <span>펫</span></button><button data-view="connections" title="알림" aria-label="알림">${icon('bell')} <span>알림</span></button><button data-view="account" title="계정" aria-label="계정">${icon('account')} <span>계정</span></button></nav><div class="sidebar-bottom"><button id="logout" class="quiet" title="로그아웃" aria-label="로그아웃">${icon('logout')}<span>로그아웃</span></button><small class="sidebar-copyright">© ${new Date().getFullYear()} 우리 펫</small></div></aside>
+  app.innerHTML = html`<aside class="sidebar"><a class="brand" href="#" aria-label="우리 펫"><img src="/favicon.svg" alt=""><span>우리 펫</span></a><nav aria-label="주 메뉴"><div class="sidebar-server" role="group" aria-label="서버 정보"><span class="sidebar-server-led" role="img" data-state="connecting" aria-label="실시간 연결 확인 중" title="실시간 연결 확인 중"></span><span class="sidebar-server-address fine" title="${fragment(() => escape(serverURL()))}">${fragment(() => escape(serverURL()))}</span></div><button data-view="studio" title="펫" aria-label="펫">${fragment(() => icon('paw'))} <span>펫</span></button><button data-view="connections" title="알림" aria-label="알림">${fragment(() => icon('bell'))} <span>알림</span></button><button data-view="account" title="계정" aria-label="계정">${fragment(() => icon('account'))} <span>계정</span></button></nav><div class="sidebar-bottom"><button id="logout" class="quiet" title="로그아웃" aria-label="로그아웃">${fragment(() => icon('logout'))}<span>로그아웃</span></button><small class="sidebar-copyright">© ${fragment(() => new Date().getFullYear())} 우리 펫</small></div></aside>
   <main class="content" id="main-content" tabindex="-1"><header><div><h1 id="page-title">펫</h1></div><div class="page-actions" id="page-actions"></div></header><p id="notice" role="status"></p><section id="connection-problem" class="connection-problem" role="status" hidden></section><div id="view"></div></main>`;
   sidebarCleanup = mountSidebar(app);
   showServerStatus();
@@ -384,8 +394,21 @@ async function renderView(): Promise<void> {
       button.removeAttribute('aria-current');
     }
   });
-  const titles: Record<string, string> = { studio: '펫', connections: '알림', account: '계정' };
-  document.querySelector('#page-title')!.textContent = titles[view];
+  const titles: Record<string, string> = {
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get studio() {
+      return t('펫');
+    },
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get connections() {
+      return t('알림');
+    },
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get account() {
+      return t('계정');
+    }
+  };
+  setText(document.querySelector('#page-title')!, () => titles[view]);
   if (view === 'studio') {
     await renderStudio();
 
@@ -404,7 +427,7 @@ async function renderView(): Promise<void> {
         }
       } finally {
         showLogin();
-        notice(pendingFileCleanup ? '계정은 삭제됐어요. 일부 PNG 파일 정리가 지연되어 서버 운영자 확인이 필요합니다.' : '계정을 삭제했어요.');
+        notice(pendingFileCleanup ? t('계정은 삭제됐어요. 일부 PNG 파일 정리가 지연되어 서버 운영자 확인이 필요합니다.') : t('계정을 삭제했어요.'));
       }
     });
     if (generation !== viewGeneration || view !== 'account') {
@@ -453,15 +476,15 @@ async function renderConnections(): Promise<void> {
   pause.id = 'connected-alerts-toggle';
   pause.disabled = !ownPet?.registered;
   const paused = connectedAlertsMuted();
-  pause.textContent = paused ? '연결된 알람 켜기' : '연결된 알람 끄기';
-  pause.title = 'Docker·Slack 등 연결한 알림의 말풍선과 OS 알림을 켜거나 꺼요.';
+  setText(pause, () => paused ? t('연결된 알람 켜기') : t('연결된 알람 끄기'));
+  setAttribute(pause, 'title', () => t('Docker·Slack 등 연결한 알림의 말풍선과 OS 알림을 켜거나 꺼요.'));
   pause.setAttribute('aria-pressed', String(!paused));
   pause.onclick = () => {
     const next = !connectedAlertsMuted();
     setConnectedAlertsMuted(next);
-    pause.textContent = next ? '연결된 알람 켜기' : '연결된 알람 끄기';
+    setText(pause, () => next ? t('연결된 알람 켜기') : t('연결된 알람 끄기'));
     pause.setAttribute('aria-pressed', String(!next));
-    notice(next ? '연결된 알람을 껐어요. 사용자 메시지와 모집 소식은 계속 받아요.' : '연결된 알람을 켰어요. 새로 도착하는 알림부터 표시해요.');
+    notice(next ? t('연결된 알람을 껐어요. 사용자 메시지와 모집 소식은 계속 받아요.') : t('연결된 알람을 켰어요. 새로 도착하는 알림부터 표시해요.'));
   };
   controls.append(pause);
   mountSystemNotificationToggle(controls, message => notice(message, true));
@@ -482,6 +505,7 @@ async function renderConnections(): Promise<void> {
 // 창 역할에 따라 실제 투명 펫 또는 설정 UI를 시작한다.
 async function main(): Promise<void> {
   // 1. 과거 본문 기록을 지우고 펫 창은 설정 UI와 키보드 포커스를 공유하지 않는다.
+  await initializeLocale();
   removeLegacyHistory();
   if (location.search.includes('pet')) {
     document.body.classList.add('native-pet');

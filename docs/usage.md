@@ -1,6 +1,8 @@
 # User guide
 
-The current app UI is in Korean. Control names below are described in English.
+The app supports Korean and English. On first launch it follows the OS's preferred language: Korean uses Korean, English uses English, and any other or unavailable language uses English. This uses the OS locale, with no IP lookup or location request.
+
+Choose **App language** on the sign-in screen or account page to override the language for this PC. **Follow system settings** restores automatic selection; restart the app after changing the OS language. The setting also controls pet menus, app-generated notifications, and tray commands. Changing language preserves unsaved inputs and current real-time connections. Nicknames, messages, uploaded design names, and provider event content remain in their original language. License documents retain their original wording.
 
 ## Connect and register a pet
 
@@ -31,7 +33,7 @@ Enter text and emoji in the input at the bottom of a pet's right-click menu. You
 
 Incoming messages appear above the sender's pet and as OS notifications. Reply from the bubble to address the original sender. If friends are hidden or the sender window is unavailable, only the OS notification is shown; the message is not moved to your own pet.
 
-Bubbles grow vertically to fit their content without scrollbars. Text that exceeds the available screen height uses previous/next controls. Resizing preserves the current reading position, and a new message starts from its beginning.
+Bubbles wrap text and grow vertically to fit their content up to the available height limit. Longer content scrolls inside the body while the heading and close button remain visible. A new message starts from its beginning.
 
 Each connected device receives messages independently. Messages received while offline are not replayed on reconnect, and there is no inbox. App receipt is not a user read receipt.
 

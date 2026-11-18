@@ -31,7 +31,7 @@ test('실제 메시지·이모지·답장 대상과 마릿수 없는 전송 확�
     expect(pet.ok()).toBe(true);
     fixtures.push({ username, petId: login.principal.petId });
   }
-  const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
+  const contexts = await Promise.all([browser.newContext({ locale: 'ko-KR' }), browser.newContext({ locale: 'ko-KR' })]);
   try {
     const [a, b] = await Promise.all(contexts.map(context => context.newPage()));
     await openPet(a, fixtures[0].username);

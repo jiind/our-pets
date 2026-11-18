@@ -125,7 +125,7 @@ Bug fixes, new connectors, pet designs, and documentation improvements are welco
 
 ## Documentation
 
-Project documentation is in English. The app's current UI is in Korean.
+Project documentation is in English. The app supports Korean and English, follows the OS language by default, and uses English for unsupported languages. Choose a different app language on the sign-in screen or account page.
 
 | Usage and operations | Development and extensions |
 | --- | --- |

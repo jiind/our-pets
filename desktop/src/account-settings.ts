@@ -1,6 +1,8 @@
+import { fragment, html, msg, setAttribute, setText, t } from './i18n';
 import { api, serverURL, session } from './api';
 import { icon } from './icons';
 import { mountLegalInfo } from './legal-info';
+import { mountLanguageSettings } from './language-settings';
 import './account-settings.css';
 
 interface Account {
@@ -14,7 +16,10 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
   let disposed = false;
   const accountKey = `${serverURL()}/${session()?.token || ''}`;
   const id = `account-${crypto.randomUUID()}`;
-  root.innerHTML = `<div class="account-settings"><form data-profile><fieldset disabled><h2>계정 정보</h2><label>아이디<input name="username" autocomplete="username" readonly></label><label>닉네임<input name="displayName" autocomplete="nickname" maxlength="80" required></label><div class="account-actions"><button type="submit" class="primary">닉네임 저장</button></div><p data-status role="status" aria-live="polite"></p></fieldset></form><form data-password><fieldset disabled><h2>비밀번호 변경</h2>${[['currentPassword', '현재 비밀번호', 'current-password'], ['newPassword', '새 비밀번호', 'new-password'], ['confirmPassword', '새 비밀번호 확인', 'new-password']].map(([name, label, autocomplete]) => `<div><label for="${id}-${name}">${label}</label><div class="auth-password-input"><input id="${id}-${name}" name="${name}" type="password" minlength="10" maxlength="256" autocomplete="${autocomplete}" spellcheck="false" autocapitalize="off" required><button type="button" class="password-visibility" data-password-name="${name}" data-password-label="${label}" aria-label="${label} 보기" aria-controls="${id}-${name}" aria-pressed="false">${icon('eye')}</button></div></div>`).join('')}<div class="account-actions"><button type="submit" class="primary">비밀번호 변경</button></div><p data-status role="status" aria-live="polite"></p></fieldset></form><div data-legal-info></div><section class="account-delete"><h2>계정 삭제</h2><p class="fine">현재 서버의 계정과 펫·등록한 이미지·보낸 메시지를 삭제합니다.</p><button type="button" class="quiet account-delete-button" data-delete-account disabled>계정 삭제…</button></section><dialog class="account-delete-dialog" aria-labelledby="${id}-delete-title"><header><h2 id="${id}-delete-title">이 서버의 계정을 삭제할까요?</h2></header><p>모든 기기에서 로그아웃되고 계정·펫·등록한 디자인·보낸 메시지·모집 정보가 삭제됩니다. 되돌릴 수 없습니다.</p><p class="fine">다른 사용자의 메시지, 서버 백업, 이 PC의 외부 연결과 OS 알림 기록은 별도로 관리됩니다.</p><form data-delete-form><label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" maxlength="256" required></label><label><input name="confirm" type="checkbox" required> 삭제 범위를 확인했어요.</label><div class="account-actions"><button type="button" data-delete-cancel>취소</button><button type="submit" class="account-delete-confirm">계정 영구 삭제</button></div><p role="status" data-status aria-live="polite"></p></form></dialog><p data-load-status role="status">계정을 불러오는 중이에요.</p><button type="button" data-retry hidden>계정 다시 불러오기</button></div>`;
+  root.innerHTML = html`<div class="account-settings"><form data-profile><fieldset disabled><h2>계정 정보</h2><label>아이디<input name="username" autocomplete="username" readonly></label><label>닉네임<input name="displayName" autocomplete="nickname" maxlength="80" required></label><div class="account-actions"><button type="submit" class="primary">닉네임 저장</button></div><p data-status role="status" aria-live="polite"></p></fieldset></form><form data-password><fieldset disabled><h2>비밀번호 변경</h2>${fragment(() => [['currentPassword', '현재 비밀번호', 'current-password'], ['newPassword', '새 비밀번호', 'new-password'], ['confirmPassword', '새 비밀번호 확인', 'new-password']].map(([name, label, autocomplete]) => html`<div><label for="${fragment(() => id)}-${fragment(() => name)}">${fragment(() => t(label))}</label><div class="auth-password-input"><input id="${fragment(() => id)}-${fragment(() => name)}" name="${fragment(() => name)}" type="password" minlength="10" maxlength="256" autocomplete="${fragment(() => autocomplete)}" spellcheck="false" autocapitalize="off" required><button type="button" class="password-visibility" data-password-name="${fragment(() => name)}" data-password-label="${fragment(() => label)}" aria-label="${fragment(() => t(label))} 보기" aria-controls="${fragment(() => id)}-${fragment(() => name)}" aria-pressed="false">${fragment(() => icon('eye'))}</button></div></div>`).join(''))}<div class="account-actions"><button type="submit" class="primary">비밀번호 변경</button></div><p data-status role="status" aria-live="polite"></p></fieldset></form><div data-legal-info></div><section class="account-delete"><h2>계정 삭제</h2><p class="fine">현재 서버의 계정과 펫·등록한 이미지·보낸 메시지를 삭제합니다.</p><button type="button" class="quiet account-delete-button" data-delete-account disabled>계정 삭제…</button></section><dialog class="account-delete-dialog" aria-labelledby="${fragment(() => id)}-delete-title"><header><h2 id="${fragment(() => id)}-delete-title">이 서버의 계정을 삭제할까요?</h2></header><p>모든 기기에서 로그아웃되고 계정·펫·등록한 디자인·보낸 메시지·모집 정보가 삭제됩니다. 되돌릴 수 없습니다.</p><p class="fine">다른 사용자의 메시지, 서버 백업, 이 PC의 외부 연결과 OS 알림 기록은 별도로 관리됩니다.</p><form data-delete-form><label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" maxlength="256" required></label><label><input name="confirm" type="checkbox" required> 삭제 범위를 확인했어요.</label><div class="account-actions"><button type="button" data-delete-cancel>취소</button><button type="submit" class="account-delete-confirm">계정 영구 삭제</button></div><p role="status" data-status aria-live="polite"></p></form></dialog><p data-load-status role="status">계정을 불러오는 중이에요.</p><button type="button" data-retry hidden>계정 다시 불러오기</button></div>`;
+  const language = document.createElement('section');
+  root.querySelector('.account-settings')!.prepend(language);
+  const disposeLanguage = mountLanguageSettings(language);
   const disposeLegal = mountLegalInfo(root.querySelector<HTMLElement>('[data-legal-info]')!);
   const deletion = root.querySelector<HTMLDialogElement>('.account-delete-dialog')!;
   const deletionForm = deletion.querySelector<HTMLFormElement>('form')!;
@@ -28,7 +33,7 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
   // 다른 계정으로 전환한 뒤 이전 폼이 저장 요청을 보내지 못하게 한다.
   function assertAccount(): void {
     if (disposed || accountKey !== `${serverURL()}/${session()?.token || ''}`) {
-      throw new Error('로그인한 계정이 바뀌었어요. 계정 메뉴를 다시 열어 주세요.');
+      throw new Error(t('로그인한 계정이 바뀌었어요. 계정 메뉴를 다시 열어 주세요.'));
     }
   }
 
@@ -36,7 +41,7 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
   function feedback(form: HTMLFormElement, message: string, error = false): void {
     if (!disposed) {
       const status = form.querySelector<HTMLElement>('[data-status]')!;
-      status.textContent = message;
+      setText(status, () => message);
       status.classList.toggle('error', error);
     }
   }
@@ -60,7 +65,7 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
       retry.hidden = true;
     } catch (error) {
       if (!disposed) {
-        loadStatus.textContent = error instanceof Error ? error.message : '계정을 불러오지 못했어요.';
+        setText(loadStatus, () => error instanceof Error ? error.message : t('계정을 불러오지 못했어요.'));
         retry.hidden = false;
       }
     } finally {
@@ -78,7 +83,7 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
     const input = profile.elements.namedItem('displayName') as HTMLInputElement;
     const displayName = input.value.trim();
     if (!displayName || new TextEncoder().encode(displayName).length > 80) {
-      feedback(profile, '닉네임은 1~80바이트로 입력하세요.', true);
+      feedback(profile, t('닉네임은 1~80바이트로 입력하세요.'), true);
       return;
     }
     fields.disabled = true;
@@ -90,9 +95,9 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
         assertAccount();
         input.value = account.displayName;
         await onNicknameChanged();
-        feedback(profile, '닉네임을 저장했어요.');
+        feedback(profile, t('닉네임을 저장했어요.'));
       } catch (error) {
-        feedback(profile, error instanceof Error ? error.message : '닉네임을 저장하지 못했어요.', true);
+        feedback(profile, error instanceof Error ? error.message : t('닉네임을 저장하지 못했어요.'), true);
       } finally {
         fields.disabled = false;
       }
@@ -110,11 +115,11 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
     const currentPassword = String(data.get('currentPassword'));
     const newPassword = String(data.get('newPassword'));
     if (newPassword !== data.get('confirmPassword')) {
-      feedback(password, '새 비밀번호가 서로 일치하지 않습니다.', true);
+      feedback(password, t('새 비밀번호가 서로 일치하지 않습니다.'), true);
       return;
     }
     if (new TextEncoder().encode(newPassword).length > 256) {
-      feedback(password, '새 비밀번호는 256바이트 이내로 입력하세요.', true);
+      feedback(password, t('새 비밀번호는 256바이트 이내로 입력하세요.'), true);
       return;
     }
     fields.disabled = true;
@@ -127,13 +132,13 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
         password.reset();
         password.querySelectorAll<HTMLInputElement>('input').forEach(input => input.type = 'password');
         password.querySelectorAll<HTMLButtonElement>('[data-password-name]').forEach(button => {
-          button.setAttribute('aria-label', `${button.dataset.passwordLabel} 보기`);
+          setAttribute(button, 'aria-label', () => msg`${t(button.dataset.passwordLabel || '')} 보기`);
           button.setAttribute('aria-pressed', 'false');
           button.innerHTML = icon('eye');
         });
-        feedback(password, '비밀번호를 변경했어요. 다른 로그인 세션은 종료됩니다.');
+        feedback(password, t('비밀번호를 변경했어요. 다른 로그인 세션은 종료됩니다.'));
       } catch (error) {
-        feedback(password, error instanceof Error ? error.message : '비밀번호를 변경하지 못했어요.', true);
+        feedback(password, error instanceof Error ? error.message : t('비밀번호를 변경하지 못했어요.'), true);
       } finally {
         fields.disabled = false;
       }
@@ -146,7 +151,7 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
       const input = password.elements.namedItem(button.dataset.passwordName!) as HTMLInputElement;
       const visible = input.type === 'password';
       input.type = visible ? 'text' : 'password';
-      button.setAttribute('aria-label', `${button.dataset.passwordLabel} ${visible ? '숨기기' : '보기'}`);
+      setAttribute(button, 'aria-label', () => `${t(button.dataset.passwordLabel || '')} ${visible ? t('숨기기') : t('보기')}`);
       button.setAttribute('aria-pressed', String(visible));
       button.innerHTML = icon(visible ? 'eye-off' : 'eye');
     };
@@ -171,7 +176,7 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
         deletion.close();
         await onDeleted(result.pendingFileCleanup);
       } catch (error) {
-        feedback(deletionForm, error instanceof Error ? error.message : '계정을 삭제하지 못했어요.', true);
+        feedback(deletionForm, error instanceof Error ? error.message : t('계정을 삭제하지 못했어요.'), true);
       } finally {
         deleting = false;
         deletionForm.querySelector<HTMLInputElement>('[name=currentPassword]')!.value = '';
@@ -200,5 +205,6 @@ export async function mountAccountSettings(root: HTMLElement, onNicknameChanged:
     deletionForm.reset();
     deletion.close();
     disposeLegal();
+    disposeLanguage();
   };
 }

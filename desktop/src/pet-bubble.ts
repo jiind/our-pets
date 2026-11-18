@@ -1,3 +1,4 @@
+import { setAttribute, setText as setLocalizedText, t } from './i18n';
 // 말풍선의 고정 제목·동작을 보존하고 본문만 제한된 높이 안에서 스크롤하게 한다.
 export function mountBubbleLayout(bubble: HTMLElement): { setText: (value: string) => void; fit: (available: number, maximum?: number) => void } {
   // 1. 본문을 키보드로도 스크롤할 수 있는 읽기 영역으로 준비한다.
@@ -7,13 +8,13 @@ export function mountBubbleLayout(bubble: HTMLElement): { setText: (value: strin
   const actions = bubble.querySelector<HTMLElement>('.bubble-actions')!;
   body.tabIndex = 0;
   body.setAttribute('role', 'region');
-  body.setAttribute('aria-label', '알림 내용');
+  setAttribute(body, 'aria-label', () => t('알림 내용'));
   let dimensions = '';
   let resetScroll = false;
 
   // 새 알림의 본문은 자르지 않고 그대로 넣으며 읽기 위치는 맨 위에서 시작한다.
   function setText(value: string): void {
-    body.textContent = value;
+    setLocalizedText(body, () => value);
     body.scrollTop = 0;
     dimensions = '';
     resetScroll = true;

@@ -45,10 +45,15 @@
   border-radius: var(--radius-md);
 }
 .account-info-links {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: var(--space-2);
   margin-top: var(--space-4);
+}
+.account-info-links button {
+  min-width: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 .account-delete {
   border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
@@ -83,15 +88,6 @@ button.account-delete-confirm {
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
-}
-.legal-document-picker {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-.legal-document-picker select {
-  flex: 1;
-  min-width: 0;
 }
 .legal-document {
   max-height: 50dvh;

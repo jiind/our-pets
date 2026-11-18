@@ -1,3 +1,4 @@
+import { fragment, html, msg, setAttribute, setText, t } from './i18n';
 import { api, designImage, serverURL, session } from './api';
 import { drawPet, loadImage } from './render';
 import { watchDisplay } from './preferences';
@@ -30,6 +31,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   let previewAnimation = 'idle';
   let previewReady = false;
   let animationDefaultsApplied = false;
+  let restoreSpriteMode = false;
   let useExampleDimensions = true;
   let previewProblem = '';
   let actionStarted = Date.now();
@@ -43,12 +45,12 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   const dialog = document.createElement('dialog');
   dialog.className = 'pet-upload-dialog';
   dialog.setAttribute('aria-labelledby', `${id}-title`);
-  dialog.innerHTML = `<div class="pet-upload-heading"><h2 id="${id}-title">펫 추가</h2><div class="pet-upload-actions"><button type="button" data-cancel>취소</button><button type="submit" form="${id}-form" class="primary">추가</button></div></div>
-    <form id="${id}-form"><div class="pet-upload-layout"><fieldset class="pet-upload-fields" aria-label="추가할 펫 정보"><label for="${id}-name">이름<input id="${id}-name" name="name" maxlength="80" placeholder="예: 고양이" required></label><label for="${id}-file">PNG 파일<input id="${id}-file" name="image" class="file-input-compact" type="file" accept="image/png" aria-describedby="${id}-png-limits ${id}-png-guide" required></label><p class="fine pet-upload-file-hint" id="${id}-png-limits">최대 8 MiB · 2048 × 2048px · 투명 배경 권장</p><div class="pet-upload-png-guide fine" id="${id}-png-guide"><p>두 경우 모두 <strong>PNG 파일 하나</strong>를 선택해요.</p><ul><li><strong>일반 PNG</strong>: 펫 그림 하나가 들어 있어요. 애니메이션 설정 없이 추가할 수 있어요.</li><li><strong>스프라이트 시트 PNG</strong>: 여러 동작 그림이 한 이미지 안에 격자로 들어 있어요. 아래 애니메이션 설정에서 칸 크기와 재생 순서를 지정해요.</li></ul><p>직접 만들었거나 사용·공유 권한이 있는 이미지를 등록하세요. 이미지의 권리는 원래 권리자에게 남습니다.</p></div>
+  dialog.innerHTML = html`<div class="pet-upload-heading"><h2 id="${fragment(() => id)}-title">펫 추가</h2><div class="pet-upload-actions"><button type="button" data-cancel>취소</button><button type="submit" form="${fragment(() => id)}-form" class="primary">추가</button></div></div>
+    <form id="${fragment(() => id)}-form"><div class="pet-upload-layout"><fieldset class="pet-upload-fields" aria-label="추가할 펫 정보"><label for="${fragment(() => id)}-name">이름<input id="${fragment(() => id)}-name" name="name" maxlength="80" placeholder="예: 고양이" required></label><label for="${fragment(() => id)}-file">PNG 파일<input id="${fragment(() => id)}-file" name="image" class="file-input-compact" type="file" accept="image/png" aria-describedby="${fragment(() => id)}-png-limits ${fragment(() => id)}-png-guide" required></label><p class="fine pet-upload-file-hint" id="${fragment(() => id)}-png-limits">최대 8 MiB · 2048 × 2048px · 투명 배경 권장</p><div class="pet-upload-png-guide fine" id="${fragment(() => id)}-png-guide"><p>두 경우 모두 <strong>PNG 파일 하나</strong>를 선택해요.</p><ul><li><strong>일반 PNG</strong>: 펫 그림 하나가 들어 있어요. 애니메이션 설정 없이 추가할 수 있어요.</li><li><strong>스프라이트 시트 PNG</strong>: 여러 동작 그림이 한 이미지 안에 격자로 들어 있어요. 아래 애니메이션 설정에서 칸 크기와 재생 순서를 지정해요.</li></ul><p>직접 만들었거나 사용·공유 권한이 있는 이미지를 등록하세요. 이미지의 권리는 원래 권리자에게 남습니다.</p></div>
       <details class="character-prompts"><summary class="field-label">캐릭터 프롬프트</summary><div class="character-prompt-content"><p class="fine">먼저 일반 PNG로 캐릭터 한 자세를 만든 뒤, 그 이미지를 첨부해 스프라이트 시트로 확장하세요.</p><div class="character-prompt-toolbar"><label>이미지 종류<select data-character-prompt-kind><option value="single">일반 PNG 한 장</option><option value="animated">스프라이트 시트 PNG</option></select></label><button type="button" class="quiet" data-copy-character-prompt>프롬프트 복사</button></div><textarea data-character-prompt-text rows="12" readonly aria-label="캐릭터 생성 프롬프트" spellcheck="false"></textarea><p class="fine" data-character-prompt-hint></p><p class="fine" data-character-prompt-status role="status" aria-live="polite"></p></div></details>
-      <details data-animation-settings><summary class="field-label">애니메이션 설정 · 스프라이트 시트</summary><p class="fine">스프라이트 시트 PNG를 선택했을 때 설정해요<br>일반 PNG는 이 항목을 비워 두면 돼요.</p><h3 class="pet-upload-frame-heading" id="${id}-frame-size">그림 한 칸 크기</h3><div class="pet-upload-two-col" role="group" aria-labelledby="${id}-frame-size"><label>너비<input name="frameWidth" type="number" min="1" max="2048" step="1" placeholder="px"></label><label>높이<input name="frameHeight" type="number" min="1" max="2048" step="1" placeholder="px"></label></div><p class="fine">예: 256 × 128px PNG에 64 × 64px 그림이 들어 있다면 너비·높이에 각각 64를 입력해요.</p><p class="fine" data-frame-guide role="status">PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.</p><figure class="pet-upload-frame-map" data-frame-map hidden><figcaption>왼쪽 위부터 가로로 세는 칸 번호</figcaption><div class="pet-upload-frame-scroll"><div class="pet-upload-frame-grid" data-frame-grid></div></div></figure>
-      <div data-animation-editor></div><p class="fine">0,1,2,3은 네 칸을 순서대로 반복해요. 속도 8은 1초에 8장을 넘겨요.</p></details>
-    </fieldset><section class="pet-upload-preview" aria-label="추가할 펫 미리보기"><h3>화면 미리보기</h3><div class="pet-upload-preview-stage"><p class="muted" data-empty>PNG를 고르면 이곳에서 미리 볼 수 있어요.</p><div class="pet-name-anchor"><canvas width="160" height="160" role="img" aria-label="추가할 펫의 모습" hidden></canvas><span class="pet-nameplate" data-preview-name></span></div></div><p class="fine" data-size-note></p><label for="${id}-action">미리보기 동작<select id="${id}-action" data-action><option value="idle">대기</option><option value="walk">걷기</option><option value="react">반응</option></select></label><p class="fine" data-preview-note role="status"></p></section></div>
+      <details data-animation-settings><summary class="field-label">애니메이션 설정 · 스프라이트 시트</summary><p class="fine">스프라이트 시트 PNG를 선택했을 때 설정해요<br>일반 PNG는 이 항목을 비워 두면 돼요.</p><label class="pet-upload-sprite-toggle"><input type="checkbox" data-sprite-enabled aria-controls="${fragment(() => id)}-sprite-fields">스프라이트 시트 사용</label><fieldset class="pet-upload-sprite-fields" id="${fragment(() => id)}-sprite-fields" data-sprite-fields hidden disabled><h3 class="pet-upload-frame-heading" id="${fragment(() => id)}-frame-size">그림 한 칸 크기</h3><div class="pet-upload-two-col" role="group" aria-labelledby="${fragment(() => id)}-frame-size"><label>너비<input name="frameWidth" type="number" min="1" max="2048" step="1" placeholder="px"></label><label>높이<input name="frameHeight" type="number" min="1" max="2048" step="1" placeholder="px"></label></div><p class="fine">예: 256 × 128px PNG에 64 × 64px 그림이 들어 있다면 너비·높이에 각각 64를 입력해요.</p><p class="fine" data-frame-guide role="status">PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.</p><figure class="pet-upload-frame-map" data-frame-map hidden><figcaption>왼쪽 위부터 가로로 세는 칸 번호</figcaption><div class="pet-upload-frame-scroll"><div class="pet-upload-frame-grid" data-frame-grid></div></div></figure>
+      <div data-animation-editor></div><p class="fine">0,1,2,3은 네 칸을 순서대로 반복해요. 속도 8은 1초에 8장을 넘겨요.</p></fieldset></details>
+    </fieldset><section class="pet-upload-preview" aria-label="추가할 펫 미리보기"><h3>화면 미리보기</h3><div class="pet-upload-preview-stage"><p class="muted" data-empty>PNG를 고르면 이곳에서 미리 볼 수 있어요.</p><div class="pet-name-anchor"><canvas width="160" height="160" role="img" aria-label="추가할 펫의 모습" hidden></canvas><span class="pet-nameplate" data-preview-name></span></div></div><p class="fine" data-size-note></p><label for="${fragment(() => id)}-action">미리보기 동작<select id="${fragment(() => id)}-action" data-action><option value="idle">대기</option><option value="walk">걷기</option><option value="react">반응</option></select></label><p class="fine" data-preview-note role="status"></p></section></div>
     <p class="pet-upload-status" data-status role="status" aria-live="polite"></p></form>`;
   root.append(dialog);
   const disposePrompts = mountCharacterPrompts(dialog);
@@ -63,6 +65,8 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   const status = dialog.querySelector<HTMLElement>('[data-status]')!;
   const action = dialog.querySelector<HTMLSelectElement>('[data-action]')!;
   const animationSettings = dialog.querySelector<HTMLDetailsElement>('[data-animation-settings]')!;
+  const spriteEnabled = dialog.querySelector<HTMLInputElement>('[data-sprite-enabled]')!;
+  const spriteFields = dialog.querySelector<HTMLFieldSetElement>('[data-sprite-fields]')!;
   const frameGuide = dialog.querySelector<HTMLElement>('[data-frame-guide]')!;
   const frameMap = dialog.querySelector<HTMLElement>('[data-frame-map]')!;
   const frameGrid = dialog.querySelector<HTMLElement>('[data-frame-grid]')!;
@@ -76,8 +80,26 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   // 등록한 이름과 내부 ID를 미리보기 선택지에 함께 반영한다.
   function syncAnimationPreviewChoices(): void {
     const current = action.value;
-    const entries = animationEditor.choices();
-    action.replaceChildren(...(entries.length ? entries : [{ id: 'idle', name: '대기' }, { id: 'walk', name: '걷기' }, { id: 'react', name: '반응' }]).map(entry => new Option(entry.name, entry.id)));
+    const entries = spriteEnabled.checked ? animationEditor.choices() : [];
+    action.replaceChildren(...(entries.length ? entries : [{
+      id: 'idle',
+      // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+      get name() {
+        return t('대기');
+      }
+    }, {
+                                                                           id: 'walk',
+                                                                           // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+                                                                           get name() {
+                                                                             return t('걷기');
+                                                                           }
+                                                                         }, {
+                                                                                                       id: 'react',
+                                                                                                       // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+                                                                                                       get name() {
+                                                                                                         return t('반응');
+                                                                                                       }
+                                                                                                     }]).map(entry => new Option(entry.name, entry.id)));
     if (Array.from(action.options).some(option => option.value === current)) {
       action.value = current;
     }
@@ -89,32 +111,37 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   // 모달을 연 계정이 바뀌면 다른 사용자의 목록으로 업로드하지 못하게 한다.
   function assertAccount(): void {
     if (!session() || account !== `${serverURL()}/${session()?.token || ''}`) {
-      throw new Error('로그인한 계정이 바뀌었어요. 설정 화면에서 펫 추가를 다시 열어 주세요.');
+      throw new Error(t('로그인한 계정이 바뀌었어요. 설정 화면에서 펫 추가를 다시 열어 주세요.'));
     }
   }
 
   // 추가 결과와 복구 방법을 현재 모달 안에서만 안내한다.
   function feedback(message: string, error = false): void {
     if (!disposed) {
-      status.textContent = message;
+      setText(status, () => message);
       status.classList.toggle('error', error);
     }
   }
 
   // 이미지 크기와 한 칸 입력을 확인해 원본 시트의 행·열·전체 칸 수를 계산한다.
   function frameLayout(image: HTMLImageElement): { width: number; height: number; count: number; columns: number; rows: number } {
-    // 1. 잘못된 크기를 기본값으로 숨기지 않고 빈 입력만 전체 이미지로 해석한다.
+    // 1. 일반 PNG는 보관된 스프라이트 초안과 관계없이 원본 전체를 한 프레임으로 사용한다.
+    if (!spriteEnabled.checked) {
+      return { width: image.naturalWidth, height: image.naturalHeight, count: 1, columns: 1, rows: 1 };
+    }
+
+    // 2. 잘못된 크기를 기본값으로 숨기지 않고 빈 입력만 전체 이미지로 해석한다.
     const widthText = (form.elements.namedItem('frameWidth') as HTMLInputElement).value;
     const heightText = (form.elements.namedItem('frameHeight') as HTMLInputElement).value;
     const width = widthText ? Number(widthText) : image.naturalWidth;
     const height = heightText ? Number(heightText) : image.naturalHeight;
     if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || image.naturalWidth % width || image.naturalHeight % height) {
-      throw new Error('한 칸 너비·높이가 PNG 전체 크기를 나누어떨어지게 입력해 주세요.');
+      throw new Error(t('한 칸 너비·높이가 PNG 전체 크기를 나누어떨어지게 입력해 주세요.'));
     }
-    // 2. 칸 수는 서버와 같은 상한으로 제한하고 안내용 행·열도 함께 반환한다.
+    // 3. 칸 수는 서버와 같은 상한으로 제한하고 안내용 행·열도 함께 반환한다.
     const count = image.naturalWidth / width * (image.naturalHeight / height);
     if (count > 256) {
-      throw new Error('스프라이트 시트는 전체 256칸 이내로 나누어 주세요.');
+      throw new Error(t('스프라이트 시트는 전체 256칸 이내로 나누어 주세요.'));
     }
     return { width, height, count, columns: image.naturalWidth / width, rows: image.naturalHeight / height };
   }
@@ -123,7 +150,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
   function manifestFor(image: HTMLImageElement): Manifest {
     // 1. 안내에 표시한 것과 같은 분할 결과로 저장할 프레임 크기를 정한다.
     const { width, height, count } = frameLayout(image);
-    const settings = animationEditor.read(count);
+    const settings = spriteEnabled.checked ? animationEditor.read(count) : { animations: {} };
     return { schemaVersion: Object.keys(settings.animations).length ? 2 : 1, displaySize: editingDesign?.manifest.displaySize || 160, frameWidth: width, frameHeight: height, ...settings };
   }
 
@@ -132,15 +159,16 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     // 1. 현재 파일과 열린 설정에만 안내를 만들고 닫힌 동안에는 그림을 나누지 않는다.
     frameMap.hidden = true;
     if (!loadedImage || (!editingDesign && selectedFile !== fileInput.files?.[0])) {
-      frameGuide.textContent = 'PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.';
+      setText(frameGuide, () => t('PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.'));
       return;
     }
-    if (!animationSettings.open) {
+    if (!animationSettings.open || !spriteEnabled.checked) {
       return;
     }
     try {
       const { width, height, count, columns, rows } = frameLayout(loadedImage);
-      frameGuide.textContent = `PNG ${loadedImage.naturalWidth} × ${loadedImage.naturalHeight}px · ${columns}열 × ${rows}행 · ${count}칸${count === 1 ? ' — 현재는 그림 한 장이에요. 여러 장면이 있다면 한 칸 크기를 입력하세요.' : ''}`;
+      const dimensions = { width: loadedImage.naturalWidth, height: loadedImage.naturalHeight };
+      setText(frameGuide, () => msg`PNG ${dimensions.width} × ${dimensions.height}px · ${columns}열 × ${rows}행 · ${count}칸${count === 1 ? t(' — 현재는 그림 한 장이에요. 여러 장면이 있다면 한 칸 크기를 입력하세요.') : ''}`);
       frameGrid.replaceChildren();
       if (count === 1) {
         return;
@@ -157,8 +185,8 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
         const scale = Math.min(40 / width, 40 / height);
         thumbnail.getContext('2d')!.drawImage(loadedImage, index % columns * width, Math.floor(index / columns) * height, width, height, (48 - width * scale) / 2, (48 - height * scale) / 2, width * scale, height * scale);
         const label = document.createElement('span');
-        label.textContent = String(index);
-        label.setAttribute('aria-label', `${index}번 칸`);
+        setText(label, () => String(index));
+        setAttribute(label, 'aria-label', () => msg`${index}번 칸`);
         cell.append(thumbnail, label);
         fragment.append(cell);
       }
@@ -166,7 +194,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       frameGrid.append(fragment);
       frameMap.hidden = false;
     } catch (error) {
-      frameGuide.textContent = error instanceof Error ? error.message : '한 칸 크기를 확인해 주세요.';
+      setText(frameGuide, () => error instanceof Error ? error.message : t('한 칸 크기를 확인해 주세요.'));
     }
   }
 
@@ -211,9 +239,9 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     previewProblem = '';
     canvas.hidden = !keepPreview;
     placeholder.hidden = keepPreview;
-    placeholder.textContent = '미리보기를 불러오는 중이에요.';
+    setText(placeholder, () => t('미리보기를 불러오는 중이에요.'));
     frameMap.hidden = true;
-    frameGuide.textContent = 'PNG와 한 칸 크기를 확인하는 중이에요.';
+    setText(frameGuide, () => t('PNG와 한 칸 크기를 확인하는 중이에요.'));
     try {
       assertAccount();
       if (editingDesign) {
@@ -242,10 +270,10 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       } else {
         const file = fileInput.files?.[0];
         if (!file) {
-          throw new Error('PNG를 고르면 이곳에서 미리 볼 수 있어요.');
+          throw new Error(t('PNG를 고르면 이곳에서 미리 볼 수 있어요.'));
         }
         if (file.size > 8 * 1024 * 1024) {
-          throw new Error('PNG 파일은 8 MiB 이하로 선택하세요.');
+          throw new Error(t('PNG 파일은 8 MiB 이하로 선택하세요.'));
         }
         if (file !== selectedFile || !loadedImage) {
           const signature = new Uint8Array(await file.slice(0, 8).arrayBuffer());
@@ -253,7 +281,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
             return;
           }
           if (signature.join(',') !== '137,80,78,71,13,10,26,10') {
-            throw new Error('PNG 파일을 선택하세요. 확장자만 바꾼 다른 이미지 형식은 추가할 수 없어요.');
+            throw new Error(t('PNG 파일을 선택하세요. 확장자만 바꾼 다른 이미지 형식은 추가할 수 없어요.'));
           }
           const url = URL.createObjectURL(file);
           urls.add(url);
@@ -263,7 +291,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
           } catch {
             urls.delete(url);
             URL.revokeObjectURL(url);
-            throw new Error('PNG를 읽지 못했어요. 파일이 손상되지 않았는지 확인하고 다시 선택하세요.');
+            throw new Error(t('PNG를 읽지 못했어요. 파일이 손상되지 않았는지 확인하고 다시 선택하세요.'));
           }
           if (disposed || version !== previewVersion || !dialog.open) {
             urls.delete(url);
@@ -273,7 +301,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
           if (image.naturalWidth > 2048 || image.naturalHeight > 2048) {
             urls.delete(url);
             URL.revokeObjectURL(url);
-            throw new Error('PNG 크기는 2048 × 2048px 이하여야 해요.');
+            throw new Error(t('PNG 크기는 2048 × 2048px 이하여야 해요.'));
           }
           urls.forEach(previous => {
             if (previous !== url) {
@@ -289,10 +317,20 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
         return;
       }
 
-      // 2. 칸 번호 안내와 실제 동작 미리보기를 같은 분할 규칙으로 갱신한다.
-      if (animationDefaultsApplied && useExampleDimensions) {
+      // 2. 기존 디자인의 분할 여부는 원본을 읽은 뒤 한 번만 복원하고 이후 수동 선택은 보존한다.
+      if (restoreSpriteMode && editingDesign) {
+        restoreSpriteMode = false;
+        const manifest = editingDesign.manifest;
+        spriteEnabled.checked = Object.keys(manifest.animations).length > 0 || manifest.frameWidth !== loadedImage.naturalWidth || manifest.frameHeight !== loadedImage.naturalHeight;
+        animationDefaultsApplied = spriteEnabled.checked;
+        useExampleDimensions = !spriteEnabled.checked;
+        syncSpriteFields();
+      }
+
+      // 3. 칸 번호 안내와 실제 동작 미리보기를 같은 분할 규칙으로 갱신한다.
+      if (spriteEnabled.checked && animationDefaultsApplied && useExampleDimensions) {
         if (loadedImage.naturalWidth % 4 || loadedImage.naturalHeight % 4) {
-          throw new Error('예시 시트는 4열 × 4행이에요. 이 PNG에 맞는 한 칸 너비·높이를 직접 입력하세요.');
+          throw new Error(t('예시 시트는 4열 × 4행이에요. 이 PNG에 맞는 한 칸 너비·높이를 직접 입력하세요.'));
         }
         (form.elements.namedItem('frameWidth') as HTMLInputElement).value = String(loadedImage.naturalWidth / 4);
         (form.elements.namedItem('frameHeight') as HTMLInputElement).value = String(loadedImage.naturalHeight / 4);
@@ -300,7 +338,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       updateFrameGuide();
       const candidate = { id: 'pet-upload-preview', ownerId: session()?.principal.userId || '', version: 0, name: nameInput.value.trim(), imageHash: '', manifest: manifestFor(loadedImage) };
       if (!hasPreviewContent(loadedImage, candidate)) {
-        throw new Error('선택한 동작의 칸이 모두 투명해요. 그림 한 칸의 너비·높이와 칸 번호를 확인해 주세요.');
+        throw new Error(t('선택한 동작의 칸이 모두 투명해요. 그림 한 칸의 너비·높이와 칸 번호를 확인해 주세요.'));
       }
       previewDesign = candidate;
       previewAnimation = action.value;
@@ -312,12 +350,12 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     } catch (error) {
       if (!disposed && version === previewVersion) {
         previewReady = false;
-        previewProblem = error instanceof Error ? error.message : 'PNG를 미리 볼 수 없어요. 다른 파일로 다시 시도하세요.';
-        placeholder.textContent = previewProblem;
+        previewProblem = error instanceof Error ? error.message : t('PNG를 미리 볼 수 없어요. 다른 파일로 다시 시도하세요.');
+        setText(placeholder, () => previewProblem);
         if (!loadedImage || selectedFile !== fileInput.files?.[0]) {
-          frameGuide.textContent = '유효한 PNG를 선택하면 칸 번호를 보여줘요.';
+          setText(frameGuide, () => t('유효한 PNG를 선택하면 칸 번호를 보여줘요.'));
         }
-        previewNote.textContent = keepPreview ? `${previewProblem} 마지막 정상 설정의 모습을 표시하고 있어요.` : '';
+        setText(previewNote, () => keepPreview ? msg`${previewProblem} 마지막 정상 설정의 모습을 표시하고 있어요.` : '');
         previewNote.classList.toggle('error', keepPreview);
       }
     }
@@ -335,17 +373,17 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     drawPet(canvas, loadedImage, previewDesign, mode, reducedMotion.matches ? 0 : now, { animationId: selectedAnimation, walking: mode === 'walk', gesture: mode === 'react' ? 'wave' : undefined, elapsed: now - actionStarted, reduced: reducedMotion.matches });
 
     // 2. 누락된 동작의 대체와 실제 크기를 함께 안내한다.
-    dialog.querySelector<HTMLElement>('[data-preview-name]')!.textContent = nameInput.value.trim() || '추가할 펫';
-    dialog.querySelector<HTMLElement>('[data-size-note]')!.textContent = `이 PC의 실제 펫 크기 · ${petSize}px`;
+    setText(dialog.querySelector<HTMLElement>('[data-preview-name]')!, () => nameInput.value.trim() || t('추가할 펫'));
+    setText(dialog.querySelector<HTMLElement>('[data-size-note]')!, () => msg`이 PC의 실제 펫 크기 · ${petSize}px`);
     previewNote.classList.toggle('error', !previewReady && !!previewProblem);
-    previewNote.textContent = !previewReady && previewProblem ? `${previewProblem} 마지막 정상 설정의 모습을 표시하고 있어요.` : reducedMotion.matches ? '동작 줄이기 설정에 따라 정지 상태로 표시해요.' : !previewDesign.manifest.animations[selectedAnimation] ? '이 동작의 프레임이 없어 대기 프레임이나 첫 이미지로 표시해요.' : '선택한 동작을 실제 펫 크기로 미리 보여요.';
+    setText(previewNote, () => !previewReady && previewProblem ? msg`${previewProblem} 마지막 정상 설정의 모습을 표시하고 있어요.` : reducedMotion.matches ? t('동작 줄이기 설정에 따라 정지 상태로 표시해요.') : !previewDesign?.manifest.animations[selectedAnimation] ? t('이 동작의 프레임이 없어 대기 프레임이나 첫 이미지로 표시해요.') : t('선택한 동작을 실제 펫 크기로 미리 보여요.'));
   }
 
   // 추가 요청을 잠그되 닫기와 취소는 계속 사용할 수 있게 한다.
   function updateBusy(): void {
     fields.disabled = busy;
     submit.disabled = busy;
-    submit.textContent = busy ? (editingDesign ? '저장하는 중…' : '추가하는 중…') : (editingDesign ? '저장' : '추가');
+    setText(submit, () => busy ? (editingDesign ? t('저장하는 중…') : t('추가하는 중…')) : (editingDesign ? t('저장') : t('추가')));
     submit.setAttribute('aria-busy', String(busy));
   }
 
@@ -364,18 +402,18 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       assertAccount();
       const label = nameInput.value.trim();
       if (!label || new TextEncoder().encode(label).length > 80) {
-        throw new Error('이름을 조금 짧게 입력해 주세요.');
+        throw new Error(t('이름을 조금 짧게 입력해 주세요.'));
       }
       await refreshPreview();
       if (!dialog.open || disposed || version !== draftVersion) {
         return;
       }
       if (!previewReady || !previewDesign) {
-        throw new Error(previewProblem || 'PNG 미리보기를 먼저 확인해 주세요.');
+        throw new Error(previewProblem || t('PNG 미리보기를 먼저 확인해 주세요.'));
       }
       const file = fileInput.files?.[0];
       if (!editingDesign && !file) {
-        throw new Error('추가할 PNG 파일을 선택하세요.');
+        throw new Error(t('추가할 PNG 파일을 선택하세요.'));
       }
       const fingerprint = `${editingDesign?.id || `${file!.name}/${file!.size}/${file!.lastModified}`}/${label}/${JSON.stringify(previewDesign.manifest)}`;
       const previous = editingDesign;
@@ -414,7 +452,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       }
     } catch (error) {
       if (!disposed && dialog.open && version === draftVersion) {
-        feedback(added && account === `${serverURL()}/${session()?.token || ''}` ? '펫 추가는 완료했지만 목록에 반영하지 못했어요. 같은 내용으로 추가를 다시 누르면 중복 업로드 없이 목록을 갱신해요.' : error instanceof Error ? error.message : '추가하지 못했어요. 입력 내용을 유지했으니 다시 시도해 주세요.', true);
+        feedback(added && account === `${serverURL()}/${session()?.token || ''}` ? t('펫 추가는 완료했지만 목록에 반영하지 못했어요. 같은 내용으로 추가를 다시 누르면 중복 업로드 없이 목록을 갱신해요.') : error instanceof Error ? error.message : t('추가하지 못했어요. 입력 내용을 유지했으니 다시 시도해 주세요.'), true);
       }
     } finally {
       if (version === draftVersion) {
@@ -446,17 +484,20 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     previewReady = false;
     previewProblem = '';
     animationDefaultsApplied = false;
+    restoreSpriteMode = false;
     useExampleDimensions = true;
+    spriteEnabled.checked = false;
+    syncSpriteFields();
     animationSettings.open = false;
     canvas.hidden = true;
     canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height);
     placeholder.hidden = false;
-    placeholder.textContent = 'PNG를 고르면 이곳에서 미리 볼 수 있어요.';
+    setText(placeholder, () => t('PNG를 고르면 이곳에서 미리 볼 수 있어요.'));
     previewNote.textContent = '';
     previewNote.classList.remove('error');
     frameMap.hidden = true;
     frameGrid.replaceChildren();
-    frameGuide.textContent = 'PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.';
+    setText(frameGuide, () => t('PNG를 선택하면 원본 크기와 나눈 칸 수를 보여줘요.'));
     dialog.querySelector<HTMLElement>('[data-preview-name]')!.textContent = '';
     dialog.querySelector<HTMLElement>('[data-size-note]')!.textContent = '';
     dialog.querySelector<HTMLDetailsElement>('.character-prompts')!.open = false;
@@ -484,10 +525,13 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
       animationEditor.load(design.manifest);
       syncAnimationPreviewChoices();
       animationDefaultsApplied = true;
+      restoreSpriteMode = true;
       useExampleDimensions = false;
+      spriteEnabled.checked = Object.keys(design.manifest.animations).length > 0;
+      syncSpriteFields();
       animationSettings.open = Object.keys(design.manifest.animations).length > 0;
     }
-    dialog.querySelector('h2')!.textContent = design ? '펫 수정' : '펫 추가';
+    setText(dialog.querySelector('h2')!, () => design ? t('펫 수정') : t('펫 추가'));
     fileInput.hidden = !!design;
     fileInput.disabled = !!design;
     fileInput.required = !design;
@@ -506,7 +550,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
         void refreshPreview();
       }
     } catch (error) {
-      feedback(error instanceof Error ? error.message : '로그인 상태를 확인해 주세요.', true);
+      feedback(error instanceof Error ? error.message : t('로그인 상태를 확인해 주세요.'), true);
     }
 
     // 3. 닫힌 동안에는 타이머를 돌리지 않고 열린 모달에서만 그린다.
@@ -529,38 +573,60 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     event.preventDefault();
     void addPet();
   };
-  form.addEventListener('invalid', () => feedback('표시한 입력 항목을 확인한 뒤 다시 추가하세요.', true), true);
-  // 예시 기본값을 한 번만 채워 설정을 펼친 직후의 사용자 입력도 덮어쓰지 않는다.
+  form.addEventListener('invalid', () => feedback(t('표시한 입력 항목을 확인한 뒤 다시 추가하세요.'), true), true);
+  // 스프라이트 사용을 직접 선택했을 때만 예시 기본값을 한 번 채운다.
   function initializeAnimationDefaults(): void {
-    // 1. 일반 PNG는 빈 설정을 유지하고 예시 시트는 별도 버튼 없이 시작한다.
+    // 1. 예시 시트는 별도 기본값 버튼 없이 시작하고 이후 사용자 입력은 유지한다.
     if (!animationDefaultsApplied) {
       animationDefaultsApplied = true;
       (form.elements.namedItem('frameWidth') as HTMLInputElement).value = '256';
       (form.elements.namedItem('frameHeight') as HTMLInputElement).value = '256';
       animationEditor.load({ schemaVersion: 2, displaySize: 160, frameWidth: 256, frameHeight: 256, idleAnimation: 'idle', walkAnimation: 'walk', animations: {
-        idle: { name: '대기', frames: [0,1,2,3], fps: 4 },
-        walk: { name: '걷기', frames: [4,5,6,7,8,9,10,11], fps: 8 },
-        react: { name: '반응', frames: [12,13,14,15], fps: 6 },
+        idle: {
+          // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+          get name() {
+            return t('대기');
+          },
+          frames: [0,1,2,3],
+          fps: 4
+        },
+        walk: {
+          // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+          get name() {
+            return t('걷기');
+          },
+          frames: [4,5,6,7,8,9,10,11],
+          fps: 8
+        },
+        react: {
+          // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+          get name() {
+            return t('반응');
+          },
+          frames: [12,13,14,15],
+          fps: 6
+        },
       } });
-      syncAnimationPreviewChoices();
-      void refreshPreview();
     }
   }
 
-  // 펼치기 클릭에서 기본값을 먼저 채우고 비동기 toggle은 안내만 갱신한다.
-  animationSettings.querySelector('summary')!.addEventListener('click', () => {
-    if (!animationSettings.open) {
-      initializeAnimationDefaults();
-    }
-  });
-  animationSettings.ontoggle = () => {
-    if (animationSettings.open) {
-      initializeAnimationDefaults();
-    }
+  // 스프라이트 초안은 유지하되 일반 PNG일 때 숨긴 입력이 저장·검증에 참여하지 않게 한다.
+  function syncSpriteFields(): void {
+    spriteFields.hidden = !spriteEnabled.checked;
+    spriteFields.disabled = !spriteEnabled.checked;
+    syncAnimationPreviewChoices();
+  }
 
-    // 다시 펼칠 때는 수동으로 바꾼 칸 크기와 동작 순서를 그대로 안내한다.
-    updateFrameGuide();
+  // 실제 사용 선택만 분할을 활성화하고 설정을 접는 동작은 사용 여부를 바꾸지 않는다.
+  spriteEnabled.onchange = () => {
+    restoreSpriteMode = false;
+    if (spriteEnabled.checked) {
+      initializeAnimationDefaults();
+    }
+    syncSpriteFields();
+    void refreshPreview();
   };
+  animationSettings.ontoggle = updateFrameGuide;
   form.oninput = event => {
     const input = event.target as HTMLInputElement;
     if (input.closest('[data-animation-editor]')) {
@@ -609,7 +675,7 @@ export function mountPetUpload(root: HTMLElement, options: PetUploadOptions): { 
     } else {
       unwatch = stop;
     }
-  }).catch(() => feedback('이 PC의 펫 크기를 읽지 못해 기본 크기로 미리 보여요.', true));
+  }).catch(() => feedback(t('이 PC의 펫 크기를 읽지 못해 기본 크기로 미리 보여요.'), true));
 
   // 모달·미리보기·공유 설정과 이 모듈이 만든 URL을 모두 해제한다.
   function dispose(): void {

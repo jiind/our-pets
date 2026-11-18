@@ -193,3 +193,7 @@ Message input/send controls are at the menu bottom. Own-pet menus broadcast and 
 The recipient's representative pet requests one OS notification; the sender window only displays the bubble. If the sender is hidden, offline, beyond the window cap, or not ready, only OS delivery remains. The message never moves to the recipient's pet or forces a hidden sender to appear. Recent IDs are deduplicated in each window's memory and expired events are not displayed. Replies address the bubble's sender. Server recipients, ACK, per-device delivery, OS notification preferences, and OS permissions remain in force.
 
 Personal external notifications optionally include `connectionName`. New local events populate it from the current configured source name. Both native OS and bubble titles follow `Provider · Connection name · Event title`; legacy events without the optional field omit that segment. Notification bodies are held only in process memory; durable local storage contains configuration, baselines and hashed event keys.
+
+## PC language preference
+
+`get_locale` returns `{preference:"system"|"ko"|"en",locale:"ko"|"en"}`. Settings-only `set_locale({locale:"system"|"ko"|"en"})` persists the preference and returns the resolved state. The payload of `locale-changed` has the same shape and reaches existing windows. This preference is local to the OS profile and does not change the LAN protocol or user data. System selection maps Korean to `ko`, English to `en`, and unsupported or missing locales to `en`.

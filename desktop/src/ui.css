@@ -57,6 +57,44 @@
   line-height: var(--leading-body);
 }
 
+/* 언어 선택은 계정과 로그인에서 같은 컨트롤을 사용하며 입력값을 초기화하지 않는다. */
+.language-settings {
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.language-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.language-control > label {
+  font-size: var(--text-section);
+  font-weight: var(--weight-bold);
+}
+.language-control select {
+  width: auto;
+  min-width: 140px;
+}
+.language-settings-compact {
+  margin-top: var(--space-6);
+  padding: 0;
+  border: 0;
+}
+.language-settings-compact .language-control {
+  justify-content: center;
+}
+.language-settings-compact .language-control > label {
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+}
+.language-settings [role=status]:empty {
+  display: none;
+}
+
 /* 기본 동작 버튼은 화면이나 문구에 관계없이 같은 표면과 입력 크기를 쓴다. */
 button, input, textarea, select {
   font-family: var(--font-ui);

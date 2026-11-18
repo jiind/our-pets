@@ -4,6 +4,7 @@ mod connectors;
 mod desktop_controls;
 mod elevation;
 mod gathering_layout;
+mod locale;
 mod locomotion;
 mod message_bubbles;
 mod pointer;
@@ -1271,6 +1272,8 @@ fn main() {
             set_motion_preference,
             desktop_controls::desktop_state,
             desktop_controls::set_desktop_preferences,
+            locale::get_locale,
+            locale::set_locale,
             desktop_controls::set_pet_registered,
             desktop_controls::sync_gatherings,
             gathering_overflow,
@@ -1282,6 +1285,7 @@ fn main() {
         ])
         .setup(move |app| {
             system_notifications::install(app.handle());
+            locale::install(app.handle());
             desktop_controls::install(app.handle(), &state)?;
             connectors::install(app.handle());
             if app

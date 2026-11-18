@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { test } from './isolated-server';
+import type { Design } from '../src/types';
 
 // 실제 가입·등록 화면을 거쳐 펫 추가 작업을 시작한다.
 async function workspace(page: Page, server: string): Promise<void> {
@@ -92,6 +93,7 @@ test('펫 추가 취소·Escape는 파일과 입력을 비우고 새 시트는 �
   await dialog.getByRole('textbox', { name: '이름', exact: true }).fill('버릴 초안');
   await dialog.locator('input[type=file]').setInputFiles(small);
   await dialog.locator('[data-animation-settings] > summary').click();
+  await dialog.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true }).check();
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('256');
   await dialog.locator('[name=frameWidth]').fill('128');
   await dialog.locator('[name=frameHeight]').fill('128');
@@ -118,6 +120,7 @@ test('펫 추가 취소·Escape는 파일과 입력을 비우고 새 시트는 �
   await dialog.locator('input[type=file]').setInputFiles(large);
   await expect(dialog.locator('canvas')).toBeVisible();
   await dialog.locator('[data-animation-settings] > summary').click();
+  await dialog.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true }).check();
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('512');
   await expect(dialog.locator('[name=frameHeight]')).toHaveValue('512');
   await expect(dialog.locator('[data-frame-grid] .pet-upload-frame-cell')).toHaveCount(16);
@@ -151,6 +154,7 @@ test('애니메이션 설정 오류와 투명 칸은 원인을 안내하고 마�
   await dialog.locator('input[type=file]').setInputFiles(file);
   await expect(dialog.locator('canvas')).toBeVisible();
   await dialog.locator('[data-animation-settings] > summary').click();
+  await dialog.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true }).check();
   const canvas = dialog.getByRole('img', { name: '추가할 펫의 모습', exact: true });
   const note = dialog.locator('[data-preview-note]');
   const center = () => canvas.evaluate((element: HTMLCanvasElement) => Array.from(element.getContext('2d')!.getImageData(element.width / 2, element.height / 2, 1, 1).data));
@@ -244,4 +248,137 @@ test('추가 요청 중 취소·재진입하면 늦은 업로드가 이전 펫�
   await expect(page.getByRole('radio', { name: '새 업로드', exact: true })).toBeChecked();
   expect(uploads).toBe(2);
   expect(applied).toHaveLength(1);
+});
+
+for (const [width, height] of [[512, 512], [510, 333]]) {
+  test(`일반 PNG ${width}×${height}는 애니메이션 설정을 펼치고 접어도 전체 그림으로 저장된다`, async ({ page, isolatedServer }) => {
+    // 1. 이미지 전체에 다른 색을 넣어 한 칸으로 잘리는 문제를 실제 미리보기 픽셀로 검출한다.
+    const failures: string[] = [];
+    let reloading = false;
+    page.on('pageerror', error => failures.push(error.message));
+    page.on('console', message => {
+      if (message.type() === 'error') {
+        failures.push(message.text());
+      }
+    });
+    page.on('requestfailed', request => {
+      // 명시적 새로고침이 취소한 이전 화면 요청만 제외하고 나머지 실패는 URL과 함께 남긴다.
+      const error = request.failure()?.errorText || 'request failed';
+      if (!reloading || error !== 'net::ERR_ABORTED') {
+        failures.push(`${error} ${request.url()}`);
+      }
+    });
+    page.on('response', response => {
+      if (response.status() >= 400) {
+        failures.push(`${response.status()} ${response.url()}`);
+      }
+    });
+    await workspace(page, isolatedServer);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const png = await page.evaluate(({ width, height }) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = '#e24b3b';
+      context.fillRect(0, 0, width / 2, height);
+      context.fillStyle = '#3e6ac4';
+      context.fillRect(width / 2, 0, width / 2, height);
+      return canvas.toDataURL('image/png').split(',')[1];
+    }, { width, height });
+    await page.getByRole('button', { name: '펫 추가', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '펫 추가', exact: true });
+    await dialog.getByRole('textbox', { name: '이름', exact: true }).fill('전체 그림 PNG');
+    await dialog.locator('input[type=file]').setInputFiles({ name: 'static.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+    const preview = dialog.getByRole('img', { name: '추가할 펫의 모습', exact: true });
+    await expect(preview).toBeVisible();
+    const pixels = await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+
+    // 2. 설정 설명을 열어 보고 접어도 기본 분할·애니메이션을 생성하거나 적용하지 않는다.
+    await dialog.locator('[data-animation-settings] > summary').click();
+    await expect(dialog.locator('[name=frameWidth]')).toHaveValue('');
+    await expect(dialog.locator('[data-animation-row]')).toHaveCount(0);
+    await dialog.locator('[data-animation-settings] > summary').click();
+    await expect.poll(() => preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(pixels);
+    await expect(dialog.locator('[data-preview-note]')).not.toHaveClass(/error/);
+    await dialog.screenshot({ path: `/tmp/our-pets-static-png-${width}-${height}.png` });
+
+    // 3. 실제 서버가 저장한 규격과 재진입한 수정 미리보기도 원본 전체 그림을 유지한다.
+    const response = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/v1/designs'));
+    await dialog.getByRole('button', { name: '추가', exact: true }).click();
+    const saved = await response;
+    expect(saved.ok()).toBe(true);
+    const design: Design = await saved.json();
+    expect(design.manifest).toMatchObject({ schemaVersion: 1, frameWidth: width, frameHeight: height });
+    expect(design.manifest.animations || {}).toEqual({});
+    await expect(dialog).toBeHidden();
+    reloading = true;
+    await page.reload();
+    await expect(page.getByRole('radio', { name: '전체 그림 PNG', exact: true })).toBeChecked();
+    reloading = false;
+    await page.getByRole('button', { name: '전체 그림 PNG 수정', exact: true }).click();
+    const edit = page.getByRole('dialog', { name: '펫 수정', exact: true });
+    await expect(edit.getByRole('img', { name: '추가할 펫의 모습', exact: true })).toBeVisible();
+    await edit.locator('[data-animation-settings] > summary').click();
+    await expect(edit.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true })).not.toBeChecked();
+    await expect.poll(() => edit.getByRole('img', { name: '추가할 펫의 모습', exact: true }).evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(pixels);
+    await edit.getByRole('button', { name: '취소', exact: true }).click();
+    expect(failures).toEqual([]);
+  });
+}
+
+test('스프라이트 사용을 명시해야 기본값을 적용하고 사용 해제는 잘린 기존 펫을 전체 PNG로 복원한다', async ({ page, isolatedServer }) => {
+  // 1. 파일을 고르기 전에 키보드로 설정을 열어도 정적 PNG 기본 상태를 유지한다.
+  await workspace(page, isolatedServer);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const file = await sprite(page, 1024);
+  await page.getByRole('button', { name: '펫 추가', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '펫 추가', exact: true });
+  await dialog.locator('[data-animation-settings] > summary').press('Enter');
+  const enabled = dialog.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true });
+  await expect(enabled).not.toBeChecked();
+  await expect(dialog.locator('[data-animation-row]')).toHaveCount(0);
+  await dialog.getByRole('textbox', { name: '이름', exact: true }).fill('분할 복원 확인');
+  await dialog.locator('input[type=file]').setInputFiles(file);
+  const preview = dialog.getByRole('img', { name: '추가할 펫의 모습', exact: true });
+  await expect(preview).toBeVisible();
+  const original = await preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+
+  // 2. 명시적 사용만 예시 기본값을 채우고 끄기·다시 켜기·접기는 편집한 값을 지우지 않는다.
+  await enabled.check();
+  await expect(dialog.locator('[name=frameWidth]')).toHaveValue('256');
+  await dialog.locator('[name=walkFrames]').fill('4,5');
+  await dialog.locator('[name=walkFPS]').fill('6');
+  await enabled.uncheck();
+  await expect.poll(() => preview.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(original);
+  await enabled.check();
+  await expect(dialog.locator('[name=walkFrames]')).toHaveValue('4,5');
+  await expect(dialog.locator('[name=walkFPS]')).toHaveValue('6');
+  await dialog.locator('[data-animation-settings] > summary').click();
+  const createdResponse = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/api/v1/designs'));
+  await dialog.getByRole('button', { name: '추가', exact: true }).click();
+  const animated: Design = await (await createdResponse).json();
+  expect(animated.manifest).toMatchObject({ schemaVersion: 2, frameWidth: 256, frameHeight: 256, animations: { walk: { frames: [4, 5], fps: 6 } } });
+  await expect(dialog).toBeHidden();
+
+  // 3. 저장된 스프라이트를 다시 열어 사용을 끄면 잘못된 초안도 저장을 막거나 원본을 자르지 않는다.
+  await page.getByRole('button', { name: '분할 복원 확인 수정', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: '펫 수정', exact: true });
+  await expect(edit.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true })).toBeChecked();
+  await expect(edit.locator('[name=walkFPS]')).toHaveValue('6');
+  await edit.locator('[name=frameWidth]').fill('300');
+  await edit.locator('[name=walkFPS]').fill('99');
+  await edit.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true }).uncheck();
+  await expect(edit.locator('[name=walkFPS]')).toBeDisabled();
+  await expect.poll(() => edit.getByRole('img', { name: '추가할 펫의 모습', exact: true }).evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL())).toBe(original);
+  await edit.locator('[data-animation-settings] > summary').click();
+  const updateResponse = page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith(`/api/v1/designs/${animated.id}`));
+  await edit.getByRole('button', { name: '저장', exact: true }).click();
+  const saved = await updateResponse;
+  expect(saved.ok()).toBe(true);
+  const restored: Design = await saved.json();
+  expect(restored.imageHash).toBe(animated.imageHash);
+  expect(restored.manifest).toMatchObject({ schemaVersion: 1, frameWidth: 1024, frameHeight: 1024 });
+  expect(restored.manifest.animations || {}).toEqual({});
+  await expect(edit).toBeHidden();
 });

@@ -67,3 +67,9 @@ Rust `desktop_controls` owns visibility, peer visibility, and size, synchronizin
 Docker, Slack, Codex, and Claude sources run directly on the signed-in PC and are not registered in the LAN server's connection table. Ordinary configuration and temporary events use the app's `local-notifications.sqlite3`; Slack tokens use the OS credential store. Personal events target only this PC's own pet.
 
 Collectors normalize provider events and independently handle deduplication, reconnects, and errors. Pet designs and bubbles do not interpret provider APIs. External control, command execution, and Slack message writing are not exposed. The optional server sample is a separate development path. See [connectors](connectors.md) and the [HTTP, WebSocket, and IPC specification](api.md).
+
+## Localization
+
+`desktop/src/i18n.ts` owns Korean/English UI selection and the English catalogue in `desktop/src/locales/en.json`. Korean source keys are the Korean catalogue; interpolation values are never translation keys. Only explicitly marked app-owned text and accessibility attributes update on language changes, preserving form values, focus, messages, and live connections. The browser preview uses the preferred browser language; the native app obtains the OS's preferred locale through `sys-locale`. Unsupported or missing locales resolve to English. A saved explicit selection overrides automatic resolution.
+
+Rust `locale` reads the local preference before constructing tray commands or starting collectors. The same bundled catalogue serves native app-generated notifications and the frontend. Language events refresh existing views without restarting collectors or recreating pet windows. Provider content and original license texts remain unchanged. All translation data ships in the app; localization requires no cloud service.

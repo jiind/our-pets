@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { setLocale } from './i18n';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { renderCodexUsage, type CodexUsage } from './codex-connection';
 
 // 공급자 표시에 들어갈 문자열을 HTML로 해석하지 않도록 이스케이프한다.
@@ -6,10 +7,15 @@ function escape(value: string): string {
   return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
 }
 
+// 한국어 표시 검증은 실행 PC의 언어와 분리한다.
+beforeEach(async () => {
+  await setLocale('ko');
+});
+
 describe('사용량 연결의 공개 잔여량 표시', () => {
   it.each([['Codex', 23, 77], ['Claude', 100, 0], ['Codex', 0, 100]] as const)('%s의 사용 %i%%를 남음 %i%%로 표시한다', (provider, usedPercent, remaining) => {
     const usage: CodexUsage = { checkedAt: Date.now(), ordinaryUsageAllowed: null, windows: [{ key: 'weekly', label: '주간', usedPercent, resetsAt: null, windowDurationMins: 10080 }] };
-    const html = renderCodexUsage(usage, escape, provider);
+    const html = renderCodexUsage(usage, escape, provider).replace(/<!--[\s\S]*?-->/gu, '');
     expect(html).toContain(`${remaining}% 남음`);
     expect(html).toContain(`value="${remaining}"`);
     expect(html).toContain(`주간 잔여량 ${remaining}%`);

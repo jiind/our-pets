@@ -28,7 +28,7 @@ async function createUser(request: APIRequestContext, server: string, suffix: st
 // 새 기기 문맥의 실제 로그인 화면을 거쳐 실시간 펫 창을 연다.
 async function connectDevice(browser: Browser, user: FixtureUser, contexts: BrowserContext[]): Promise<Page> {
   // 1. 저장된 세션을 주입하지 않고 서버 선택과 로그인을 수행한다.
-  const context = await browser.newContext();
+  const context = await browser.newContext({ locale: 'ko-KR' });
   contexts.push(context);
   const page = await context.newPage();
   await page.goto('/');

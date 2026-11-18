@@ -1,3 +1,4 @@
+import { msg, setAttribute, t } from './i18n';
 import { icon } from './icons';
 import './sidebar.css';
 
@@ -63,8 +64,8 @@ export function mountSidebar(workspace: HTMLElement): () => void {
   handle.tabIndex = 0;
   handle.setAttribute('role', 'separator');
   handle.setAttribute('aria-orientation', 'vertical');
-  handle.setAttribute('aria-label', '탐색 메뉴 너비');
-  handle.title = '드래그하거나 좌우 방향키로 너비 조절 · Home 최소 · End 최대';
+  setAttribute(handle, 'aria-label', () => t('탐색 메뉴 너비'));
+  setAttribute(handle, 'title', () => t('드래그하거나 좌우 방향키로 너비 조절 · Home 최소 · End 최대'));
   sidebar.prepend(heading);
   if (brand) {
     heading.append(brand);
@@ -75,9 +76,9 @@ export function mountSidebar(workspace: HTMLElement): () => void {
   const named = sidebar.querySelectorAll<HTMLElement>('.brand, nav button, .sidebar-bottom button');
   named.forEach(element => {
     if (!element.hasAttribute('aria-label')) {
-      const label = element.textContent?.trim() || element.title || '우리 펫';
+      const label = element.textContent?.trim() || element.title || t('우리 펫');
       labelChanges.set(element, { original: null, applied: label });
-      element.setAttribute('aria-label', label);
+      setAttribute(element, 'aria-label', () => label);
     }
   });
 
@@ -104,8 +105,8 @@ export function mountSidebar(workspace: HTMLElement): () => void {
 
     // 2. 아이콘 버튼과 구분선은 시각 상태와 같은 펼침·너비 정보를 제공한다.
     toggle.innerHTML = icon(collapsed ? 'chevron-right' : 'chevron-left');
-    toggle.title = constrained ? '창을 넓히면 탐색 메뉴를 펼칠 수 있어요' : collapsed ? '탐색 메뉴 펼치기' : '탐색 메뉴 접기';
-    toggle.setAttribute('aria-label', toggle.title);
+    setAttribute(toggle, 'title', () => constrained ? t('창을 넓히면 탐색 메뉴를 펼칠 수 있어요') : collapsed ? t('탐색 메뉴 펼치기') : t('탐색 메뉴 접기'));
+    setAttribute(toggle, 'aria-label', () => toggle.title);
     toggle.setAttribute('aria-expanded', String(!collapsed));
     toggle.disabled = constrained;
     handle.tabIndex = constrained ? -1 : 0;
@@ -113,7 +114,7 @@ export function mountSidebar(workspace: HTMLElement): () => void {
     handle.setAttribute('aria-valuemin', String(collapsed ? railWidth : minimumWidth));
     handle.setAttribute('aria-valuemax', String(Math.max(railWidth, maximum)));
     handle.setAttribute('aria-valuenow', String(width));
-    handle.setAttribute('aria-valuetext', collapsed ? '접힌 탐색 메뉴' : `${width}픽셀`);
+    handle.setAttribute('aria-valuetext', collapsed ? t('접힌 탐색 메뉴') : msg`${width}픽셀`);
   }
 
   // 접기와 펼치기는 마지막 확장 너비를 변경하지 않고 상태만 저장한다.

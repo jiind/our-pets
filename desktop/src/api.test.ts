@@ -1,3 +1,4 @@
+import { setLocale } from './i18n';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkServer, connect, normalizeServerURL, persistEvent, saveServer, savedEvents } from './api';
 import type { PetEvent } from './types';
@@ -28,7 +29,8 @@ class FakeSocket {
   }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await setLocale('ko');
   values.clear();
   sent.length = 0;
   vi.stubGlobal('localStorage', {
