@@ -6,6 +6,7 @@ for (const initialVisible of [true, false]) {
     // 1. 실제 가입 및 대표 펫 등록을 마치고 표시 설정만 Tauri 공식 IPC로 모의한다.
     const username = `logout-${initialVisible}-${Date.now()}`;
     await page.goto('/');
+    await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
     await page.getByLabel('서버 주소').fill(isolatedServer);
     await page.getByRole('button', { name: '서버 연결', exact: true }).click();
     await page.getByRole('link', { name: '계정 만들기', exact: true }).click();

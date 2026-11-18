@@ -1326,6 +1326,33 @@ dialog::backdrop {
   color: var(--primary-hover);
 }
 
+.host-invitation {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.host-invitation p,
+#incoming-invitation [role="status"] {
+  margin: 0;
+}
+#incoming-invitation {
+  width: min(420px, calc(100vw - 48px));
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
+}
+#incoming-invitation::backdrop {
+  background: rgb(23 33 17 / 45%);
+}
+.invite-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
 /* 보기 버튼은 비밀번호 입력 안쪽에 두고 입력 내용과 겹치지 않게 한다. */
 .auth-password-input {
   position: relative;

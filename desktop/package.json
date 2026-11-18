@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
+    "build:host": "node scripts/build-host.mjs",
     "build": "tsc --noEmit && vite build",
     "tauri": "tauri",
     "test": "vitest run src",

@@ -7,6 +7,7 @@ const server = 'http://127.0.0.1:19377';
 async function createWorkspace(page: import('@playwright/test').Page): Promise<void> {
   // 1. 서버 연결과 가입을 화면 및 키보드 입력으로 진행한다.
   await page.goto('/');
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '서버 주소' }).fill(server);
   await page.getByRole('button', { name: '서버 연결', exact: true }).click();
   await page.getByRole('link', { name: '계정 만들기', exact: true }).click();

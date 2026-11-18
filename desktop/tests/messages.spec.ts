@@ -6,6 +6,7 @@ const server = 'http://127.0.0.1:19377';
 async function openPet(page: Page, username: string): Promise<void> {
   // 1. 세션을 주입하지 않고 로그인 폼을 통해 인증한다.
   await page.goto('/');
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '서버 주소' }).fill(server);
   await page.getByRole('button', { name: '서버 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '아이디', exact: true }).fill(username);

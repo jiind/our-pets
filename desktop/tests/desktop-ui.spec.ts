@@ -7,7 +7,8 @@ test('계정과 펫 등록·즉시 선택·PNG 추가·설정 탐색', async ({ 
   await page.goto('/');
   await expect(page.getByRole('button', { name: /내 PC의 Docker/ })).toHaveCount(0);
   await expect(page.getByText('데스크톱 앱은 트레이에서 계속 실행됩니다.')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: '함께할 서버에 연결하기' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '친구와 함께 시작하기' })).toBeVisible();
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '서버 주소' }).fill('http://127.0.0.1:19377');
   await page.getByRole('button', { name: '서버 연결', exact: true }).click();
   await page.getByRole('link', { name: '계정 만들기', exact: true }).click();

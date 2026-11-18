@@ -27,7 +27,7 @@ Connect each desktop app to one server on your local network. Use it at home, wi
 
 ## Download
 
-Get the beta package for your OS from [GitHub Releases](https://github.com/jiind/our-pets/releases). You also need one server instance on your shared local network.
+Get the desktop beta for your OS from [GitHub Releases](https://github.com/jiind/our-pets/releases). Use the app to invite people on your local network or open a friend's invite link.
 
 | Windows | macOS | Linux |
 | --- | --- | --- |
@@ -53,11 +53,11 @@ Messages and notifications are shown in real time. There is no inbox or offline 
 
 ## Quick start
 
-1. **Run a server.** Configure the registration code, bind address, and allowed CIDRs using the [configuration example](examples/server.env.example).
-2. **Connect your apps.** Enter the server address on each PC, create an account or sign in, then choose a character to register your pet.
+1. **Invite friends.** Open the desktop app, select **Invite friends**, and copy the invitation link. The app hosts the room on that PC.
+2. **Join the room.** Friends on the same network can open the link or paste it into **Join with an invite link**. Create an account or sign in, then choose a character to register your pet.
 3. **Meet your friends.** Right-click an online friend's pet to send a message or interact.
 
-The server defaults to `127.0.0.1:9377` and accepts loopback connections only. To connect other PCs, configure the LAN address, access range, and firewall. The server does not automatically load `.env` files: supply environment variables or use the example service's environment file. See the [deployment guide](docs/operations.md) for setup, TLS, and backups, and the [user guide](docs/usage.md) for pet controls.
+Operators who run a standalone server can use **Connect directly to a server** in the app. See the [deployment guide](docs/operations.md) for setup, TLS, and backups, and the [user guide](docs/usage.md) for hosting and pet controls.
 
 ## Personal notifications
 

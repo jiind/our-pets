@@ -17,6 +17,7 @@ import { mountAccountSettings } from './account-settings';
 import { mountLanguageSettings } from './language-settings';
 import { mountSystemNotificationToggle } from './system-notifications';
 import { connectedAlertsMuted, setConnectedAlertsMuted } from './notification-preferences';
+import { invitationLink, parseInvitation, type HostInvitation, type RoomInvitation } from './room-invite';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 let view = 'studio';
@@ -30,6 +31,12 @@ let ownPet: RegisteredPet | undefined;
 let sidebarCleanup: (() => void) | undefined;
 let serverAttempt: AbortController | undefined;
 let languageCleanup: (() => void) | undefined;
+let pendingInvite: string | undefined;
+let hostedRoom: HostInvitation | undefined;
+const hostingKey = 'ourpets.hosting';
+const joinMethodKey = 'ourpets.joinMethod';
+
+type EntryView = 'choose' | 'invite' | 'manual';
 
 // 사용자 입력을 HTML로 해석하지 않고 텍스트로 삽입할 수 있게 변환한다.
 function escape(value: string): string {
@@ -141,8 +148,132 @@ async function changed(): Promise<void> {
   }
 }
 
-// 로컬망 서버와 로컬 계정으로 접속하는 화면을 표시한다.
-function showLogin(register = false, chooseServer = false): void {
+// 앱이 열린 동안 호스트를 유지하고 다음 실행에서 복원할 주소를 기록한다.
+async function startHosting(): Promise<HostInvitation> {
+  if (!isTauri()) {
+    throw new Error(t('친구를 초대하려면 우리 펫 데스크톱 앱을 열어 주세요.'));
+  }
+  const room = await invoke<HostInvitation>('start_host');
+  hostedRoom = room;
+  localStorage.setItem(hostingKey, room.localUrl);
+  return room;
+}
+
+// 초대 링크를 클립보드에 쓰고 클립보드 접근이 제한되면 직접 복사할 수 있게 한다.
+async function copyHostLink(button: HTMLButtonElement): Promise<void> {
+  const link = invitationLink(await startHosting());
+  try {
+    await navigator.clipboard.writeText(link);
+    notice(t('초대 링크를 복사했어요.'));
+  } catch {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.readOnly = true;
+    input.value = link;
+    setAttribute(input, 'aria-label', () => t('초대 링크'));
+    button.insertAdjacentElement('afterend', input);
+    input.focus();
+    input.select();
+    input.addEventListener('blur', () => input.remove(), { once: true });
+    notice(t('선택된 초대 링크를 복사해 주세요.'));
+  }
+}
+
+// 로그인 정보를 보내기 전에 대상 서버의 응답을 확인한다.
+async function verifyServer(address: string, signal: AbortSignal): Promise<string> {
+  try {
+    return await checkServer(address, signal);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'InvalidServerAddress') {
+      throw error;
+    }
+    throw new Error(t('서버에 연결할 수 없어요. 주소·서버 실행 상태·접속 허용 범위를 확인해 주세요.'));
+  }
+}
+
+// 확인한 서버 주소를 저장하고 초대 코드를 가입이 끝날 때까지만 유지한다.
+async function enterServer(origin: string, code: string | undefined, register: boolean): Promise<void> {
+  const generation = viewGeneration;
+  saveServer(origin);
+  pendingInvite = code;
+  localStorage.setItem(joinMethodKey, code ? 'invite' : 'manual');
+  await changed();
+  if (generation !== viewGeneration) {
+    return;
+  }
+  const current = session();
+  if (current && current.principal.expiresAt > Date.now()) {
+    await showHome();
+  } else {
+    saveSession(null);
+    showLogin(register);
+    const focus = document.querySelector<HTMLElement>('#copy-host-invitation') ||
+      document.querySelector<HTMLInputElement>(register ? '[name=displayName]' : '[name=username]');
+    focus?.focus();
+  }
+}
+
+// 운영체제에서 연 링크는 사용자가 참여를 확인한 뒤에만 연결한다.
+function openInvitation(raw: string): void {
+  let invitation: RoomInvitation;
+  try {
+    invitation = parseInvitation(raw);
+  } catch (error) {
+    notice((error as Error).message, true);
+    return;
+  }
+  if (document.querySelector('#incoming-invitation')) {
+    return;
+  }
+  const dialog = document.createElement('dialog');
+  dialog.id = 'incoming-invitation';
+  dialog.setAttribute('aria-labelledby', 'incoming-invitation-title');
+  dialog.innerHTML = html`<form>
+    <h2 id="incoming-invitation-title">친구의 방에 참여하기</h2>
+    <p class="muted">링크를 보낸 친구와 같은 네트워크에 연결해 주세요.</p>
+    <p>${escape(new URL(invitation.url).host)}</p>
+    <div class="invite-dialog-actions"><button type="button">취소</button><button type="submit" class="primary">방 참여</button></div>
+    <p role="status" aria-live="polite"></p>
+  </form>`;
+  let attempt: AbortController | undefined;
+  const form = dialog.querySelector('form')!;
+  const submit = dialog.querySelector<HTMLButtonElement>('[type=submit]')!;
+  const feedback = dialog.querySelector<HTMLElement>('[role=status]')!;
+  dialog.addEventListener('close', () => {
+    attempt?.abort();
+    dialog.remove();
+  });
+  dialog.querySelector<HTMLButtonElement>('[type=button]')!.onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const request = new AbortController();
+    attempt = request;
+    submit.disabled = true;
+    const timeout = setTimeout(() => request.abort(), 8000);
+    try {
+      const origin = await verifyServer(invitation.url, request.signal);
+      if (dialog.open && dialog.isConnected) {
+        dialog.close();
+        await enterServer(origin, invitation.invite, true);
+      }
+    } catch (error) {
+      if (dialog.open) {
+        setText(feedback, () => translateError((error as Error).message));
+        feedback.classList.add('error');
+      } else if (!request.signal.aborted) {
+        notice((error as Error).message, true);
+      }
+    } finally {
+      clearTimeout(timeout);
+      submit.disabled = false;
+    }
+  };
+  app.append(dialog);
+  dialog.showModal();
+}
+
+// 초대 또는 직접 연결을 마친 뒤 로컬 계정으로 접속한다.
+function showLogin(register = false, requestedView?: EntryView): void {
   // 1. 현재 화면의 연결과 미리보기 리소스를 해제한다.
   serverAttempt?.abort();
   languageCleanup?.();
@@ -166,16 +297,25 @@ function showLogin(register = false, chooseServer = false): void {
   accountCleanup?.();
   accountCleanup = undefined;
   app.className = 'login-shell';
-  const needsServer = chooseServer || !localStorage.getItem('ourpets.server');
-  const title = (): string => needsServer ? t('함께할 서버에 연결하기') : register ? t('우리 펫에 합류하기') : t('오늘도 만나서 반가워요');
-  const description = (): string => needsServer ? t('먼저 사용할 서버를 연결해 주세요.') : register ? t('사용할 계정을 만들어 주세요.') : '';
+  const hasServer = Boolean(localStorage.getItem('ourpets.server'));
+  const entry = requestedView || (!hasServer ? 'choose' : undefined);
+  const room = hostedRoom?.localUrl === serverURL() ? hostedRoom : undefined;
+  const joinMethod = localStorage.getItem(joinMethodKey);
+  const joinCode = pendingInvite || room?.invite;
+  const connectionLabel = (): string => room ? t('이 PC에서 공유 중') : joinMethod === 'invite' ? t('친구의 방에 연결됨') : serverURL();
+  const title = (): string => entry === 'choose' ? t('친구와 함께 시작하기') : entry === 'invite' ? t('초대 링크로 참여하기') : entry === 'manual' ? t('함께할 서버에 연결하기') : register ? t('우리 펫에 합류하기') : t('오늘도 만나서 반가워요');
+  const description = (): string => entry === 'choose' ? t('같은 네트워크에 있는 친구를 초대하거나, 받은 링크로 참여할 수 있어요.') : register && !entry ? t('사용할 계정을 만들어 주세요.') : '';
+  const entryActions = html`<button id="host-room" type="button" class="primary">친구 초대하기</button><button id="join-room" type="button">초대 링크로 참여하기</button><a id="manual-connect" class="auth-switch" href="#manual">서버에 직접 연결</a>`;
+  const inviteFields = html`<label>초대 링크<input name="link" type="url" placeholder="받은 초대 링크를 붙여넣으세요" autocomplete="off" spellcheck="false" required></label><button type="submit" class="primary">방 참여</button>`;
   const serverFields = html`<label>서버 주소<input name="server" type="url" value="${fragment(() => escape(serverURL()))}" placeholder="http://192.168.0.10:9377" required></label><button type="submit" class="primary">서버 연결</button>`;
-  const accountFields = html`${fragment(() => register ? htmlString('<label>닉네임<input name="displayName" maxlength="80" autocomplete="nickname" required></label>') : '')}<label>아이디<input name="username" autocomplete="username" minlength="3" maxlength="32" required></label><div class="auth-password-field"><label for="auth-password">비밀번호</label><div class="auth-password-input"><input id="auth-password" name="password" type="password" minlength="10" maxlength="256" autocomplete="${fragment(() => register ? 'new-password' : 'current-password')}" spellcheck="false" autocapitalize="off" required><button type="button" class="password-visibility" aria-label="비밀번호 보기" title="비밀번호 보기" aria-controls="auth-password" aria-pressed="false">${fragment(() => icon('eye'))}</button></div></div>${fragment(() => register ? htmlString('<label>서버 가입 코드<input name="invite" type="password" autocomplete="off" required></label>') : '')}<button type="submit" class="primary">${fragment(() => register ? t('계정 만들고 펫 등록하기') : t('접속하기'))} <span>↗</span></button>`;
+  const accountFields = html`${fragment(() => register ? htmlString('<label>닉네임<input name="displayName" maxlength="80" autocomplete="nickname" required></label>') : '')}<label>아이디<input name="username" autocomplete="username" minlength="3" maxlength="32" required></label><div class="auth-password-field"><label for="auth-password">비밀번호</label><div class="auth-password-input"><input id="auth-password" name="password" type="password" minlength="10" maxlength="256" autocomplete="${fragment(() => register ? 'new-password' : 'current-password')}" spellcheck="false" autocapitalize="off" required><button type="button" class="password-visibility" aria-label="비밀번호 보기" title="비밀번호 보기" aria-controls="auth-password" aria-pressed="false">${fragment(() => icon('eye'))}</button></div></div>${fragment(() => register && !joinCode ? htmlString('<label>서버 가입 코드<input name="invite" type="password" autocomplete="off" required></label>') : '')}<button type="submit" class="primary">${fragment(() => register ? t('계정 만들고 펫 등록하기') : t('접속하기'))} <span>↗</span></button>`;
   app.innerHTML = html`<section class="login-art"><span class="brand"><img src="/favicon.svg" alt="">우리 펫</span><div class="login-copy"><h1>각자의 화면에서,<br>함께 노는 우리 펫.</h1><p>내 데스크톱에 작은 친구를 데려오세요.<br>친구에게 보내는 메시지도, 반가운 인사도 펫과 함께.</p><div id="login-pet"></div></div><small>같은 네트워크에서 친구와 실시간으로 만나요.</small></section>
   <section class="login-form"><h2>${fragment(() => title())}</h2>${fragment(() => description() ? html`<p class="muted">${fragment(() => description())}</p>` : '')}
-  ${fragment(() => needsServer ? '' : html`<div class="auth-server"><span title="${fragment(() => escape(serverURL()))}">${fragment(() => escape(serverURL()))}</span><a class="auth-server-change" href="#server">서버 변경</a></div>`)}
-  <form id="auth">${fragment(() => needsServer ? serverFields : accountFields)}</form><p id="notice" role="status" aria-live="polite"></p>
-  ${fragment(() => needsServer ? (localStorage.getItem('ourpets.server') ? htmlString('<a id="back-to-auth" class="auth-switch" href="#login">돌아가기</a>') : '') : html`<a id="switch-auth" class="auth-switch" href="${fragment(() => register ? '#login' : '#create-account')}">${fragment(() => register ? t('로그인') : t('계정 만들기'))}</a>`)}</section>`;
+  ${fragment(() => entry ? '' : html`<div class="auth-server"><span title="${fragment(() => escape(serverURL()))}">${fragment(() => escape(connectionLabel()))}</span><a class="auth-server-change" href="#server">서버 변경</a></div>`)}
+  ${fragment(() => !entry && room ? html`<div class="host-invitation"><button type="button" id="copy-host-invitation">초대 링크 복사</button><p class="fine">우리 펫이 실행 중일 때 친구가 참여할 수 있어요.</p></div>` : '')}
+  <form id="auth">${fragment(() => entry === 'choose' ? entryActions : entry === 'invite' ? inviteFields : entry === 'manual' ? serverFields : accountFields)}</form>
+  <p id="notice" role="status" aria-live="polite"></p>
+  ${fragment(() => entry ? (entry !== 'choose' || hasServer ? htmlString('<a id="back-to-auth" class="auth-switch" href="#login">돌아가기</a>') : '') : html`<a id="switch-auth" class="auth-switch" href="${fragment(() => register ? '#login' : '#create-account')}">${fragment(() => register ? t('로그인') : t('계정 만들기'))}</a>`)}</section>`;
   const loginCanvas = document.createElement('canvas');
   const language = document.createElement('div');
   document.querySelector('.login-form')!.append(language);
@@ -187,26 +327,69 @@ function showLogin(register = false, chooseServer = false): void {
   if (switchAuth) {
     switchAuth.onclick = event => {
       event.preventDefault();
-      showLogin(!register);
+      if (!register && !joinCode && joinMethod === 'invite') {
+        showLogin(true, 'invite');
+        notice(t('계정을 만들려면 받은 초대 링크를 열어 주세요.'));
+      } else {
+        showLogin(!register);
+      }
     };
   }
   const changeServer = document.querySelector<HTMLAnchorElement>('.auth-server-change');
   if (changeServer) {
     changeServer.onclick = event => {
       event.preventDefault();
-      showLogin(register, true);
+      showLogin(register, 'choose');
     };
   }
   const back = document.querySelector<HTMLAnchorElement>('#back-to-auth');
   if (back) {
     back.onclick = event => {
       event.preventDefault();
-      showLogin(register);
+      showLogin(register, hasServer ? undefined : 'choose');
     };
   }
 
   // 2. 서버 확인이 끝난 뒤에만 계정 정보를 입력하고 전송한다.
   const form = document.querySelector<HTMLFormElement>('#auth')!;
+  if (entry === 'choose') {
+    const host = form.querySelector<HTMLButtonElement>('#host-room')!;
+    host.onclick = () => run(async () => {
+      if (host.disabled) {
+        return;
+      }
+      const generation = viewGeneration;
+      host.disabled = true;
+      setText(host, () => t('초대 준비 중…'));
+      notice('');
+      try {
+        const room = await startHosting();
+        if (generation === viewGeneration) {
+          const origin = await verifyServer(room.localUrl, AbortSignal.timeout(8000));
+          if (generation === viewGeneration) {
+            await enterServer(origin, room.invite, true);
+          }
+        }
+      } finally {
+        host.disabled = false;
+        setText(host, () => t('친구 초대하기'));
+      }
+    });
+    const join = form.querySelector<HTMLButtonElement>('#join-room')!;
+    join.onclick = () => {
+      showLogin(register, 'invite');
+      document.querySelector<HTMLInputElement>('[name=link]')?.focus();
+    };
+    form.querySelector<HTMLAnchorElement>('#manual-connect')!.onclick = event => {
+      event.preventDefault();
+      showLogin(register, 'manual');
+    };
+    return;
+  }
+  const copyInvite = document.querySelector<HTMLButtonElement>('#copy-host-invitation');
+  if (copyInvite) {
+    copyInvite.onclick = () => run(() => copyHostLink(copyInvite));
+  }
   const submit = form.querySelector<HTMLButtonElement>('[type=submit]')!;
   const password = form.querySelector<HTMLInputElement>('[name=password]');
   const visibility = form.querySelector<HTMLButtonElement>('.password-visibility');
@@ -221,7 +404,7 @@ function showLogin(register = false, chooseServer = false): void {
       setAttribute(visibility, 'title', description);
     };
   }
-  if (register && !needsServer) {
+  if (register && !entry) {
     form.querySelector<HTMLInputElement>('[name=displayName]')!.focus({ preventScroll: true });
   }
   form.onsubmit = event => {
@@ -236,42 +419,35 @@ function showLogin(register = false, chooseServer = false): void {
     run(async () => {
       let timeout: ReturnType<typeof setTimeout> | undefined;
       try {
-        if (needsServer) {
+        if (entry) {
           // 1. 인증 없는 연결 확인이 성공하기 전에는 저장한 서버를 바꾸지 않는다.
           const attempt = new AbortController();
           serverAttempt = attempt;
           timeout = setTimeout(() => attempt.abort(), 8000);
           setText(submit, () => t('연결 확인 중…'));
-          let origin: string;
-          try {
-            origin = await checkServer(String(new FormData(form).get('server')), attempt.signal);
-          } catch (error) {
-            if (generation !== viewGeneration) {
-              return;
-            }
-            throw new Error(error instanceof Error && error.name === 'InvalidServerAddress' ? error.message : t('서버에 연결할 수 없어요. 주소·서버 실행 상태·접속 허용 범위를 확인해 주세요.'));
-          }
+          const values = new FormData(form);
+          const invitation = entry === 'invite' ? parseInvitation(String(values.get('link'))) : undefined;
+          const origin = await verifyServer(invitation?.url || String(values.get('server')), attempt.signal);
           if (generation !== viewGeneration || !form.isConnected) {
             return;
           }
-          saveServer(origin);
-          await changed();
-          if (generation === viewGeneration && form.isConnected) {
-            showLogin(register);
-            document.querySelector<HTMLInputElement>(register ? '[name=displayName]' : '[name=username]')?.focus();
-          }
+          await enterServer(origin, invitation?.invite, register || Boolean(invitation));
           return;
         }
 
         // 2. 계정 요청 도중 화면이나 서버가 바뀌면 늦은 응답으로 로그인하지 않는다.
         const origin = serverURL();
         const body = Object.fromEntries(new FormData(form).entries());
+        if (register && joinCode !== undefined) {
+          body.invite = joinCode;
+        }
         const login = await api<Session>(register ? '/register' : '/login', {
-          method: 'POST', body: JSON.stringify({ ...body, deviceId: localStorage.getItem(`ourpets.device.${origin}`) || '', deviceName: navigator.platform }),
+          method: 'POST', redirect: 'error', body: JSON.stringify({ ...body, deviceId: localStorage.getItem(`ourpets.device.${origin}`) || '', deviceName: navigator.platform }),
         });
         if (generation !== viewGeneration || !form.isConnected || origin !== serverURL()) {
           return;
         }
+        pendingInvite = undefined;
         saveSession(login);
         await changed();
         if (isTauri()) {
@@ -283,8 +459,8 @@ function showLogin(register = false, chooseServer = false): void {
         if (generation === viewGeneration && form.isConnected) {
           submit.disabled = false;
           submit.removeAttribute('aria-busy');
-          if (needsServer) {
-            setText(submit, () => t('서버 연결'));
+          if (entry) {
+            setText(submit, () => entry === 'invite' ? t('방 참여') : t('서버 연결'));
           }
         }
       }
@@ -413,6 +589,13 @@ async function renderView(): Promise<void> {
     await renderStudio();
 
   } else if (view === 'account') {
+    if (hostedRoom?.localUrl === serverURL()) {
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      setText(copy, () => t('초대 링크 복사'));
+      copy.onclick = () => run(() => copyHostLink(copy));
+      document.querySelector('#page-actions')!.append(copy);
+    }
     const target = document.querySelector<HTMLElement>('#view')!;
     const cleanup = await mountAccountSettings(target, async () => {
       await changed();
@@ -517,6 +700,9 @@ async function main(): Promise<void> {
   // 2. 사용자 동작과 수신 상태를 창 사이에서 전달한다.
   connectionState = storedConnectionState();
   window.addEventListener('connection-state', event => showConnectionProblem(String((event as CustomEvent).detail)));
+  let ready = false;
+  let startupInvitation: string | undefined;
+  let hostingError: string | undefined;
   if (isTauri()) {
     await listen<string>('connection-state', event => showConnectionProblem(event.payload));
     await listen('request-sign-in', () => run(async () => {
@@ -525,15 +711,49 @@ async function main(): Promise<void> {
       showLogin();
       document.querySelector<HTMLInputElement>('[name=username]')?.focus();
     }));
-  }
-  if (session() && session()!.principal.expiresAt > Date.now()) {
-    await showHome();
-    if (isTauri()) {
-      await invoke('pet_control', { action: 'restore' });
+    await listen<string>('room-invitation', event => {
+      if (ready) {
+        openInvitation(event.payload);
+      } else {
+        startupInvitation = event.payload;
+      }
+    });
+    const previouslyHosted = localStorage.getItem(hostingKey);
+    if (previouslyHosted) {
+      try {
+        await startHosting();
+      } catch (error) {
+        if (serverURL() === previouslyHosted) {
+          hostingError = String(error);
+        }
+      }
     }
-  } else {
-    saveSession(null);
-    showLogin();
+  }
+  try {
+    const current = session();
+    if (current && current.principal.expiresAt > Date.now() && !hostingError) {
+      await showHome();
+      if (isTauri()) {
+        await invoke('pet_control', { action: 'restore' });
+      }
+    } else {
+      if (!hostingError) {
+        saveSession(null);
+      }
+      showLogin();
+      if (hostingError) {
+        notice(hostingError, true);
+      }
+    }
+  } finally {
+    if (isTauri()) {
+      const launchInvitation = await invoke<string | null>('launch_invitation').catch(() => null);
+      ready = true;
+      const invitation = startupInvitation || launchInvitation;
+      if (invitation) {
+        openInvitation(invitation);
+      }
+    }
   }
 }
 void main().catch(error => notice(error.message, true));

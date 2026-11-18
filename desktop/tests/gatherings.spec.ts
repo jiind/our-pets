@@ -32,6 +32,7 @@ async function connectDevice(browser: Browser, user: FixtureUser, contexts: Brow
   contexts.push(context);
   const page = await context.newPage();
   await page.goto('/');
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '서버 주소' }).fill(user.server);
   await page.getByRole('button', { name: '서버 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '아이디', exact: true }).fill(user.username);

@@ -4,6 +4,7 @@ test('서버 확인 실패·주소 거부·이전 화면 복귀가 저장 서버
   // 1. 다른 서비스가 정상 HTTP를 반환해도 최초 서버로 저장하지 않는다.
   await page.route('http://127.0.0.1:19379/healthz', route => route.fulfill({ json: { status: 'ok', service: 'another-service' } }));
   await page.goto('/');
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '서버 주소' }).fill('http://127.0.0.1:19379');
   await page.getByRole('button', { name: '서버 연결', exact: true }).click();
   await expect(page.locator('#notice')).toContainText('서버에 연결할 수 없어요');
@@ -14,6 +15,7 @@ test('서버 확인 실패·주소 거부·이전 화면 복귀가 저장 서버
 
   // 2. 자격증명이 포함된 주소는 요청 전에 거부하고 기존 서버를 보존한다.
   await page.getByRole('link', { name: '서버 변경', exact: true }).click();
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByRole('textbox', { name: '서버 주소' }).fill('http://user:password@127.0.0.1:19379');
   await page.getByRole('button', { name: '서버 연결', exact: true }).click();
   await expect(page.locator('#notice')).toContainText('형식으로 입력하세요');

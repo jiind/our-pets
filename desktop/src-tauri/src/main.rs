@@ -4,6 +4,7 @@ mod connectors;
 mod desktop_controls;
 mod elevation;
 mod gathering_layout;
+mod hosting;
 mod locale;
 mod locomotion;
 mod message_bubbles;
@@ -15,6 +16,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager, PhysicalPosition};
+use tauri_plugin_deep_link::DeepLinkExt;
 
 #[derive(Clone, serde::Deserialize)]
 struct Rect {
@@ -1248,8 +1250,16 @@ fn main() {
 
     // 2. 닫힌 설정 창은 숨기고 트레이에서 다시 열 수 있게 한다.
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(settings) = app.get_webview_window("settings") {
+                let _ = settings.show();
+                let _ = settings.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_notification::init())
         .manage(state.clone())
+        .manage(hosting::Hosting::default())
         .invoke_handler(tauri::generate_handler![
             set_regions,
             set_pet_input,
@@ -1274,6 +1284,8 @@ fn main() {
             desktop_controls::set_desktop_preferences,
             locale::get_locale,
             locale::set_locale,
+            hosting::start_host,
+            hosting::launch_invitation,
             desktop_controls::set_pet_registered,
             desktop_controls::sync_gatherings,
             gathering_overflow,
@@ -1284,6 +1296,26 @@ fn main() {
             system_notifications::show_system_notification
         ])
         .setup(move |app| {
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                if let Some(url) = event
+                    .urls()
+                    .into_iter()
+                    .find(|url| url.scheme() == "ourpets")
+                {
+                    if let Some(settings) = handle.get_webview_window("settings") {
+                        let _ = settings.show();
+                        let _ = settings.set_focus();
+                        let _ = handle.emit_to("settings", "room-invitation", url.as_str());
+                    }
+                }
+            });
+            #[cfg(any(target_os = "linux", all(windows, debug_assertions)))]
+            if cfg!(debug_assertions) || std::env::var_os("APPIMAGE").is_some() {
+                if let Err(error) = app.deep_link().register_all() {
+                    eprintln!("Could not register the invitation URL handler: {error}");
+                }
+            }
             system_notifications::install(app.handle());
             locale::install(app.handle());
             desktop_controls::install(app.handle(), &state)?;

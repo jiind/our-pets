@@ -9,6 +9,7 @@ async function register(page: Page, server: string): Promise<void> {
   // 1. 한국어를 명시적으로 선택한 뒤 실제 사용자 입력으로 가입한다.
   await page.goto('/');
   await page.getByRole('combobox', { name: 'App language', exact: true }).selectOption('ko');
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByLabel('서버 주소', { exact: true }).fill(server);
   await page.getByRole('button', { name: '서버 연결', exact: true }).click();
   await page.getByRole('link', { name: '계정 만들기', exact: true }).click();
@@ -43,6 +44,7 @@ test('OS 영어 기본값·명시적 선택·시스템 복원과 입력 보존�
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('combobox', { name: 'App language', exact: true })).toHaveValue('system');
   await page.getByRole('combobox', { name: 'App language', exact: true }).selectOption('ko');
+  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
   await page.getByLabel('서버 주소', { exact: true }).fill(isolatedServer);
 
   // 2. 화면을 다시 만들지 않아 서버 주소·가입 입력·비밀번호 표시 상태를 유지한다.
@@ -159,7 +161,7 @@ for (const [language, expected] of [['ko-KR', 'ko'], ['en-GB', 'en'], ['ja-JP', 
       await page.goto('/');
       await expect(page.locator('html')).toHaveAttribute('lang', expected);
       await expect(page.getByRole('combobox')).toHaveValue('system');
-      await expect(page.getByRole('heading', { name: expected === 'ko' ? '함께할 서버에 연결하기' : 'Connect to a server', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: expected === 'ko' ? '친구와 함께 시작하기' : 'Get started with friends', exact: true })).toBeVisible();
     });
   });
 }

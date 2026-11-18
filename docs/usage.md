@@ -4,13 +4,15 @@ The app supports Korean and English. On first launch it follows the OS's preferr
 
 Choose **App language** on the sign-in screen or account page to override the language for this PC. **Follow system settings** restores automatic selection; restart the app after changing the OS language. The setting also controls pet menus, app-generated notifications, and tray commands. Changing language preserves unsaved inputs and current real-time connections. Nicknames, messages, uploaded design names, and provider event content remain in their original language. License documents retain their original wording.
 
-## Connect and register a pet
+## Invite friends and register a pet
 
-1. Open the app and enter the server address supplied by its operator. For the default server on the same PC, use `http://127.0.0.1:9377`.
-2. Create an account or sign in. The server operator supplies the registration code. Your nickname appears on your pet's nameplate.
+1. On the PC hosting the room, open the app and select **Invite friends**, then **Copy invite link**. Share it with friends connected to the same local network.
+2. Open the invite link to join, or paste it into **Join with an invite link** in the app. Create an account or sign in. Your nickname appears on your pet's nameplate.
 3. On the pet page, choose a built-in character or an uploaded PNG and complete registration. Changing appearance preserves the pet's recipient ID.
 
-See [deployment](operations.md) for server setup and access restrictions, and [README](../README.md) for development startup.
+The room is available while the host app is running. On the host, **Account → Copy invite link** shares it again. The app-hosted room uses HTTP on the local network. Allow the app's host process on the private network if the OS requests firewall access. If the host moves to a different network, restart the app and share its current link.
+
+To use a separately managed server, select **Connect directly to a server** and enter the operator's address and registration code. See [deployment](operations.md) for standalone server setup, TLS, and access restrictions.
 
 ## Account settings
 

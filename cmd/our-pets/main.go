@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +18,22 @@ import (
 
 // main은 설정·저장소·API 서버를 초기화하고 종료 신호를 처리한다.
 func main() {
+	var host desktopHost
+	var listener net.Listener
+	if len(os.Args) == 3 && os.Args[1] == "--desktop-host" {
+		var err error
+		host, err = desktopConfig(os.Args[2])
+		if err != nil {
+			slog.Error("데스크톱 호스트 설정 오류", "error", err)
+			os.Exit(1)
+		}
+		listener, err = net.Listen("tcp4", os.Getenv("OURPETS_BIND"))
+		if err != nil {
+			slog.Error("데스크톱 호스트 포트 오류", "error", err)
+			os.Exit(1)
+		}
+		defer listener.Close()
+	}
 	// 1. 검증한 설정으로 단일 서버와 영속 저장소를 구성한다.
 	config, err := server.ConfigFromEnv()
 	if err != nil {
@@ -33,21 +51,37 @@ func main() {
 	app := server.New(ctx, db, config)
 	go app.Maintain(ctx)
 	httpServer := &http.Server{Addr: config.Bind, Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
+	if listener != nil {
+		if err := host.ready(); err != nil {
+			slog.Error("데스크톱 호스트 시작 알림 실패", "error", err)
+			os.Exit(1)
+		}
+		go func() {
+			_, _ = io.Copy(io.Discard, os.Stdin)
+			cancel()
+		}()
+	}
 
 	// 2. 새 요청을 중단하고 진행 중인 HTTP 요청을 마무리한다.
+	stopped := make(chan struct{})
 	go func() {
+		defer close(stopped)
 		<-ctx.Done()
 		stop, done := context.WithTimeout(context.Background(), 5*time.Second)
 		defer done()
 		_ = httpServer.Shutdown(stop)
 	}()
 	slog.Info("로컬망 펫 서버 시작", "bind", config.Bind, "sampleEnabled", config.SampleEnabled)
-	if config.TLSCert != "" {
+	if listener != nil {
+		err = httpServer.Serve(listener)
+	} else if config.TLSCert != "" {
 		err = httpServer.ListenAndServeTLS(config.TLSCert, config.TLSKey)
 	} else {
 		err = httpServer.ListenAndServe()
 	}
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if errors.Is(err, http.ErrServerClosed) {
+		<-stopped
+	} else if err != nil {
 		slog.Error("서버 실행 실패", "error", err)
 		os.Exit(1)
 	}
