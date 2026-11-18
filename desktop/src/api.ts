@@ -1,6 +1,16 @@
+import { msg, t, translateError } from './i18n';
 import type { Design, Gathering, GatheringActivity, PetEvent, Session } from './types';
 
 const sessionKey = 'ourpets.session';
+
+// 주소 형식 오류는 번역된 문구 대신 안정적인 이름으로 구분한다.
+class InvalidServerAddress extends Error {
+  // 주소 원문이나 자격증명 없이 사용자가 고칠 수 있는 형식만 안내한다.
+  constructor() {
+    super(t('http(s)://주소:포트 형식으로 입력하세요.'));
+    this.name = 'InvalidServerAddress';
+  }
+}
 
 // 저장된 로컬 세션을 읽고 손상된 값은 로그인 전 상태로 취급한다.
 export function session(): Session | null {
@@ -23,12 +33,12 @@ export function normalizeServerURL(value: string): string {
   try {
     url = new URL(value.trim());
   } catch {
-    throw new Error('http(s)://주소:포트 형식으로 입력하세요.');
+    throw new InvalidServerAddress();
   }
 
   // 2. 인증정보·쿼리·경로가 섞인 입력을 저장 전에 거절한다.
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
-    throw new Error('http(s)://주소:포트 형식으로 입력하세요.');
+    throw new InvalidServerAddress();
   }
   return url.origin;
 }
@@ -42,7 +52,7 @@ export async function checkServer(value: string, signal: AbortSignal): Promise<s
   // 2. 연결 실패나 다른 서비스의 응답을 저장하지 않는다.
   const health = response.ok ? await response.json().catch(() => null) : null;
   if (health?.status !== 'ok' || (health.service !== undefined && health.service !== 'our-pets')) {
-    throw new Error('우리 펫 서버에 연결할 수 없어요. 주소와 서버 상태를 확인해 주세요.');
+    throw new Error(t('우리 펫 서버에 연결할 수 없어요. 주소와 서버 상태를 확인해 주세요.'));
   }
   return origin;
 }
@@ -74,8 +84,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   // 2. 서버 오류는 사용자용 설명으로 변환한다.
   if (!result.ok) {
-    const error = await result.json().catch(() => ({ error: '서버에 연결할 수 없습니다.' }));
-    throw new Error(error.error || `요청 실패 (${result.status})`);
+    const error = await result.json().catch(() => ({
+      // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+      get error() {
+        return t('서버에 연결할 수 없습니다.');
+      }
+    }));
+    throw new Error(error.error ? translateError(error.error) : msg`요청 실패 (${result.status})`);
   }
   return result.json() as Promise<T>;
 }
@@ -169,7 +184,7 @@ export async function designImage(design: Design): Promise<string> {
       headers: { Authorization: `Bearer ${session()?.token || ''}` }, signal: AbortSignal.timeout(15000),
     });
     if (!result.ok) {
-      throw new Error('펫 이미지를 내려받지 못했습니다.');
+      throw new Error(t('펫 이미지를 내려받지 못했습니다.'));
     }
     const blob = await result.blob();
     await new Promise<void>((resolve, reject) => {

@@ -1,3 +1,4 @@
+import { fragment, html, msg, setAttribute, setText, t } from './i18n';
 import { icon } from './icons';
 import { isTauri } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
@@ -16,8 +17,8 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
   panel.className = 'pet-compose';
   panel.dataset.hit = '';
   panel.hidden = true;
-  panel.setAttribute('aria-label', '펫에게 보내기');
-  panel.innerHTML = `<div class="pet-compose-heading"><h2></h2><button type="button" class="menu-close" aria-label="작성 닫기">${icon('close')}</button></div>
+  setAttribute(panel, 'aria-label', () => t('펫에게 보내기'));
+  panel.innerHTML = html`<div class="pet-compose-heading"><h2></h2><button type="button" class="menu-close" aria-label="작성 닫기">${fragment(() => icon('close'))}</button></div>
     <p class="pet-compose-target"></p>
     <blockquote hidden></blockquote>
     <label class="pet-compose-body">메시지 내용<textarea name="body" rows="2" maxlength="2000" required placeholder="메시지와 이모지를 입력하세요"></textarea></label>
@@ -61,7 +62,7 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
   // 고정된 한 명 또는 전체 범위만 표시하고 다중 대상 선택은 제공하지 않는다.
   function showRecipients(): void {
     const target = pets.find(pet => pet.id === targetID);
-    targetLabel.textContent = scope === 'all' ? '접속 중인 친구 모두에게' : target ? `${target.ownerName || target.name}에게` : '선택한 친구에게';
+    setText(targetLabel, () => scope === 'all' ? t('접속 중인 친구 모두에게') : target ? msg`${target.ownerName || target.name}에게` : t('선택한 친구에게'));
   }
 
   // 선택한 동작의 입력창을 펫 위에 열고 필요한 입력에만 포커스를 준다.
@@ -71,7 +72,7 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
       return;
     }
     if (nextKind !== 'text') {
-      throw new Error('커피·담배·밥은 메시지 대신 모집에서 시작해 주세요.');
+      throw new Error(t('커피·담배·밥은 메시지 대신 모집에서 시작해 주세요.'));
     }
     targetID = nextTarget;
     reply = nextReply;
@@ -79,12 +80,12 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
     pets = getPets();
     const version = ++generation;
     retry = undefined;
-    title.textContent = reply ? '답장하기' : scope === 'all' ? '전체 메시지 보내기' : '메시지 보내기';
+    setText(title, () => reply ? t('답장하기') : scope === 'all' ? t('전체 메시지 보내기') : t('메시지 보내기'));
     body.value = '';
     quote.hidden = !reply;
-    quote.textContent = reply ? `${reply.sender}에게 답장 · ${reply.body}` : '';
+    setText(quote, () => reply ? msg`${reply.sender}에게 답장 · ${reply.body}` : '');
     status.textContent = '';
-    submit.textContent = '메시지 보내기';
+    setText(submit, () => t('메시지 보내기'));
     submit.disabled = true;
     showRecipients();
     panel.hidden = false;
@@ -106,7 +107,7 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
       submit.disabled = false;
     } catch (error) {
       if (version === generation) {
-        status.textContent = error instanceof Error ? error.message : '친구 목록을 불러오지 못했어요. 다시 열어 주세요.';
+        setText(status, () => error instanceof Error ? error.message : t('친구 목록을 불러오지 못했어요. 다시 열어 주세요.'));
         submit.disabled = false;
       }
     }
@@ -116,14 +117,14 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
   async function send(nextKind: Kind, bodyText: string, ids: string[], all: boolean, nextReply?: Reply): Promise<void> {
     // 1. 로그인한 내 펫과 클릭한 상대를 기준으로 서버 전송 계약을 구성한다.
     if (nextKind !== 'text') {
-      throw new Error('모집은 메시지로 전송할 수 없어요.');
+      throw new Error(t('모집은 메시지로 전송할 수 없어요.'));
     }
     const current = session();
     if (!current) {
-      throw new Error('먼저 로그인해 주세요.');
+      throw new Error(t('먼저 로그인해 주세요.'));
     }
     if (!bodyText.trim() || (!all && !ids.length)) {
-      throw new Error('보낼 친구와 내용을 골라 주세요.');
+      throw new Error(t('보낼 친구와 내용을 골라 주세요.'));
     }
     const payload = { senderPetId: current.principal.petId, mode: all ? 'all' : 'selected', petIds: all ? [] : ids.sort(), kind: 'text', replyToMessageId: nextReply?.id, body: bodyText };
     const fingerprint = JSON.stringify(payload);
@@ -135,7 +136,7 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
     // 2. 성공한 메시지 전송만 현재 연결된 내 펫에 알린다.
     const own = pets.find(pet => pet.id === current.principal.petId);
     const recipient = !all && result.petIds.length === 1 ? pets.find(pet => pet.id === result.petIds[0]) : undefined;
-    const sent: PetEvent = { id: `sent:${result.id}`, type: 'message', kind: 'text', replyToMessageId: payload.replyToMessageId, body: payload.body, sender: { userId: current.principal.userId, userName: own?.ownerName || '나', petId: current.principal.petId, petName: own?.ownerName || own?.name || '내 펫', designId: own?.design?.id, builtinId: own?.builtinId }, outgoing: { mode: payload.mode, recipientCount: result.petIds.length, recipientName: recipient?.ownerName || recipient?.name }, createdAt: Date.now(), expiresAt: Date.now() + 12000 };
+    const sent: PetEvent = { id: `sent:${result.id}`, type: 'message', kind: 'text', replyToMessageId: payload.replyToMessageId, body: payload.body, sender: { userId: current.principal.userId, userName: own?.ownerName || t('나'), petId: current.principal.petId, petName: own?.ownerName || own?.name || t('내 펫'), designId: own?.design?.id, builtinId: own?.builtinId }, outgoing: { mode: payload.mode, recipientCount: result.petIds.length, recipientName: recipient?.ownerName || recipient?.name }, createdAt: Date.now(), expiresAt: Date.now() + 12000 };
     if (isTauri()) {
       await emit('outgoing-message', sent);
     } else {
@@ -159,7 +160,7 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
     const caption = submit.textContent;
     submit.disabled = true;
     submit.setAttribute('aria-busy', 'true');
-    submit.textContent = '보내는 중…';
+    setText(submit, () => t('보내는 중…'));
     body.readOnly = true;
     status.textContent = '';
 
@@ -171,13 +172,13 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
       }
     } catch (error) {
       if (version === generation) {
-        status.textContent = error instanceof Error ? error.message : '보내지 못했어요. 다시 시도해 주세요.';
+        setText(status, () => error instanceof Error ? error.message : t('보내지 못했어요. 다시 시도해 주세요.'));
       }
     } finally {
       busy = false;
       submit.disabled = false;
       submit.removeAttribute('aria-busy');
-      submit.textContent = caption;
+      setText(submit, () => caption);
       body.readOnly = false;
     }
   }
@@ -190,7 +191,7 @@ export function mountPetComposer(root: HTMLElement, preview: boolean, onOpen: ()
   async function sendInline(text: string, recipient?: string): Promise<void> {
     // 1. 미리보기·전송 중·정리된 화면에서는 실메시지를 만들지 않는다.
     if (preview || disposed || busy) {
-      throw new Error('현재 메시지를 보낼 수 없어요.');
+      throw new Error(t('현재 메시지를 보낼 수 없어요.'));
     }
     busy = true;
     pets = getPets();

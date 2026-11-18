@@ -24,6 +24,9 @@ impl Default for Preferences {
 pub struct TrayControls {
     visible: tauri::menu::MenuItem<tauri::Wry>,
     own_only: tauri::menu::MenuItem<tauri::Wry>,
+    settings: tauri::menu::MenuItem<tauri::Wry>,
+    quit: tauri::menu::MenuItem<tauri::Wry>,
+    icon: tauri::tray::TrayIcon<tauri::Wry>,
 }
 
 // 등록 전이나 로그아웃 상태에서는 사용자 표시 옵션을 바꾸지 않고 실제 펫 창을 숨긴다.
@@ -103,16 +106,14 @@ pub fn install(app: &tauri::AppHandle, state: &Shared) -> Result<(), Box<dyn std
         true,
         None::<&str>,
     )?;
-    let settings =
-        tauri::menu::MenuItem::with_id(app, "settings", "앱 열기", true, None::<&str>)?;
+    let settings = tauri::menu::MenuItem::with_id(app, "settings", "앱 열기", true, None::<&str>)?;
     let quit = tauri::menu::MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
     let menu = tauri::menu::Menu::with_items(app, &[&visible, &own_only, &settings, &quit])?;
-    app.manage(TrayControls { visible, own_only });
     let icon = app
         .default_window_icon()
         .cloned()
         .ok_or("앱 아이콘이 없습니다")?;
-    tauri::tray::TrayIconBuilder::new()
+    let tray = tauri::tray::TrayIconBuilder::new()
         .icon(icon)
         .tooltip("우리 펫")
         .menu(&menu)
@@ -124,6 +125,14 @@ pub fn install(app: &tauri::AppHandle, state: &Shared) -> Result<(), Box<dyn std
             );
         })
         .build(app)?;
+    app.manage(TrayControls {
+        visible,
+        own_only,
+        settings,
+        quit,
+        icon: tray,
+    });
+    refresh_locale(app)?;
     Ok(())
 }
 
@@ -312,26 +321,50 @@ pub fn apply(
     }
 
     // 2. 같은 원본 상태로 다음 동작을 나타내는 트레이 문구와 앱 표시를 함께 갱신한다.
-    if let Some(tray) = app.try_state::<TrayControls>() {
-        tray.visible
-            .set_text(if preferences.visible {
-                "펫 숨기기"
-            } else {
-                "펫 표시"
-            })
-            .map_err(|e| e.to_string())?;
-        tray.own_only
-            .set_text(if preferences.show_others {
-                "내 펫만 보기"
-            } else {
-                "친구 펫도 보기"
-            })
-            .map_err(|e| e.to_string())?;
-    }
+    refresh_locale(app)?;
     if publish {
         app.emit("desktop-preferences-changed", &preferences)
             .map_err(|e| e.to_string())?;
         save(app, &preferences)?;
+    }
+    Ok(())
+}
+
+// 펫 창 재배치 없이 다음 트레이 동작과 앱 이름만 현재 PC 언어로 갱신한다.
+pub fn refresh_locale(app: &tauri::AppHandle) -> Result<(), String> {
+    // 1. 창 API와 다른 설정 잠금이 겹치지 않도록 값만 먼저 복사한다.
+    let preferences = app
+        .state::<Shared>()
+        .lock()
+        .map_err(|_| "표시 설정 잠금 실패")?
+        .preferences
+        .clone();
+
+    // 2. 표시 상태를 바꾸지 않고 메뉴·도움말의 문구만 변경한다.
+    if let Some(tray) = app.try_state::<TrayControls>() {
+        tray.visible
+            .set_text(crate::locale::text(if preferences.visible {
+                "펫 숨기기"
+            } else {
+                "펫 표시"
+            }))
+            .map_err(|error| error.to_string())?;
+        tray.own_only
+            .set_text(crate::locale::text(if preferences.show_others {
+                "내 펫만 보기"
+            } else {
+                "친구 펫도 보기"
+            }))
+            .map_err(|error| error.to_string())?;
+        tray.settings
+            .set_text(crate::locale::text("앱 열기"))
+            .map_err(|error| error.to_string())?;
+        tray.quit
+            .set_text(crate::locale::text("종료"))
+            .map_err(|error| error.to_string())?;
+        tray.icon
+            .set_tooltip(Some(crate::locale::text("우리 펫")))
+            .map_err(|error| error.to_string())?;
     }
     Ok(())
 }

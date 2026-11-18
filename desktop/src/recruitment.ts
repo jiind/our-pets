@@ -1,3 +1,4 @@
+import { fragment, html, msg, setAttribute, setText, t } from './i18n';
 import { icon } from './icons';
 import { api, session } from './api';
 import { setPetInput } from './pet-input';
@@ -16,7 +17,7 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
   panel.tabIndex = -1;
   panel.dataset.hit = '';
   panel.hidden = true;
-  panel.setAttribute('aria-label', '모집');
+  setAttribute(panel, 'aria-label', () => t('모집'));
   root.append(badge, panel);
   let selectedID: string | undefined;
   let busy = false;
@@ -52,28 +53,28 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     const group = current();
     badge.hidden = !group;
     const option = group ? recruitmentOptions[group.kind] : undefined;
-    badge.textContent = group ? `${option!.icon} ${option!.label} · ${group.hostPetId === (targetID || ownID) ? '모집 중' : '참여 중'} · ${group.members.length}명` : '';
+    setText(badge, () => group ? msg`${option!.icon} ${option!.label} · ${group.hostPetId === (targetID || ownID) ? t('모집 중') : t('참여 중')} · ${group.members.length}명` : '');
     if (group && overflow > 0) {
-      badge.textContent += ` · ${overflow}명 화면 미표시`;
+      badge.textContent += msg` · ${overflow}명 화면 미표시`;
     }
-    badge.setAttribute('aria-label', group ? `${option!.label} ${group.hostPetId === (targetID || ownID) ? '모집' : '참여'} 중 · ${group.members.length}명 참여${overflow ? ` · ${overflow}명은 화면에 표시되지 않지만 참여 중` : ''}` : '모집 현황');
+    setAttribute(badge, 'aria-label', () => group ? msg`${option!.label} ${group.hostPetId === (targetID || ownID) ? t('모집') : t('참여')} 중 · ${group.members.length}명 참여${overflow ? msg` · ${overflow}명은 화면에 표시되지 않지만 참여 중` : ''}` : t('모집 현황'));
     if (panel.hidden) {
       return;
     }
     if (choosing) {
       const focusedKind = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.recruitmentKind : undefined;
-      panel.innerHTML = `<div class="recruitment-heading"><h2>모집</h2><button type="button" class="menu-close" aria-label="모집 닫기" data-recruitment-action="close">${icon('close')}</button></div><p>함께할 사람을 모아 보세요.</p><div class="recruitment-choices"></div><p class="recruitment-feedback" role="status" aria-live="polite"></p>`;
+      panel.innerHTML = html`<div class="recruitment-heading"><h2>모집</h2><button type="button" class="menu-close" aria-label="모집 닫기" data-recruitment-action="close">${fragment(() => icon('close'))}</button></div><p>함께할 사람을 모아 보세요.</p><div class="recruitment-choices"></div><p class="recruitment-feedback" role="status" aria-live="polite"></p>`;
       for (const kind of Object.keys(recruitmentOptions) as RecruitmentKind[]) {
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.recruitmentKind = kind;
-        button.textContent = recruitmentOptions[kind].icon;
-        button.title = recruitmentOptions[kind].label;
-        button.setAttribute('aria-label', `${recruitmentOptions[kind].label} 모집`);
+        setText(button, () => recruitmentOptions[kind].icon);
+        setAttribute(button, 'title', () => recruitmentOptions[kind].label);
+        setAttribute(button, 'aria-label', () => msg`${recruitmentOptions[kind].label} 모집`);
         button.disabled = busy;
         panel.querySelector('.recruitment-choices')!.append(button);
       }
-      panel.querySelector<HTMLElement>('.recruitment-feedback')!.textContent = feedback;
+      setText(panel.querySelector<HTMLElement>('.recruitment-feedback')!, () => feedback);
       panel.querySelector('.recruitment-feedback')!.classList.toggle('error', feedbackError);
       if (focusedKind && !busy) {
         panel.querySelector<HTMLButtonElement>(`[data-recruitment-kind="${focusedKind}"]`)?.focus();
@@ -90,27 +91,27 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     const previousAction = (panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.recruitmentAction : undefined);
     const host = selected.hostPetId === ownID;
     const joined = selected.members.some(member => member.petId === ownID);
-    const owner = selected.host?.userName || getPets().find(pet => pet.id === selected.hostPetId)?.ownerName || '친구';
-    panel.innerHTML = `<div class="recruitment-heading"><h2></h2><button type="button" class="menu-close" aria-label="모집 현황 닫기" data-recruitment-action="close">${icon('close')}</button></div><p class="recruitment-owner"></p><p class="recruitment-help"></p><ul class="recruitment-members"></ul><p class="recruitment-feedback" role="status" aria-live="polite"></p><div class="recruitment-actions"></div>`;
-    panel.querySelector('h2')!.textContent = `${recruitmentOptions[selected.kind].icon} ${recruitmentOptions[selected.kind].invitation}`;
-    panel.querySelector<HTMLElement>('.recruitment-owner')!.textContent = `${owner}님의 모집 · ${selected.members.length}명 참여`;
-    panel.querySelector<HTMLElement>('.recruitment-help')!.textContent = host ? '참여한 친구들은 내 펫 옆에서 기다려요. 함께하기를 마치면 완료를 눌러 주세요.' : joined ? '✓ 참여했어요. 내 펫이 모집자 곁에서 함께해요. 모집자가 완료하면 모임이 끝나요.' : '참여하면 내 펫이 모집자 곁으로 가서 함께 기다려요.';
+    const owner = selected.host?.userName || getPets().find(pet => pet.id === selected.hostPetId)?.ownerName || t('친구');
+    panel.innerHTML = html`<div class="recruitment-heading"><h2></h2><button type="button" class="menu-close" aria-label="모집 현황 닫기" data-recruitment-action="close">${fragment(() => icon('close'))}</button></div><p class="recruitment-owner"></p><p class="recruitment-help"></p><ul class="recruitment-members"></ul><p class="recruitment-feedback" role="status" aria-live="polite"></p><div class="recruitment-actions"></div>`;
+    setText(panel.querySelector('h2')!, () => `${recruitmentOptions[selected.kind].icon} ${recruitmentOptions[selected.kind].invitation}`);
+    setText(panel.querySelector<HTMLElement>('.recruitment-owner')!, () => msg`${owner}님의 모집 · ${selected.members.length}명 참여`);
+    setText(panel.querySelector<HTMLElement>('.recruitment-help')!, () => host ? t('참여한 친구들은 내 펫 옆에서 기다려요. 함께하기를 마치면 완료를 눌러 주세요.') : joined ? t('✓ 참여했어요. 내 펫이 모집자 곁에서 함께해요. 모집자가 완료하면 모임이 끝나요.') : t('참여하면 내 펫이 모집자 곁으로 가서 함께 기다려요.'));
     if (overflow > 0 && selected.id === group?.id) {
-      panel.querySelector<HTMLElement>('.recruitment-help')!.textContent += ` 화면 공간이 부족해 ${overflow}명은 표시되지 않지만 계속 참여 중이에요.`;
+      panel.querySelector<HTMLElement>('.recruitment-help')!.textContent += msg` 화면 공간이 부족해 ${overflow}명은 표시되지 않지만 계속 참여 중이에요.`;
     }
     const list = panel.querySelector<HTMLUListElement>('ul')!;
     for (const member of selected.members) {
       const item = document.createElement('li');
-      item.textContent = `✓ ${member.userName || member.petName}`;
+      setText(item, () => `✓ ${member.userName || member.petName}`);
       list.append(item);
     }
-    panel.querySelector<HTMLElement>('.recruitment-feedback')!.textContent = feedback;
+    setText(panel.querySelector<HTMLElement>('.recruitment-feedback')!, () => feedback);
     panel.querySelector('.recruitment-feedback')!.classList.toggle('error', feedbackError);
     const action = document.createElement('button');
     action.type = 'button';
     action.className = host || !joined ? 'primary' : 'quiet';
     action.dataset.recruitmentAction = host ? 'complete' : joined ? 'leave' : 'accept';
-    action.textContent = busy ? '처리 중…' : host ? '완료' : joined ? '참여 취소' : '참여하기';
+    setText(action, () => busy ? t('처리 중…') : host ? t('완료') : joined ? t('참여 취소') : t('참여하기'));
     action.disabled = busy;
     panel.querySelector('.recruitment-actions')!.append(action);
     if (previousAction) {
@@ -159,7 +160,7 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     }
     const ownID = session()?.principal.petId;
     if (!ownID) {
-      throw new Error('먼저 로그인해 주세요.');
+      throw new Error(t('먼저 로그인해 주세요.'));
     }
     const existing = getGroups().find(group => group.origin === 'recruitment' && group.hostPetId === ownID && group.status === 'open');
     if (existing) {
@@ -181,7 +182,7 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
       }
       if (created.status !== 'open') {
         requestKey = crypto.randomUUID();
-        throw new Error('이미 완료한 모집이에요. 다시 누르면 새로 모집할 수 있어요.');
+        throw new Error(t('이미 완료한 모집이에요. 다시 누르면 새로 모집할 수 있어요.'));
       }
 
       // 2. 서버의 현재 모집 상태를 공유하고 같은 자리에서 참여 현황을 연다.
@@ -220,7 +221,7 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
       }
     } catch (error) {
       feedbackError = !accepted;
-      feedback = accepted ? '요청은 접수했어요. 새 상태를 기다리고 있어요. 연결을 확인해 주세요.' : error instanceof Error ? error.message : '처리하지 못했어요. 다시 눌러 주세요.';
+      feedback = accepted ? t('요청은 접수했어요. 새 상태를 기다리고 있어요. 연결을 확인해 주세요.') : error instanceof Error ? error.message : t('처리하지 못했어요. 다시 눌러 주세요.');
     } finally {
       busy = false;
       render();
@@ -234,7 +235,7 @@ export function mountRecruitment(root: HTMLElement, preview: boolean, targetID: 
     if (kind && Object.hasOwn(recruitmentOptions, kind)) {
       void start(kind as RecruitmentKind).catch(error => {
         feedbackError = true;
-        feedback = error instanceof Error ? error.message : '모집을 열지 못했어요. 다시 눌러 주세요.';
+        feedback = error instanceof Error ? error.message : t('모집을 열지 못했어요. 다시 눌러 주세요.');
         render();
       });
       return;

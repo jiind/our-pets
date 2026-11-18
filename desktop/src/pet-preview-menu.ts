@@ -1,3 +1,4 @@
+import { fragment, html, setAttribute, t } from './i18n';
 import { icon } from './icons';
 import type { Gesture } from './motion';
 
@@ -7,10 +8,34 @@ export type PetPreviewAction = 'idle' | 'walk' | Gesture;
 export function mountPetPreviewMenu(canvas: HTMLCanvasElement, stage: HTMLElement, onSelect: (action: PetPreviewAction) => void): { close: () => void; dispose: () => void } {
   // 1. 실제 펫의 메시지·모집과 분리된 동작 메뉴와 접근성 연결을 만든다.
   const entries: { action: PetPreviewAction; label: string }[] = [
-    { action: 'idle', label: '대기' },
-    { action: 'walk', label: '걷기' },
-    { action: 'wave', label: '👋 인사하기' },
-    { action: 'highfive', label: '🙌 하이파이브' },
+    {
+      action: 'idle',
+      // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+      get label() {
+        return t('대기');
+      }
+    },
+    {
+      action: 'walk',
+      // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+      get label() {
+        return t('걷기');
+      }
+    },
+    {
+      action: 'wave',
+      // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+      get label() {
+        return t('👋 인사하기');
+      }
+    },
+    {
+      action: 'highfive',
+      // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+      get label() {
+        return t('🙌 하이파이브');
+      }
+    },
   ];
   const menu = document.createElement('div');
   const menuID = `pet-preview-menu-${crypto.randomUUID()}`;
@@ -18,8 +43,8 @@ export function mountPetPreviewMenu(canvas: HTMLCanvasElement, stage: HTMLElemen
   menu.id = menuID;
   menu.hidden = true;
   menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', '펫 동작 미리보기');
-  menu.innerHTML = `<div class="pet-preview-menu-heading"><span>동작 미리보기</span><button type="button" class="menu-close" role="menuitem" aria-label="동작 미리보기 메뉴 닫기">${icon('close')}</button></div><div class="pet-preview-menu-actions">${entries.map(entry => `<button type="button" role="menuitem" data-preview-gesture="${entry.action}">${entry.label}</button>`).join('')}</div>`;
+  setAttribute(menu, 'aria-label', () => t('펫 동작 미리보기'));
+  menu.innerHTML = html`<div class="pet-preview-menu-heading"><span>동작 미리보기</span><button type="button" class="menu-close" role="menuitem" aria-label="동작 미리보기 메뉴 닫기">${fragment(() => icon('close'))}</button></div><div class="pet-preview-menu-actions">${fragment(() => entries.map(entry => html`<button type="button" role="menuitem" data-preview-gesture="${fragment(() => entry.action)}">${fragment(() => entry.label)}</button>`).join(''))}</div>`;
   stage.append(menu);
   canvas.setAttribute('role', 'button');
   canvas.tabIndex = 0;

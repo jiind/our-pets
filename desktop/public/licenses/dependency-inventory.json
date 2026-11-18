@@ -1,6 +1,6 @@
 {
   "inputs": {
-    "cargo": "03fe552a1abaef5714288e1f449a131a0a43baf8e2388228e67faa9439595e9c",
+    "cargo": "6a4a64e6911b7301f9b188cd4c15147d739fb3013f798d0bff957b4b82ad8777",
     "npm": "dcaa0fa935e052f4684356520cf9b2d2df79c9daf104e9a9343a71b1cb2a905a",
     "go.mod": "babec04a57108da76b80481ee034e2e3cc69ba7888fe93f04c29512699249165",
     "go.sum": "446fc30f7e3ee5f4cce9cc387ce7ebe7187bfc20706303eacb2345cf780909a5"
@@ -3312,6 +3312,14 @@
     },
     {
       "ecosystem": "cargo",
+      "name": "sys-locale",
+      "version": "0.3.2",
+      "license": "MIT OR Apache-2.0",
+      "source": "https://static.crates.io/crates/sys-locale/sys-locale-0.3.2.crate",
+      "checksum": "8eab9a99a024a169fe8a903cf9d4a3b3601109bcc13bd9e3c6fff259138626c4"
+    },
+    {
+      "ecosystem": "cargo",
       "name": "system-deps",
       "version": "6.2.2",
       "license": "MIT OR Apache-2.0",
@@ -4760,7 +4768,7 @@
     }
   ],
   "files": {
-    "dependencies.txt": "d9308b36dcfa3169f8486757e8ff00865e4ce870c5a60a17aa5ea65f77effbfb",
+    "dependencies.txt": "dfd48d8c6558ea0682a882bd4c5eff10a03597f24e6c879fe730fb8d7cc76d0a",
     "sources/cssparser-0.37.0.crate": "8c9cdaae01d5ed7882b04d795e7f752f46ff52d2fa3b50a20d28c464510bba98",
     "sources/cssparser-0.38.0.crate": "11119743ad110e8c1bdccd930d7f5c30c99e5fc76a7b63ec9807e84eef0c5f59",
     "sources/cssparser-macros-0.7.1.crate": "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a",

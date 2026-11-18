@@ -1,3 +1,4 @@
+import { t } from './i18n';
 export interface Principal {
   userId: string;
   petId: string;
@@ -61,11 +62,61 @@ export interface PetEvent {
 export type RecruitmentKind = 'coffee' | 'smoke' | 'meal' | 'chat' | 'walk';
 
 export const recruitmentOptions: Record<RecruitmentKind, { icon: string; label: string; invitation: string }> = {
-  coffee: { icon: '☕', label: '커피', invitation: '커피 같이 마실 사람!' },
-  smoke: { icon: '🚬', label: '담배', invitation: '담배 같이 피울 사람!' },
-  meal: { icon: '🍚', label: '밥', invitation: '밥 같이 먹을 사람!' },
-  chat: { icon: '💬', label: '수다', invitation: '같이 수다 떨 사람!' },
-  walk: { icon: '🚶', label: '산책', invitation: '같이 산책할 사람!' },
+  coffee: {
+    icon: '☕',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get label() {
+      return t('커피');
+    },
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get invitation() {
+      return t('커피 같이 마실 사람!');
+    }
+  },
+  smoke: {
+    icon: '🚬',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get label() {
+      return t('담배');
+    },
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get invitation() {
+      return t('담배 같이 피울 사람!');
+    }
+  },
+  meal: {
+    icon: '🍚',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get label() {
+      return t('밥');
+    },
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get invitation() {
+      return t('밥 같이 먹을 사람!');
+    }
+  },
+  chat: {
+    icon: '💬',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get label() {
+      return t('수다');
+    },
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get invitation() {
+      return t('같이 수다 떨 사람!');
+    }
+  },
+  walk: {
+    icon: '🚶',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get label() {
+      return t('산책');
+    },
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get invitation() {
+      return t('같이 산책할 사람!');
+    }
+  },
 };
 
 export interface Gathering {

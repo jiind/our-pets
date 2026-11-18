@@ -1,3 +1,4 @@
+import { setLocale } from './i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GatheringActivity, PetEvent } from './types';
 
@@ -8,7 +9,8 @@ vi.mock('./notification-preferences', () => ({ connectedAlertsMuted: () => runti
 import { notifyGatheringActivity, notifyReceivedMessage } from './system-notifications';
 
 // 실제 계정과 OS를 사용하지 않고 알림 요청만 수집한다.
-beforeEach(() => {
+beforeEach(async () => {
+  await setLocale('ko');
   runtime.native = true;
   runtime.muted = false;
   runtime.invoke.mockReset().mockResolvedValue(undefined);

@@ -93,10 +93,14 @@ pub(super) fn previous_checked_at(source: &Source, identity: &str, previous: &st
 // 서버가 제공한 한도 길이를 고정된 5시간·주간 가정 없이 표시한다.
 fn duration_label(minutes: Option<i64>, fallback: &str) -> String {
     match minutes.filter(|value| *value > 0) {
-        Some(value) if value % 1440 == 0 => format!("{}일", value / 1440),
-        Some(value) if value % 60 == 0 => format!("{}시간", value / 60),
-        Some(value) => format!("{value}분"),
-        None => fallback.into(),
+        Some(value) if value % 1440 == 0 => {
+            crate::locale::message("{0}일", &[(value / 1440).to_string()])
+        }
+        Some(value) if value % 60 == 0 => {
+            crate::locale::message("{0}시간", &[(value / 60).to_string()])
+        }
+        Some(value) => crate::locale::message("{0}분", &[value.to_string()]),
+        None => crate::locale::text(fallback),
     }
 }
 
@@ -272,20 +276,24 @@ pub fn evaluate_snapshot(
         let step = window.used_percent / *usage_percent;
         if *mode == UsageMode::Interval {
             if (existed || reset) && step > item.highest && step > 0 {
-                usage_changes.push(format!(
-                    "{}: 사용 {}% 구간 통과 · {}% 남음",
-                    window.label,
-                    step * *usage_percent,
-                    100 - window.used_percent
+                usage_changes.push(crate::locale::message(
+                    "{0}: 사용 {1}% 구간 통과 · {2}% 남음",
+                    &[
+                        window.label.clone(),
+                        (step * *usage_percent).to_string(),
+                        (100 - window.used_percent).to_string(),
+                    ],
                 ));
             }
             item.highest = item.highest.max(step);
         } else if !item.once_sent && window.used_percent >= *usage_percent {
-            usage_changes.push(format!(
-                "{}: 설정한 사용 {}% 도달 · {}% 남음",
-                window.label,
-                usage_percent,
-                100 - window.used_percent
+            usage_changes.push(crate::locale::message(
+                "{0}: 설정한 사용 {1}% 도달 · {2}% 남음",
+                &[
+                    window.label.clone(),
+                    usage_percent.to_string(),
+                    (100 - window.used_percent).to_string(),
+                ],
             ));
             item.once_sent = true;
         }
@@ -328,17 +336,26 @@ pub fn evaluate_snapshot(
     let mut lines: Vec<_> = usage
         .windows
         .iter()
-        .map(|window| format!("{}: {}% 남음", window.label, 100 - window.used_percent))
+        .map(|window| {
+            crate::locale::message(
+                "{0}: {1}% 남음",
+                &[
+                    window.label.clone(),
+                    (100 - window.used_percent).to_string(),
+                ],
+            )
+        })
         .collect();
     lines.push(if kind == "claude" {
-        "Claude Code 상태줄이 전달한 값이에요. 원격 사용 허용 여부는 별도로 확인하지 않아요.".into()
+        crate::locale::text(
+            "Claude Code 상태줄이 전달한 값이에요. 원격 사용 허용 여부는 별도로 확인하지 않아요.",
+        )
     } else {
-        match usage.ordinary_usage_allowed {
+        crate::locale::text(match usage.ordinary_usage_allowed {
             Some(true) => "Codex가 사용 가능 상태를 확인했어요.",
             Some(false) => "Codex가 현재 사용을 허용하지 않아요.",
             None => "현재 사용 가능 여부는 제공되지 않았어요.",
-        }
-        .into()
+        })
     });
 
     // 4. 같은 조회의 여러 조건은 한 카드로 합치고 수동 조회는 현재 상태를 우선한다.
@@ -370,7 +387,7 @@ pub fn evaluate_snapshot(
             connection_id: source.id.clone(),
             connection_name: source.name.clone(),
             occurred_at: now,
-            title: format!("{provider} {title}"),
+            title: format!("{provider} {}", crate::locale::text(title)),
             body: bounded(
                 &if title == "사용량 알림" {
                     usage_changes.join("\n")

@@ -1,9 +1,12 @@
+import { msg, t } from './i18n';
 import type { CharacterState } from './character';
 import type { Pet } from './types';
 import { createPaintedPet, type PetAnchors } from './default-pet';
 import spriteLicense from './assets/licenses/vscode-pets-MIT.txt?raw';
 
-export const builtinCredits = `고양이·강아지: 프로젝트용 비픽셀 2D 애니메이션 원화 · 얇은 선과 은은한 명암 · 각 16자세
+// 선택한 언어로 캐릭터의 출처를 표시하고 원본 라이선스는 그대로 유지한다.
+export function builtinCredits(): string {
+  return msg`고양이·강아지: 프로젝트용 비픽셀 2D 애니메이션 원화 · 얇은 선과 은은한 명암 · 각 16자세
 
 고퍼 2D 원화: 프로젝트용으로 생성한 얇은 선과 은은한 명암의 비픽셀 2D 일러스트 · 16자세
 고퍼 원안: Renée French · CC BY 4.0
@@ -20,12 +23,41 @@ CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
 고퍼·페리스는 원안을 비픽셀 2D로 각색했으며 원안과 참고 에셋의 출처·라이선스를 유지합니다.
 
 ${spriteLicense}`;
+}
 
 export const builtinPets = [
-  { id: 'cat', selection: 'default', name: '고양이' },
-  { id: 'dog', selection: 'builtin:dog', name: '강아지' },
-  { id: 'gopher', selection: 'builtin:gopher', name: '고퍼' },
-  { id: 'ferris', selection: 'builtin:ferris', name: '페리스' },
+  {
+    id: 'cat',
+    selection: 'default',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get name() {
+      return t('고양이');
+    }
+  },
+  {
+    id: 'dog',
+    selection: 'builtin:dog',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get name() {
+      return t('강아지');
+    }
+  },
+  {
+    id: 'gopher',
+    selection: 'builtin:gopher',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get name() {
+      return t('고퍼');
+    }
+  },
+  {
+    id: 'ferris',
+    selection: 'builtin:ferris',
+    // 선택한 앱 언어로 고정 표시 문구를 계산한다.
+    get name() {
+      return t('페리스');
+    }
+  },
 ] as const;
 export type BuiltinPetID = typeof builtinPets[number]['id'];
 

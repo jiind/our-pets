@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { Design } from './types';
 import type { CharacterState } from './character';
 import { defaultPetAnchors, drawDefaultPet } from './default-pet';
@@ -104,7 +105,7 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('이미지를 표시할 수 없습니다.'));
+    image.onerror = () => reject(new Error(t('이미지를 표시할 수 없습니다.')));
     image.src = url;
   });
 }

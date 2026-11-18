@@ -1,3 +1,4 @@
+import { fragment, html, msg, setAttribute, setText, t } from './i18n';
 import { api, designImage, serverURL, session } from './api';
 import { drawPet, loadImage } from './render';
 import { watchDisplay } from './preferences';
@@ -50,15 +51,15 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
   const account = `${serverURL()}/${session()?.token || ''}`;
   const id = `pet-registration-${crypto.randomUUID()}`;
   root.classList.add('pet-registration');
-  root.innerHTML = `<header class="pet-registration-heading" data-registration-heading><h2 data-registration-title>내 펫 등록</h2><p data-registration-intro>캐릭터를 고르면 내 데스크톱에서 함께할 수 있어요.</p></header>
+  root.innerHTML = html`<header class="pet-registration-heading" data-registration-heading><h2 data-registration-title>내 펫 등록</h2><p data-registration-intro>캐릭터를 고르면 내 데스크톱에서 함께할 수 있어요.</p></header>
     <p class="pet-registration-status" data-status role="status" aria-live="polite">등록 상태를 불러오는 중이에요.</p><button type="button" data-retry hidden>등록 상태 다시 불러오기</button><button type="button" data-retry-save hidden>다시 저장</button>
-    <div class="pet-registration-toolbar"><div data-display-settings></div><div class="pet-registration-actions" data-form-actions hidden><button type="submit" form="${id}-form" class="primary" data-submit disabled>등록 완료</button></div></div>
-    <div class="pet-registration-layout" data-layout hidden><section class="pet-registration-preview" aria-label="화면에 표시할 내 펫 미리보기"><div class="pet-registration-preview-heading"><h3>화면 미리보기</h3></div><div class="pet-registration-preview-stage"><div class="pet-name-anchor"><canvas width="160" height="160" role="img" aria-label="등록할 내 펫"></canvas><span class="pet-nameplate" data-preview-name></span></div></div><div data-size-control></div><label class="pet-preview-control" for="${id}-action"><span>미리보기 동작</span><select id="${id}-action" data-preview-action><option value="idle">대기</option><option value="walk">걷기</option><option value="react">반응</option></select></label><p class="fine" data-preview-note role="status"></p></section><form id="${id}-form" data-registration-form><fieldset class="pet-registration-editor" data-editor aria-label="펫 외형 선택">
+    <div class="pet-registration-toolbar"><div data-display-settings></div><div class="pet-registration-actions" data-form-actions hidden><button type="submit" form="${fragment(() => id)}-form" class="primary" data-submit disabled>등록 완료</button></div></div>
+    <div class="pet-registration-layout" data-layout hidden><section class="pet-registration-preview" aria-label="화면에 표시할 내 펫 미리보기"><div class="pet-registration-preview-heading"><h3>화면 미리보기</h3></div><div class="pet-registration-preview-stage"><div class="pet-name-anchor"><canvas width="160" height="160" role="img" aria-label="등록할 내 펫"></canvas><span class="pet-nameplate" data-preview-name></span></div></div><div data-size-control></div><label class="pet-preview-control" for="${fragment(() => id)}-action"><span>미리보기 동작</span><select id="${fragment(() => id)}-action" data-preview-action><option value="idle">대기</option><option value="walk">걷기</option><option value="react">반응</option></select></label><p class="fine" data-preview-note role="status"></p></section><form id="${fragment(() => id)}-form" data-registration-form><fieldset class="pet-registration-editor" data-editor aria-label="펫 외형 선택">
 
-      <fieldset class="pet-registration-choice" aria-labelledby="${id}-pet-choice"><div class="pet-registration-choice-heading"><span class="pet-registration-field-title" id="${id}-pet-choice">펫 선택</span><span class="pet-registration-catalogue-actions"><button type="button" class="icon-button icon-button-compact" data-refresh-designs aria-label="등록된 펫 목록 새로고침" title="등록된 펫 목록 새로고침" aria-busy="false">${icon('refresh')}</button><button type="button" class="icon-button icon-button-compact primary" data-add-pet aria-label="펫 추가" title="펫 추가">${icon('plus')}</button></span></div><div class="pet-registration-character-options" data-characters></div><p class="fine" data-catalogue-note></p><details class="builtin-credits"><summary>캐릭터 출처·라이선스</summary><p class="fine" data-builtin-credits></p></details></fieldset>
+      <fieldset class="pet-registration-choice" aria-labelledby="${fragment(() => id)}-pet-choice"><div class="pet-registration-choice-heading"><span class="pet-registration-field-title" id="${fragment(() => id)}-pet-choice">펫 선택</span><span class="pet-registration-catalogue-actions"><button type="button" class="icon-button icon-button-compact" data-refresh-designs aria-label="등록된 펫 목록 새로고침" title="등록된 펫 목록 새로고침" aria-busy="false">${fragment(() => icon('refresh'))}</button><button type="button" class="icon-button icon-button-compact primary" data-add-pet aria-label="펫 추가" title="펫 추가">${fragment(() => icon('plus'))}</button></span></div><div class="pet-registration-character-options" data-characters></div><p class="fine" data-catalogue-note></p><details class="builtin-credits"><summary>캐릭터 출처·라이선스</summary><p class="fine" data-builtin-credits></p></details></fieldset>
     </fieldset></form>
 </div>`;
-  root.querySelector<HTMLElement>('[data-builtin-credits]')!.textContent = builtinCredits;
+  setText(root.querySelector<HTMLElement>('[data-builtin-credits]')!, () => builtinCredits());
   const form = root.querySelector<HTMLFormElement>('[data-registration-form]')!;
   const editor = root.querySelector<HTMLFieldSetElement>('[data-editor]')!;
   const submit = root.querySelector<HTMLButtonElement>('[data-submit]')!;
@@ -112,7 +113,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       catalogueProblem = '';
       if (busy) {
         updateCatalogue();
-        feedback('펫 목록에 추가했어요. 펫 선택에서 고를 수 있어요.');
+        feedback(t('펫 목록에 추가했어요. 펫 선택에서 고를 수 있어요.'));
         return;
       }
       selectedDesignID = design.id;
@@ -124,7 +125,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       if (pet?.registered) {
         requestAutosave(true);
       } else {
-        feedback('목록에 추가했어요. 등록 완료를 누르면 적용돼요.');
+        feedback(t('목록에 추가했어요. 등록 완료를 누르면 적용돼요.'));
       }
     },
   });
@@ -134,14 +135,14 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
   // 현재 로그인한 계정이 달라졌으면 이전 화면의 저장 요청을 막는다.
   function assertAccount(): void {
     if (account !== `${serverURL()}/${session()?.token || ''}`) {
-      throw new Error('로그인한 계정이 바뀌었어요. 펫 설정을 다시 열어 주세요.');
+      throw new Error(t('로그인한 계정이 바뀌었어요. 펫 설정을 다시 열어 주세요.'));
     }
   }
 
   // 작업 결과를 해당 등록 화면에서만 읽을 수 있게 표시한다.
   function feedback(message: string, error = false): void {
     if (!disposed) {
-      status.textContent = message;
+      setText(status, () => message);
       status.classList.toggle('error', error);
     }
   }
@@ -204,7 +205,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
           const result: RegisteredPet = await api<RegisteredPet>('/me/pet/registration', { method: 'POST', body: JSON.stringify({ name: petName, designId }) });
           assertAccount();
           if (!result.registered || result.id !== petID) {
-            throw new Error('같은 펫의 저장 상태를 확인하지 못했어요. 다시 저장해 주세요.');
+            throw new Error(t('같은 펫의 저장 상태를 확인하지 못했어요. 다시 저장해 주세요.'));
           }
 
           // 2. 확인된 펫은 갱신하되 저장 중 사용자가 바꾼 초안과 포커스는 보존한다.
@@ -219,13 +220,13 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
             await options.onRegistered(result);
           } catch {
             if (revision === draftRevision) {
-              feedback('저장했지만 화면 갱신을 확인하지 못했어요. 잠시 뒤 펫을 확인해 주세요.', true);
+              feedback(t('저장했지만 화면 갱신을 확인하지 못했어요. 잠시 뒤 펫을 확인해 주세요.'), true);
             }
           }
         } catch (error) {
           // 3. 실패한 선택을 숨기지 않고 최신 초안에서만 재시도 동작을 제공한다.
           if (!disposed && revision === draftRevision) {
-            feedback(error instanceof Error ? error.message : '적용하지 못했어요. 다시 저장을 눌러 주세요.', true);
+            feedback(error instanceof Error ? error.message : t('적용하지 못했어요. 다시 저장을 눌러 주세요.'), true);
             retrySave.hidden = false;
           }
         }
@@ -243,11 +244,11 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     // 1. 등록된 펫은 바로 선택하고 최초 등록 중에만 입력을 제한한다.
     const registered = !!pet?.registered;
     root.querySelector<HTMLElement>('[data-registration-heading]')!.hidden = registered;
-    canvas.setAttribute('aria-label', `${registered ? '변경할' : '등록할'} 내 펫 미리보기. 오른쪽 클릭으로 동작 메뉴 열기`);
+    setAttribute(canvas, 'aria-label', () => msg`${registered ? t('변경할') : t('등록할')} 내 펫 미리보기. 오른쪽 클릭으로 동작 메뉴 열기`);
     editor.disabled = busy || catalogueMutation;
     root.querySelector<HTMLButtonElement>('[data-add-pet]')!.disabled = busy || catalogueMutation;
     root.querySelector<HTMLElement>('[data-form-actions]')!.hidden = registered;
-    submit.textContent = busy ? '등록하는 중…' : '등록 완료';
+    setText(submit, () => busy ? t('등록하는 중…') : t('등록 완료'));
     form.setAttribute('aria-busy', String(busy || autosaving));
     submit.disabled = busy;
     submit.setAttribute('aria-busy', String(busy));
@@ -260,7 +261,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       input.checked = input.value === selectedDesignID;
     });
     displaySettings.setRegistered(registered);
-    root.querySelector<HTMLElement>('[data-preview-name]')!.textContent = draftName() || '내 펫';
+    setText(root.querySelector<HTMLElement>('[data-preview-name]')!, () => draftName() || t('내 펫'));
   }
 
   // 기본 캐릭터와 저장된 펫을 같은 라디오 목록으로 표시하고 현재 선택을 유지한다.
@@ -275,7 +276,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     }
     const counts = new Map<string, number>(builtinPets.map(option => [option.name, 1]));
     choices.forEach(design => counts.set(design.name, (counts.get(design.name) || 0) + 1));
-    const entries = [...builtinPets.map(option => ({ id: option.selection, label: option.name })), ...Array.from(choices.values()).sort((first, second) => first.version - second.version).map(design => ({ id: design.id, label: `${design.name}${(counts.get(design.name) || 0) > 1 ? ` · v${design.version}` : ''}${design.ownerId !== pet?.userId ? ' · 현재 외형' : ''}` }))];
+    const entries = [...builtinPets.map(option => ({ id: option.selection, label: option.name })), ...Array.from(choices.values()).sort((first, second) => first.version - second.version).map(design => ({ id: design.id, label: `${design.name}${(counts.get(design.name) || 0) > 1 ? ` · v${design.version}` : ''}${design.ownerId !== pet?.userId ? t(' · 현재 외형') : ''}` }))];
 
     // 2. 사용자 이름은 HTML이 아닌 텍스트로 넣고 선택과 필수 입력을 연결한다.
     const target = root.querySelector<HTMLElement>('[data-characters]')!;
@@ -297,14 +298,14 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       if (design && design.ownerId === pet?.userId) {
         const actions = document.createElement('span');
         actions.className = 'pet-registration-character-actions';
-        for (const [action, title] of [['edit', '수정'], ['trash', '삭제']] as const) {
+        for (const [action, title] of [['edit', t('수정')], ['trash', t('삭제')]] as const) {
           const button = document.createElement('button');
           button.type = 'button';
           button.className = 'icon-button icon-button-compact';
           button.dataset.designAction = action;
           button.dataset.designId = design.id;
-          button.setAttribute('aria-label', `${design.name} ${title}`);
-          button.title = title;
+          setAttribute(button, 'aria-label', () => `${design.name} ${title}`);
+          setAttribute(button, 'title', () => title);
           button.innerHTML = icon(action);
           button.disabled = busy || autosaving || autosavePending || catalogueMutation;
           actions.append(button);
@@ -316,7 +317,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     if (focusedValue) {
       Array.from(target.querySelectorAll<HTMLInputElement>('input')).find(input => input.value === focusedValue)?.focus({ preventScroll: true });
     }
-    root.querySelector<HTMLElement>('[data-catalogue-note]')!.textContent = catalogueProblem || (pet?.registered ? '' : '펫을 선택한 뒤 등록 완료를 눌러 주세요.');
+    setText(root.querySelector<HTMLElement>('[data-catalogue-note]')!, () => catalogueProblem || (pet?.registered ? '' : t('펫을 선택한 뒤 등록 완료를 눌러 주세요.')));
   }
 
   // 등록 외형만 삭제하고 사용 중이던 외형은 서버의 고양이 복귀 상태와 동기화한다.
@@ -357,7 +358,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       }
       feedback('');
     } catch (error) {
-      feedback(error instanceof Error ? error.message : '펫을 삭제하지 못했어요. 목록을 새로고침한 뒤 다시 시도하세요.', true);
+      feedback(error instanceof Error ? error.message : t('펫을 삭제하지 못했어요. 목록을 새로고침한 뒤 다시 시도하세요.'), true);
     } finally {
       catalogueMutation = false;
       if (!disposed) {
@@ -376,7 +377,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     previewMotion.stop();
     previewProblem = '';
     canvas.hidden = true;
-    previewNote.textContent = '미리보기를 불러오는 중이에요.';
+    setText(previewNote, () => t('미리보기를 불러오는 중이에요.'));
     previewNote.hidden = false;
     try {
       assertAccount();
@@ -385,7 +386,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       if (!builtinPets.some(option => option.selection === selectedDesignID)) {
         const design = designs.find(item => item.id === selectedDesignID) || (pet?.design?.id === selectedDesignID ? pet.design : undefined);
         if (!design) {
-          throw new Error('미리 볼 펫을 선택하세요.');
+          throw new Error(t('미리 볼 펫을 선택하세요.'));
         }
         let loaded = savedImages.get(design.id);
         if (!loaded) {
@@ -419,8 +420,8 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       playPreview(action.value === 'react' ? previewGesture : action.value === 'walk' ? 'walk' : 'idle');
     } catch (error) {
       if (!disposed && version === previewVersion) {
-        previewProblem = error instanceof Error ? error.message : '선택한 펫을 표시하지 못했어요. 다시 선택해 주세요.';
-        previewNote.textContent = previewProblem;
+        previewProblem = error instanceof Error ? error.message : t('선택한 펫을 표시하지 못했어요. 다시 선택해 주세요.');
+        setText(previewNote, () => previewProblem);
         previewNote.hidden = false;
       }
     }
@@ -465,8 +466,8 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     drawPet(canvas, previewImage, previewDesign, mode, reduced ? 0 : now, { animationId: mode === 'react' ? previewAnimationId : undefined, walking: mode === 'walk', gesture: mode === 'react' ? previewGesture : undefined, elapsed: reduced ? 0 : now - actionStarted, reduced, pose: previewMotion.pose, builtin: builtinID(selectedDesignID) });
 
     // 2. 발밑 이름표와 누락된 동작 등 필요한 안내만 표시한다.
-    root.querySelector<HTMLElement>('[data-preview-name]')!.textContent = draftName() || '내 펫';
-    previewNote.textContent = reduced ? '동작 줄이기 설정에 따라 정지 상태로 표시해요.' : previewDesign && !animationKey(previewDesign.manifest, mode, mode === 'react' ? previewAnimationId : undefined) ? '이 동작의 프레임이 없어 첫 이미지로 표시해요.' : '';
+    setText(root.querySelector<HTMLElement>('[data-preview-name]')!, () => draftName() || t('내 펫'));
+    setText(previewNote, () => reduced ? t('동작 줄이기 설정에 따라 정지 상태로 표시해요.') : previewDesign && !animationKey(previewDesign.manifest, mode, mode === 'react' ? previewAnimationId : undefined) ? t('이 동작의 프레임이 없어 첫 이미지로 표시해요.') : '');
     previewNote.hidden = !previewNote.textContent;
   }
 
@@ -516,7 +517,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     // 1. 다른 로그인이나 늦게 끝난 이전 조회가 새 화면을 덮어쓰지 않게 한다.
     const version = ++loadVersion;
     root.querySelector<HTMLButtonElement>('[data-retry]')!.hidden = true;
-    feedback('등록 상태를 불러오는 중이에요.');
+    feedback(t('등록 상태를 불러오는 중이에요.'));
     try {
       assertAccount();
       const current = await api<RegisteredPet>('/me/pet');
@@ -525,14 +526,14 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       }
       assertAccount();
       if (typeof current.registered !== 'boolean') {
-        throw new Error('서버의 펫 등록 상태를 확인하지 못했어요. 서버를 업데이트한 뒤 다시 불러와 주세요.');
+        throw new Error(t('서버의 펫 등록 상태를 확인하지 못했어요. 서버를 업데이트한 뒤 다시 불러와 주세요.'));
       }
       pet = current;
       try {
         await refreshDesigns();
       } catch {
         if (!disposed) {
-          catalogueProblem = '등록된 펫 목록을 가져오지 못했어요. 목록을 새로고침하거나 고양이를 선택하세요.';
+          catalogueProblem = t('등록된 펫 목록을 가져오지 못했어요. 목록을 새로고침하거나 고양이를 선택하세요.');
         }
       }
       if (disposed || version !== loadVersion) {
@@ -542,10 +543,10 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       // 2. 등록된 외형과 입력 초안을 분리해 완료 전 선택이 실제 펫을 바꾸지 않게 한다.
       root.querySelector<HTMLElement>('[data-layout]')!.hidden = false;
       resetDraft();
-      feedback(current.registered ? '' : '캐릭터를 선택한 뒤 등록 완료를 눌러 주세요.');
+      feedback(current.registered ? '' : t('캐릭터를 선택한 뒤 등록 완료를 눌러 주세요.'));
     } catch (error) {
       if (!disposed && version === loadVersion) {
-        feedback(error instanceof Error ? error.message : '등록 상태를 읽지 못했어요. 다시 불러와 주세요.', true);
+        feedback(error instanceof Error ? error.message : t('등록 상태를 읽지 못했어요. 다시 불러와 주세요.'), true);
         root.querySelector<HTMLButtonElement>('[data-retry]')!.hidden = false;
       }
     }
@@ -569,11 +570,11 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     try {
       assertAccount();
       if (!petName) {
-        throw new Error('닉네임을 불러오지 못했어요. 다시 로그인해 주세요.');
+        throw new Error(t('닉네임을 불러오지 못했어요. 다시 로그인해 주세요.'));
       }
       await refreshPreview();
       if (!previewReady) {
-        throw new Error(previewProblem || '선택한 펫을 먼저 확인해 주세요.');
+        throw new Error(previewProblem || t('선택한 펫을 먼저 확인해 주세요.'));
       }
       assertAccount();
 
@@ -581,20 +582,20 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
       const result = await api<RegisteredPet>('/me/pet/registration', { method: 'POST', body: JSON.stringify({ name: petName, designId }) });
       assertAccount();
       if (!result.registered || result.id !== petID) {
-        throw new Error('같은 펫의 저장 상태를 확인하지 못했어요. 다시 불러와 주세요.');
+        throw new Error(t('같은 펫의 저장 상태를 확인하지 못했어요. 다시 불러와 주세요.'));
       }
       pet = result;
       if (!disposed) {
         resetDraft();
-        feedback('내 펫 설정을 저장했어요.');
+        feedback(t('내 펫 설정을 저장했어요.'));
       }
       try {
         await options.onRegistered(result);
       } catch {
-        feedback('설정은 저장했지만 데스크톱 상태를 갱신하지 못했어요. 화면을 다시 열어 주세요.', true);
+        feedback(t('설정은 저장했지만 데스크톱 상태를 갱신하지 못했어요. 화면을 다시 열어 주세요.'), true);
       }
     } catch (error) {
-      feedback(error instanceof Error ? error.message : '설정을 저장하지 못했어요. 다시 시도해 주세요.', true);
+      feedback(error instanceof Error ? error.message : t('설정을 저장하지 못했어요. 다시 시도해 주세요.'), true);
     } finally {
       busy = false;
       if (!disposed) {
@@ -608,7 +609,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     event.preventDefault();
     void registerPet();
   };
-  form.addEventListener('invalid', () => feedback('표시한 입력 항목을 확인한 뒤 다시 저장하세요.', true), true);
+  form.addEventListener('invalid', () => feedback(t('표시한 입력 항목을 확인한 뒤 다시 저장하세요.'), true), true);
   form.onchange = event => {
     const input = event.target as HTMLInputElement;
     if (input.name === 'character') {
@@ -635,7 +636,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
   retrySave.onclick = () => requestAutosave(true);
   root.querySelector<HTMLButtonElement>('[data-retry]')!.onclick = () => void loadRegistration();
   root.querySelector<HTMLButtonElement>('[data-refresh-designs]')!.onclick = () => {
-    void refreshDesigns().catch(() => feedback('등록된 펫 목록을 가져오지 못했어요. 다시 시도하세요.', true));
+    void refreshDesigns().catch(() => feedback(t('등록된 펫 목록을 가져오지 못했어요. 다시 시도하세요.'), true));
   };
   action.onchange = () => {
     previewMenu.close();
@@ -655,7 +656,7 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     } else {
       unwatch = stop;
     }
-  }).catch(() => feedback('이 PC의 펫 크기를 읽지 못해 기본 크기로 미리 보여요.', true));
+  }).catch(() => feedback(t('이 PC의 펫 크기를 읽지 못해 기본 크기로 미리 보여요.'), true));
   void loadRegistration();
 
   // 미리보기 타이머·공유 설정·이 모듈이 만든 이미지 URL을 모두 해제한다.

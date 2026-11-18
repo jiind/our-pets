@@ -1,3 +1,4 @@
+import { fragment, html, msg, setAttribute, setText, t } from './i18n';
 import { displayPreferences, updateDisplay, watchDisplay, type DesktopPreferences } from './preferences';
 import './pet-display-settings.css';
 
@@ -28,11 +29,11 @@ export function mountPetDisplaySettings(root: HTMLElement, sizeRoot: HTMLElement
   const id = `pet-display-${crypto.randomUUID()}`;
   root.classList.add('pet-display-settings');
   root.setAttribute('role', 'group');
-  root.setAttribute('aria-label', '펫 표시');
-  root.innerHTML = `<div class="pet-display-toolbar"><button type="button" class="display-toggle" data-display-visible disabled>펫 숨기기</button><button type="button" class="display-toggle" data-display-others disabled>내 펫만 보기</button></div>
-    <p class="fine" id="${id}-note" data-display-note role="status">화면 설정을 불러오는 중이에요.</p>
+  setAttribute(root, 'aria-label', () => t('펫 표시'));
+  root.innerHTML = html`<div class="pet-display-toolbar"><button type="button" class="display-toggle" data-display-visible disabled>펫 숨기기</button><button type="button" class="display-toggle" data-display-others disabled>내 펫만 보기</button></div>
+    <p class="fine" id="${fragment(() => id)}-note" data-display-note role="status">화면 설정을 불러오는 중이에요.</p>
     <button type="button" class="quiet" data-display-retry hidden>화면 설정 다시 불러오기</button>`;
-  sizeRoot.innerHTML = `<label class="pet-preview-control" for="${id}-size"><span>펫 크기</span><span class="pet-preview-size"><input id="${id}-size" type="range" min="80" max="240" step="4" value="160" aria-describedby="${id}-note" disabled><output id="${id}-output" for="${id}-size">160px</output></span></label>`;
+  sizeRoot.innerHTML = html`<label class="pet-preview-control" for="${fragment(() => id)}-size"><span>펫 크기</span><span class="pet-preview-size"><input id="${fragment(() => id)}-size" type="range" min="80" max="240" step="4" value="160" aria-describedby="${fragment(() => id)}-note" disabled><output id="${fragment(() => id)}-output" for="${fragment(() => id)}-size">160px</output></span></label>`;
   const visible = root.querySelector<HTMLButtonElement>('[data-display-visible]')!;
   const others = root.querySelector<HTMLButtonElement>('[data-display-others]')!;
   const range = sizeRoot.querySelector<HTMLInputElement>('input[type=range]')!;
@@ -48,8 +49,8 @@ export function mountPetDisplaySettings(root: HTMLElement, sizeRoot: HTMLElement
     // 1. 등록 여부와 저장 상태를 버튼 권한 및 눌림 상태에 함께 반영한다.
     visible.disabled = others.disabled = !ready || !registered || !!activeToggle;
     range.disabled = !ready;
-    visible.textContent = preferences.visible ? '펫 숨기기' : '펫 표시';
-    others.textContent = preferences.showOthers ? '내 펫만 보기' : '친구 펫도 보기';
+    setText(visible, () => preferences.visible ? t('펫 숨기기') : t('펫 표시'));
+    setText(others, () => preferences.showOthers ? t('내 펫만 보기') : t('친구 펫도 보기'));
     visible.setAttribute('aria-pressed', String(preferences.visible));
     others.setAttribute('aria-pressed', String(!preferences.showOthers));
     visible.setAttribute('aria-busy', String(activeToggle === 'visible'));
@@ -58,9 +59,9 @@ export function mountPetDisplaySettings(root: HTMLElement, sizeRoot: HTMLElement
     // 2. 미저장 크기는 유지하고 로딩·오류 상태가 있을 때만 별도로 안내한다.
     const size = pendingSize ?? inFlightSize ?? preferences.petSize;
     range.value = String(size);
-    range.setAttribute('aria-valuetext', `${size}픽셀`);
-    output.textContent = `${size}px`;
-    note.textContent = problem || (!ready ? '화면 설정을 불러오는 중이에요.' : '');
+    range.setAttribute('aria-valuetext', msg`${size}픽셀`);
+    setText(output, () => `${size}px`);
+    setText(note, () => problem || (!ready ? t('화면 설정을 불러오는 중이에요.') : ''));
     note.hidden = !note.textContent;
     note.classList.toggle('error', !!problem);
     retry.hidden = ready || !problem;
@@ -105,7 +106,7 @@ export function mountPetDisplaySettings(root: HTMLElement, sizeRoot: HTMLElement
       unwatch = stop;
     } catch {
       if (!disposed) {
-        report('화면 설정을 불러오지 못했어요. 다시 불러오기를 눌러 주세요.');
+        report(t('화면 설정을 불러오지 못했어요. 다시 불러오기를 눌러 주세요.'));
       }
     } finally {
       initializing = false;
@@ -133,7 +134,7 @@ export function mountPetDisplaySettings(root: HTMLElement, sizeRoot: HTMLElement
       await updateDisplay(patch);
       receive(await displayPreferences());
     } catch {
-      report(field === 'visible' ? '펫 표시 변경을 확인하지 못했어요. 다시 시도해 주세요.' : '친구 펫 표시 변경을 확인하지 못했어요. 다시 시도해 주세요.');
+      report(field === 'visible' ? t('펫 표시 변경을 확인하지 못했어요. 다시 시도해 주세요.') : t('친구 펫 표시 변경을 확인하지 못했어요. 다시 시도해 주세요.'));
     } finally {
       activeToggle = undefined;
       render();
@@ -166,7 +167,7 @@ export function mountPetDisplaySettings(root: HTMLElement, sizeRoot: HTMLElement
           } catch {
             // 재조회도 실패하면 마지막 확인값을 사용하고 사용자의 새 선택은 보존한다.
           }
-          report('펫 크기 변경을 확인하지 못했어요. 잠시 뒤 다시 조절해 주세요.');
+          report(t('펫 크기 변경을 확인하지 못했어요. 잠시 뒤 다시 조절해 주세요.'));
         } finally {
           inFlightSize = undefined;
           render();

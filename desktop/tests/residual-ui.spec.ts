@@ -63,6 +63,7 @@ test('PNG 스프라이트 UI는 잘못된 파일·칸 입력을 거부하고 프
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('');
   await expect(dialog.locator('[name=idleFrames]')).toHaveCount(0);
   await dialog.locator('[data-animation-settings] > summary').click();
+  await dialog.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true }).check();
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('128');
   await expect(dialog.locator('[name=frameHeight]')).toHaveValue('128');
   await expect(dialog.locator('[name=idleFrames]')).toHaveValue('0,1,2,3');
@@ -138,6 +139,7 @@ test('펫 추가 모달은 네 모서리를 유지하고 헤더 아래 내용만
   await page.getByRole('button', { name: '펫 추가', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '펫 추가', exact: true });
   await dialog.locator('[data-animation-settings] > summary').click();
+  await dialog.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true }).check();
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('256');
   await dialog.locator('input[type=file]').setInputFiles(path.resolve('src-tauri/icons/icon.png'));
   await expect(dialog.locator('[name=frameWidth]')).toHaveValue('128');
@@ -181,6 +183,7 @@ test('직접 등록한 펫은 원본 PNG를 고정한 채 수정·삭제하고 �
   await add.getByRole('textbox', { name: '이름', exact: true }).fill('수정할 펫');
   await add.locator('input[type=file]').setInputFiles(path.resolve('src-tauri/icons/icon.png'));
   await add.locator('[data-animation-settings] > summary').click();
+  await add.getByRole('checkbox', { name: '스프라이트 시트 사용', exact: true }).check();
   await add.locator('[name=walkFPS]').fill('6');
   await add.getByRole('button', { name: '애니메이션 추가', exact: true }).click();
   const custom = add.locator('[data-animation-row]').last();

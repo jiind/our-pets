@@ -1,3 +1,4 @@
+import { setAttribute, setText, t } from './i18n';
 // 우클릭 메뉴에서 고정된 상대 또는 전체에게 보낼 메시지를 바로 입력한다.
 export function mountMenuMessage(menu: HTMLElement, preview: boolean, recipient: string | undefined, send: (text: string, recipient?: string) => Promise<void>, focus: () => Promise<void>, close: () => void) {
   // 1. 화면에 보이는 입력 범위를 실제 전송 대상과 일치시킨다.
@@ -5,8 +6,8 @@ export function mountMenuMessage(menu: HTMLElement, preview: boolean, recipient:
   const input = form.querySelector<HTMLInputElement>('input')!;
   const submit = form.querySelector<HTMLButtonElement>('[type=submit]')!;
   const feedback = form.querySelector<HTMLElement>('[role=status]')!;
-  input.placeholder = recipient ? '이 친구에게 메시지' : '모두에게 메시지';
-  input.setAttribute('aria-label', recipient ? '이 친구에게만 보낼 메시지' : '전체 펫에게 보낼 메시지');
+  setAttribute(input, 'placeholder', () => recipient ? t('이 친구에게 메시지') : t('모두에게 메시지'));
+  setAttribute(input, 'aria-label', () => recipient ? t('이 친구에게만 보낼 메시지') : t('전체 펫에게 보낼 메시지'));
   let offline = false;
   let busy = false;
   let disposed = false;
@@ -17,7 +18,7 @@ export function mountMenuMessage(menu: HTMLElement, preview: boolean, recipient:
     input.disabled = preview || offline;
     input.readOnly = busy;
     submit.disabled = preview || offline || busy;
-    submit.title = preview ? '메시지는 데스크톱 펫에서 보낼 수 있어요.' : '';
+    setAttribute(submit, 'title', () => preview ? t('메시지는 데스크톱 펫에서 보낼 수 있어요.') : '');
   }
 
   // 직접 입력을 누른 경우에만 창에 키보드 포커스를 주고 배경 앱의 입력을 보호한다.
@@ -35,7 +36,7 @@ export function mountMenuMessage(menu: HTMLElement, preview: boolean, recipient:
       event.preventDefault();
       void focusInput().catch(() => {
         feedback.hidden = false;
-        feedback.textContent = '입력창을 다시 눌러 주세요.';
+        setText(feedback, () => t('입력창을 다시 눌러 주세요.'));
       });
     }
   };
@@ -66,7 +67,7 @@ export function mountMenuMessage(menu: HTMLElement, preview: boolean, recipient:
     } catch (error) {
       if (!disposed) {
         feedback.hidden = false;
-        feedback.textContent = error instanceof Error ? error.message : '보내지 못했어요. 다시 전송해 주세요.';
+        setText(feedback, () => error instanceof Error ? error.message : t('보내지 못했어요. 다시 전송해 주세요.'));
       }
     } finally {
       busy = false;

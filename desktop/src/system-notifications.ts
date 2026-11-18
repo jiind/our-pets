@@ -1,3 +1,4 @@
+import { msg, setAttribute, setText, t } from './i18n';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { serverURL, session } from './api';
 import { recruitmentOptions, type GatheringActivity, type PetEvent } from './types';
@@ -15,7 +16,7 @@ function notify(id: string, title: string, body: string, expiresAt: number): voi
   const current = session();
   const key = `${serverURL()}/${current?.principal.userId || 'local'}/${current?.principal.deviceId || 'local'}/${id}`;
   void invoke('show_system_notification', { id: key, title, body, expiresAt: Math.min(expiresAt, Date.now() + 15000) }).catch(() => {
-    console.warn('OS 알림 요청을 전달하지 못했어요.');
+    console.warn(t('OS 알림 요청을 전달하지 못했어요.'));
   });
 }
 
@@ -23,9 +24,9 @@ function notify(id: string, title: string, body: string, expiresAt: number): voi
 export function externalNotificationTitle(notification: PetEvent['notification']): string {
   // 1. 공급자 이름과 설정한 명칭은 제목 한 줄로 정규화한다.
   const source = notification?.sourceKind || '';
-  const provider = ({ docker: 'Docker', slack: 'Slack', codex: 'Codex', claude: 'Claude' } as Record<string, string>)[source] || source || '알림';
+  const provider = ({ docker: 'Docker', slack: 'Slack', codex: 'Codex', claude: 'Claude' } as Record<string, string>)[source] || source || t('알림');
   const name = notification?.connectionName?.replace(/\s+/gu, ' ').trim();
-  let title = notification?.title.replace(/\s+/gu, ' ').trim() || '새 소식';
+  let title = notification?.title.replace(/\s+/gu, ' ').trim() || t('새 소식');
 
   // 2. 이전 커넥터의 종류 접두어는 제거하되 Dockerfile 같은 단어는 보존한다.
   const lower = title.toLowerCase();
@@ -66,13 +67,13 @@ export function notifyGatheringActivity(event: GatheringActivity): void {
   }
 
   // 2. 공개 이름과 종류만 사용하고 재접속 스냅샷에서는 이 함수를 호출하지 않는다.
-  const actor = event.actor.userName || event.actor.petName || '친구';
+  const actor = event.actor.userName || event.actor.petName || t('친구');
   if (event.action === 'started') {
-    notify(`gathering/${event.id}`, `${actor}님이 ${option.label} 함께할 사람을 모집해요`, '펫의 모집 메뉴에서 참여할 수 있어요.', event.expiresAt);
+    notify(`gathering/${event.id}`, msg`${actor}님이 ${option.label} 함께할 사람을 모집해요`, t('펫의 모집 메뉴에서 참여할 수 있어요.'), event.expiresAt);
   } else if (event.action === 'joined') {
-    notify(`gathering/${event.id}`, `${option.label} 모집에 참여했어요`, `${actor}님이 참여했어요.`, event.expiresAt);
+    notify(`gathering/${event.id}`, msg`${option.label} 모집에 참여했어요`, msg`${actor}님이 참여했어요.`, event.expiresAt);
   } else if (event.action === 'completed') {
-    notify(`gathering/${event.id}`, `${option.label} 모집 완료`, `${actor}님이 모집을 완료했어요.`, event.expiresAt);
+    notify(`gathering/${event.id}`, msg`${option.label} 모집 완료`, msg`${actor}님이 모집을 완료했어요.`, event.expiresAt);
   }
 }
 
@@ -85,14 +86,14 @@ export function mountSystemNotificationToggle(root: HTMLElement, onError: (messa
   const button = document.createElement('button');
   button.type = 'button';
   button.disabled = true;
-  button.textContent = 'OS 알림';
-  button.title = '메시지·모집·연결된 알람의 OS 알림을 이 PC에서 켜거나 꺼요. 펫 말풍선은 유지돼요.';
+  setText(button, () => t('OS 알림'));
+  setAttribute(button, 'title', () => t('메시지·모집·연결된 알람의 OS 알림을 이 PC에서 켜거나 꺼요. 펫 말풍선은 유지돼요.'));
   root.append(button);
   let settings: Settings = { enabled: true };
 
   // 확인한 설정만 다음 동작 문구와 눌림 상태에 반영한다.
   function render(): void {
-    button.textContent = settings.enabled ? 'OS 알림 끄기' : 'OS 알림 켜기';
+    setText(button, () => settings.enabled ? t('OS 알림 끄기') : t('OS 알림 켜기'));
     button.setAttribute('aria-pressed', String(settings.enabled));
   }
 
@@ -105,7 +106,7 @@ export function mountSystemNotificationToggle(root: HTMLElement, onError: (messa
       }
     } catch {
       if (button.isConnected) {
-        onError('OS 알림 설정을 읽지 못했어요. 알림 화면을 다시 열어 주세요.');
+        onError(t('OS 알림 설정을 읽지 못했어요. 알림 화면을 다시 열어 주세요.'));
       }
     } finally {
       button.disabled = false;
@@ -119,7 +120,7 @@ export function mountSystemNotificationToggle(root: HTMLElement, onError: (messa
       render();
     }).catch(() => {
       if (button.isConnected) {
-        onError('OS 알림 설정을 변경하지 못했어요. OS 알림 설정을 확인해 주세요.');
+        onError(t('OS 알림 설정을 변경하지 못했어요. OS 알림 설정을 확인해 주세요.'));
       }
     }).finally(() => {
       button.disabled = false;
