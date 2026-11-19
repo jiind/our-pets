@@ -61,7 +61,8 @@ def components(appdir: Path) -> tuple[list[dict], list[str]]:
             if source.read(4) != b'\x7fELF':
                 continue
         relative = str(file.relative_to(appdir))
-        if relative in {'usr/bin/our-pets-desktop', 'AppRun.wrapped'}:
+        # 두 Our Pets 실행 파일의 소스는 릴리즈 태그에서 제공한다.
+        if relative in {'usr/bin/our-pets-desktop', 'usr/bin/our-pets-host', 'AppRun.wrapped'}:
             continue
         original = owners(file)
         packages.update(original)

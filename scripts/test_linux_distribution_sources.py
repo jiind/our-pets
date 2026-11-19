@@ -9,6 +9,22 @@ import linux_distribution_sources as native
 
 
 class NativeSourcesTests(unittest.TestCase):
+    def test_first_party_sidecar_is_only_skipped_at_its_bundled_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            appdir = Path(directory)
+            sidecar = appdir / 'usr/bin/our-pets-host'
+            other = appdir / 'usr/lib/our-pets-host'
+            for file in (sidecar, other):
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_bytes(b'\x7fELF')
+
+            with patch.object(native, 'owners', return_value=['libtest:amd64']) as owners:
+                entries, packages = native.components(appdir)
+
+            owners.assert_called_once_with(other)
+            self.assertEqual([entry['file'] for entry in entries], ['usr/lib/our-pets-host'])
+            self.assertEqual(packages, ['libtest:amd64'])
+
     # 같은 SONAME이라도 빌드 ID가 다른 라이브러리는 배포 출처로 인정하지 않는다.
     def test_mismatched_binary_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
