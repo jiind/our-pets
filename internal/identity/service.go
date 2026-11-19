@@ -57,15 +57,9 @@ func (s *Service) Register(c Credentials) (Login, error) {
 	if !usernamePattern.MatchString(c.Username) || len(c.Password) < 10 || len(c.Password) > 256 || len(strings.TrimSpace(c.DisplayName)) < 1 || len(c.DisplayName) > 80 || len(c.PetName) > 80 {
 		return Login{}, model.Bad(400, "아이디 3~32자, 비밀번호 10~256자와 가입 정보를 확인하세요")
 	}
-	if s.Invite == "" || subtle.ConstantTimeCompare([]byte(s.Invite), []byte(c.Invite)) != 1 {
+	if !s.validInvite(c.Invite) {
 		return Login{}, model.Bad(403, "가입 코드가 올바르지 않습니다")
 	}
-	salt := make([]byte, 16)
-	if _, err := rand.Read(salt); err != nil {
-		return Login{}, err
-	}
-	uid, pid := database.ID(), database.ID()
-	petName := c.DisplayName
 
 	// 2. 기존 펫 등록과 분리한 비활성 펫을 저장하고 안정적인 ID는 유지한다.
 	tx, err := s.DB.Begin()
@@ -73,16 +67,34 @@ func (s *Service) Register(c Credentials) (Login, error) {
 		return Login{}, err
 	}
 	defer tx.Rollback()
-	if _, err = tx.Exec(`INSERT INTO users VALUES(?,?,?,?,?,?)`, uid, c.Username, c.DisplayName, passwordHash(c.Password, salt), salt, time.Now().UnixMilli()); err != nil {
-		return Login{}, model.Bad(409, "사용할 수 없는 아이디입니다")
-	}
-	if _, err = tx.Exec(`INSERT INTO pets(id,user_id,name,active) VALUES(?,?,?,0)`, pid, uid, petName); err != nil {
+	uid, pid, err := createAccount(tx, c)
+	if err != nil {
 		return Login{}, err
 	}
-	if err = tx.Commit(); err != nil {
+	login, err := issueSession(tx, uid, pid, c)
+	if err != nil {
 		return Login{}, err
 	}
-	return s.newSession(uid, pid, c)
+	return login, tx.Commit()
+}
+
+// validInvite는 가입 코드를 일정한 비교 경로로 확인한다.
+func (s *Service) validInvite(invite string) bool {
+	return s.Invite != "" && subtle.ConstantTimeCompare([]byte(s.Invite), []byte(invite)) == 1
+}
+
+// createAccount는 선택할 외형이 확정되기 전의 계정과 펫을 같은 트랜잭션에서 만든다.
+func createAccount(tx *sql.Tx, c Credentials) (string, string, error) {
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", "", err
+	}
+	uid, pid := database.ID(), database.ID()
+	if _, err := tx.Exec(`INSERT INTO users VALUES(?,?,?,?,?,?)`, uid, c.Username, c.DisplayName, passwordHash(c.Password, salt), salt, time.Now().UnixMilli()); err != nil {
+		return "", "", model.Bad(409, "사용할 수 없는 아이디입니다")
+	}
+	_, err := tx.Exec(`INSERT INTO pets(id,user_id,name,active) VALUES(?,?,?,0)`, pid, uid, c.DisplayName)
+	return uid, pid, err
 }
 
 // Authenticate는 로컬 계정 비밀번호를 검증하고 기기 세션을 발급한다.
@@ -108,10 +120,26 @@ func (s *Service) Authenticate(c Credentials) (Login, error) {
 
 // newSession은 기기를 소유자에 연결하고 만료되는 난수 토큰을 저장한다.
 func (s *Service) newSession(uid, pid string, c Credentials) (Login, error) {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return Login{}, err
+	}
+	defer tx.Rollback()
+	login, err := issueSession(tx, uid, pid, c)
+	if err != nil {
+		return Login{}, err
+	}
+	return login, tx.Commit()
+}
+
+// issueSession은 초기 가입과 재접속에서 같은 기기 식별자와 세션 정책을 사용한다.
+func issueSession(tx *sql.Tx, uid, pid string, c Credentials) (Login, error) {
 	// 1. 알 수 없는 기기 ID는 서버가 새로 생성한다.
 	var owner string
 	if c.DeviceID != "" {
-		_ = s.DB.QueryRow(`SELECT user_id FROM devices WHERE id=?`, c.DeviceID).Scan(&owner)
+		if err := tx.QueryRow(`SELECT user_id FROM devices WHERE id=?`, c.DeviceID).Scan(&owner); err != nil && err != sql.ErrNoRows {
+			return Login{}, err
+		}
 	}
 	if owner != uid {
 		c.DeviceID = database.ID()
@@ -123,21 +151,16 @@ func (s *Service) newSession(uid, pid string, c Credentials) (Login, error) {
 	p := model.Principal{UserID: uid, PetID: pid, DeviceID: c.DeviceID, ExpiresAt: time.Now().Add(30 * 24 * time.Hour).UnixMilli()}
 
 	// 2. 토큰 원문은 응답에만 넣고 데이터베이스에는 지문을 남긴다.
-	tx, err := s.DB.Begin()
-	if err != nil {
+	if err := tx.QueryRow(`SELECT active FROM pets WHERE id=? AND user_id=?`, pid, uid).Scan(&p.PetRegistered); err != nil {
 		return Login{}, err
 	}
-	defer tx.Rollback()
-	if err = tx.QueryRow(`SELECT active FROM pets WHERE id=? AND user_id=?`, pid, uid).Scan(&p.PetRegistered); err != nil {
+	if _, err := tx.Exec(`INSERT INTO devices(id,user_id,name) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name`, c.DeviceID, uid, c.DeviceName); err != nil {
 		return Login{}, err
 	}
-	if _, err = tx.Exec(`INSERT INTO devices(id,user_id,name) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name`, c.DeviceID, uid, c.DeviceName); err != nil {
+	if _, err := tx.Exec(`INSERT INTO sessions VALUES(?,?,?,?)`, HashToken(token), uid, c.DeviceID, p.ExpiresAt); err != nil {
 		return Login{}, err
 	}
-	if _, err = tx.Exec(`INSERT INTO sessions VALUES(?,?,?,?)`, HashToken(token), uid, c.DeviceID, p.ExpiresAt); err != nil {
-		return Login{}, err
-	}
-	return Login{Token: token, Principal: p}, tx.Commit()
+	return Login{Token: token, Principal: p}, nil
 }
 
 // Resolve는 펫 등록 전에도 유효한 계정을 인증하고 현재 펫 등록 상태를 함께 반환한다.

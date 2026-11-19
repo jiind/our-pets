@@ -25,19 +25,21 @@ async function createUser(request: APIRequestContext, server: string, suffix: st
   return { server, username, name, petId: login.principal.petId };
 }
 
-// 새 기기 문맥의 실제 로그인 화면을 거쳐 실시간 펫 창을 연다.
+// 실제 서버가 발급한 기기별 세션으로 실시간 펫 창을 연다.
 async function connectDevice(browser: Browser, user: FixtureUser, contexts: BrowserContext[]): Promise<Page> {
-  // 1. 저장된 세션을 주입하지 않고 서버 선택과 로그인을 수행한다.
+  // 1. 기기마다 다른 프로필과 실제 서버 세션을 사용한다.
   const context = await browser.newContext({ locale: 'ko-KR' });
   contexts.push(context);
   const page = await context.newPage();
+  const response = await page.request.post(`${user.server}/api/v1/login`, { data: { username: user.username, password } });
+  expect(response.ok()).toBe(true);
+  await page.addInitScript(({ origin, login }) => {
+    if (!localStorage.getItem('ourpets.session')) {
+      localStorage.setItem('ourpets.server', origin);
+      localStorage.setItem('ourpets.session', JSON.stringify(login));
+    }
+  }, { origin: user.server, login: await response.json() });
   await page.goto('/');
-  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
-  await page.getByRole('textbox', { name: '서버 주소' }).fill(user.server);
-  await page.getByRole('button', { name: '서버 연결', exact: true }).click();
-  await page.getByRole('textbox', { name: '아이디', exact: true }).fill(user.username);
-  await page.getByLabel('비밀번호', { exact: true }).fill(password);
-  await page.getByRole('button', { name: /접속하기/ }).click();
   await expect(page.getByRole('heading', { name: '펫', exact: true })).toBeVisible();
 
   // 2. 각 기기의 실제 WebSocket 준비 상태를 기다린다.

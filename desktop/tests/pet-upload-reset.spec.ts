@@ -1,20 +1,17 @@
 import { expect, type Page } from '@playwright/test';
 import { test } from './isolated-server';
 import type { Design } from '../src/types';
+import { testInvitation } from './test-invitation';
 
 // 실제 가입·등록 화면을 거쳐 펫 추가 작업을 시작한다.
 async function workspace(page: Page, server: string): Promise<void> {
   // 1. 화면에서 선택한 서버에 새 계정으로 가입한다.
   await page.goto('/');
-  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
-  await page.getByRole('textbox', { name: '서버 주소' }).fill(server);
-  await page.getByRole('button', { name: '서버 연결', exact: true }).click();
-  await page.getByRole('link', { name: '계정 만들기', exact: true }).click();
+  await page.getByRole('button', { name: '초대 링크로 참여하기', exact: true }).click();
+  await page.getByLabel('초대 링크', { exact: true }).fill(testInvitation(server));
+  await page.getByRole('button', { name: '방 참여', exact: true }).click();
   await page.getByRole('textbox', { name: '닉네임', exact: true }).fill('펫 추가 검사');
-  await page.getByRole('textbox', { name: '아이디', exact: true }).fill(`upload-${Date.now()}`);
-  await page.getByLabel('비밀번호', { exact: true }).fill('test-password-123');
-  await page.getByLabel('서버 가입 코드', { exact: true }).fill('test-only-invite');
-  await page.getByRole('button', { name: /계정 만들고 펫 등록하기/ }).click();
+  await page.getByRole('button', { name: '참여하기' }).click();
 
   // 2. 대표 펫 등록 이후 실제 추가 모달을 사용할 수 있게 한다.
   await page.getByRole('button', { name: '등록 완료', exact: true }).click();
@@ -41,6 +38,37 @@ async function sprite(page: Page, size: number, emptyFrame?: number): Promise<{ 
   // 2. 파일 선택 UI가 받는 실제 PNG 바이트를 반환한다.
   return { name: `example-${size}.png`, mimeType: 'image/png', buffer: Buffer.from(url.split(',')[1], 'base64') };
 }
+
+test('서버 멤버가 미적용 PNG를 공유 목록에서 선택하고 소유자만 수정할 수 있다', async ({ page, isolatedServer }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await workspace(page, isolatedServer);
+  const uploader = await page.request.post(`${isolatedServer}/api/v1/register`, {
+    data: { username: 'png-uploader', displayName: '올린 사람', password: 'test-password-123', invite: 'test-only-invite' },
+  });
+  expect(uploader.status()).toBe(201);
+  const { token } = await uploader.json();
+  const uploaded = await page.request.post(`${isolatedServer}/api/v1/designs`, {
+    headers: { Authorization: `Bearer ${token}` },
+    multipart: { name: '함께 쓰는 펫', image: await sprite(page, 64), draft: 'true', manifest: '{"displaySize":160}' },
+  });
+  expect(uploaded.status()).toBe(201);
+  const design: Design = await uploaded.json();
+
+  await page.getByRole('button', { name: '등록된 펫 목록 새로고침', exact: true }).click();
+  const choice = page.getByRole('radio', { name: '함께 쓰는 펫', exact: true });
+  await expect(choice).toBeVisible();
+  await expect(page.getByRole('button', { name: '함께 쓰는 펫 수정' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '함께 쓰는 펫 삭제' })).toHaveCount(0);
+  const saved = page.waitForResponse(response => response.url() === `${isolatedServer}/api/v1/me/pet/registration` && response.request().method() === 'POST');
+  await choice.check();
+  const result = await saved;
+  expect(result.status()).toBe(200);
+  expect((await result.json()).design.id).toBe(design.id);
+  await page.reload();
+  await expect(choice).toBeChecked();
+  expect(errors).toEqual([]);
+});
 
 test('펫 선택 목록은 기본 펫 다음에 등록한 순서로 쌓이고 새로고침 후에도 유지된다', async ({ page, isolatedServer }) => {
   // 1. 실제 추가 모달에서 세 PNG를 순서대로 등록한다.
@@ -205,33 +233,44 @@ test('추가 요청 중 취소·재진입하면 늦은 업로드가 이전 펫�
   // 1. 실제 서버가 접수한 첫 업로드의 응답만 지연한다.
   await workspace(page, isolatedServer);
   const file = await sprite(page, 1024);
-  let release: (() => Promise<void>) | undefined;
+  let release!: () => void;
+  const delay = new Promise<void>(resolve => { release = resolve; });
+  let uploadStatus: number | undefined;
   let uploads = 0;
   const applied: string[] = [];
   page.on('request', request => {
-    if (request.method() === 'POST' && request.url().endsWith('/me/pet/registration')) {
+    if (request.method() !== 'POST') {
+      return;
+    }
+    if (request.url().endsWith('/api/v1/designs')) {
+      uploads += 1;
+    }
+    if (request.url().endsWith('/me/pet/registration')) {
       applied.push(request.postDataJSON().designId);
     }
   });
-  await page.route('**/api/v1/designs', async route => {
-    if (route.request().method() !== 'POST') {
-      await route.continue();
-      return;
-    }
-    uploads += 1;
-    const response = await route.fetch();
-    if (uploads === 1) {
-      release = () => route.fulfill({ response });
-      return;
-    }
-    await route.fulfill({ response });
+  await page.exposeFunction('holdFirstUploadResponse', async (status: number) => {
+    uploadStatus = status;
+    await delay;
+  });
+  await page.evaluate(() => {
+    const fetchOriginal = window.fetch.bind(window);
+    let firstUpload = true;
+    window.fetch = async (input, init) => {
+      const response = await fetchOriginal(input, init);
+      if (firstUpload && init?.method === 'POST' && response.url.endsWith('/api/v1/designs')) {
+        firstUpload = false;
+        await (window as unknown as { holdFirstUploadResponse(status: number): Promise<void> }).holdFirstUploadResponse(response.status);
+      }
+      return response;
+    };
   });
   await page.getByRole('button', { name: '펫 추가', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '펫 추가', exact: true });
   await dialog.getByRole('textbox', { name: '이름', exact: true }).fill('취소한 업로드');
   await dialog.locator('input[type=file]').setInputFiles(file);
   await dialog.getByRole('button', { name: '추가', exact: true }).click();
-  await expect.poll(() => Boolean(release)).toBe(true);
+  await expect.poll(() => uploadStatus).toBe(201);
 
   // 2. 요청 완료를 기다리지 않고 새 초안을 입력하고 이전 응답을 돌려준다.
   await dialog.getByRole('button', { name: '취소', exact: true }).click();
@@ -239,7 +278,7 @@ test('추가 요청 중 취소·재진입하면 늦은 업로드가 이전 펫�
   await expect(dialog).toBeVisible();
   await dialog.getByRole('textbox', { name: '이름', exact: true }).fill('새 업로드');
   await dialog.locator('input[type=file]').setInputFiles(file);
-  await release!();
+  release();
   await expect(dialog.getByRole('textbox', { name: '이름', exact: true })).toHaveValue('새 업로드');
   expect(applied).toHaveLength(0);
 
@@ -252,7 +291,7 @@ test('추가 요청 중 취소·재진입하면 늦은 업로드가 이전 펫�
 });
 
 for (const [width, height] of [[512, 512], [510, 333]]) {
-  test(`일반 PNG ${width}×${height}는 애니메이션 설정을 펼치고 접어도 전체 그림으로 저장된다`, async ({ page, isolatedServer }) => {
+  test(`일반 PNG ${width}×${height}는 애니메이션 설정을 펼치고 접어도 전체 그림으로 저장된다`, async ({ page, isolatedServer, browserName }) => {
     // 1. 이미지 전체에 다른 색을 넣어 한 칸으로 잘리는 문제를 실제 미리보기 픽셀로 검출한다.
     const failures: string[] = [];
     let reloading = false;
@@ -265,7 +304,8 @@ for (const [width, height] of [[512, 512], [510, 333]]) {
     page.on('requestfailed', request => {
       // 명시적 새로고침이 취소한 이전 화면 요청만 제외하고 나머지 실패는 URL과 함께 남긴다.
       const error = request.failure()?.errorText || 'request failed';
-      if (!reloading || error !== 'net::ERR_ABORTED') {
+      const reloadCancellation = browserName === 'webkit' ? 'cancelled' : 'net::ERR_ABORTED';
+      if (!reloading || error !== reloadCancellation) {
         failures.push(`${error} ${request.url()}`);
       }
     });

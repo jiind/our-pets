@@ -3,8 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import english from './locales/en.json';
 
 export type Locale = 'ko' | 'en';
-export type LocalePreference = 'system' | Locale;
-type LocaleState = { preference: LocalePreference; locale: Locale };
+type LocaleState = { locale: Locale };
 const storageKey = 'ourpets.locale';
 const messages: Readonly<Record<string, string>> = english;
 const subscribers = new Set<(locale: Locale) => void>();
@@ -12,15 +11,11 @@ const bindings = new WeakMap<Element, Map<string, { read: () => string; last: st
 const dynamic = Symbol('localized-ui');
 type UIValue = { [dynamic]: () => unknown };
 const pending = new Map<string, () => string>();
-let preference = readPreference();
-let locale = resolveLocale(preference, systemLocale());
+let locale = readLocale() ?? resolveLocale(systemLocale());
 let initialized = false;
 
-// 명시적 선택이 없으면 OS 언어를 따르며 미지원·누락된 언어는 영어로 표시한다.
-export function resolveLocale(value: LocalePreference, system: string | undefined): Locale {
-  if (value !== 'system') {
-    return value;
-  }
+// 첫 실행의 OS 언어가 한국어면 한국어를 사용하고 그 밖에는 영어를 사용한다.
+export function resolveLocale(system: string | undefined): Locale {
   return system?.trim().split(/[-_.@]/u)[0].toLowerCase() === 'ko' ? 'ko' : 'en';
 }
 
@@ -29,19 +24,14 @@ function systemLocale(): string | undefined {
   return typeof navigator === 'undefined' ? undefined : navigator.languages?.[0] || navigator.language;
 }
 
-// 저장한 명시적 선택만 복원하고 처음 사용하거나 손상된 값은 시스템 설정을 따른다.
-function readPreference(): LocalePreference {
+// 저장한 언어를 복원하고 이전 버전의 자동 설정 값은 초기화 대상으로 둔다.
+function readLocale(): Locale | undefined {
   try {
     const saved = localStorage.getItem(storageKey);
-    return saved === 'ko' || saved === 'en' ? saved : 'system';
+    return saved === 'ko' || saved === 'en' ? saved : undefined;
   } catch {
-    return 'system';
+    return undefined;
   }
-}
-
-// 자동 선택 여부를 표시 언어와 구분해 언어 선택 컨트롤에 반환한다.
-export function getLocalePreference(): LocalePreference {
-  return preference;
 }
 
 // 현재 화면에서 사용할 앱 언어를 반환한다.
@@ -273,13 +263,12 @@ export function refreshTranslations(root: Node = document): void {
   }
 }
 
-// 표시 언어와 선택 방식을 함께 갱신하며 폼·실시간 연결은 다시 만들지 않는다.
-function applyLocale(state: LocaleState): void {
-  preference = state.preference;
-  locale = state.locale;
+// 표시 언어를 갱신하고 폼·실시간 연결을 유지한 채 같은 프로필에 저장한다.
+function applyLocale(value: Locale): void {
+  locale = value;
   try {
-    if (localStorage.getItem(storageKey) !== preference) {
-      localStorage.setItem(storageKey, preference);
+    if (localStorage.getItem(storageKey) !== value) {
+      localStorage.setItem(storageKey, value);
     }
   } catch {
     // 저장할 수 없는 환경에서도 현재 표시 언어는 바꾼다.
@@ -292,15 +281,15 @@ function applyLocale(state: LocaleState): void {
   subscribers.forEach(listener => listener(locale));
 }
 
-// 명시적 언어 또는 시스템 설정을 PC에 저장하고 모든 앱 창에 전파한다.
-export async function setLocale(value: LocalePreference): Promise<void> {
-  if (value !== 'system' && value !== 'ko' && value !== 'en') {
+// 화면과 앱 프로필에 즉시 적용하고 네이티브 창과 트레이에도 같은 값을 저장한다.
+export async function setLocale(value: Locale): Promise<void> {
+  if (value !== 'ko' && value !== 'en') {
     throw new Error(t('지원하지 않는 언어입니다.'));
   }
-  const saved = typeof window !== 'undefined' && isTauri()
-    ? await invoke<LocaleState>('set_locale', { locale: value })
-    : { preference: value, locale: resolveLocale(value, systemLocale()) };
-  applyLocale(saved);
+  applyLocale(value);
+  if (typeof window !== 'undefined' && isTauri()) {
+    await invoke<LocaleState>('set_locale', { locale: value });
+  }
 }
 
 // 화면 수명에 맞춰 언어 변경 구독을 등록하고 해제한다.
@@ -311,23 +300,31 @@ export function watchLocale(listener: (value: Locale) => void): () => void {
 
 // 저장된 PC 언어·창 간 이벤트·새 UI 표식의 초기 번역을 한 번만 연결한다.
 export async function initializeLocale(): Promise<void> {
-  // 1. 네이티브에서는 언어 이벤트를 먼저 구독하고 같은 PC의 저장 값을 읽는다.
+  // 1. 처음에만 OS 언어로 초기화하고 이후에는 앱 프로필에 저장한 선택을 우선한다.
   if (initialized) {
     return;
   }
   initialized = true;
+  const saved = readLocale();
   if (isTauri()) {
-    await listen<LocaleState>('locale-changed', event => applyLocale(event.payload));
-    applyLocale(await invoke<LocaleState>('get_locale'));
+    await listen<LocaleState>('locale-changed', event => applyLocale(event.payload.locale));
+    const native = await invoke<LocaleState>('get_locale').catch(() => undefined);
+    applyLocale(saved ?? native?.locale ?? locale);
+    if (saved && saved !== native?.locale && !new URLSearchParams(location.search).has('pet')) {
+      // 앱 프로필에 먼저 저장하고 네이티브 저장이 실패한 경우 다음 실행에서 다시 동기화한다.
+      void invoke<LocaleState>('set_locale', { locale: saved }).catch(() => undefined);
+    }
   } else {
-    applyLocale({ preference: readPreference(), locale: resolveLocale(readPreference(), systemLocale()) });
-    window.addEventListener('storage', event => {
-      if (event.key === storageKey) {
-        const saved = readPreference();
-        applyLocale({ preference: saved, locale: resolveLocale(saved, systemLocale()) });
-      }
-    });
+    applyLocale(saved ?? locale);
   }
+  window.addEventListener('storage', event => {
+    if (event.key === storageKey) {
+      const current = readLocale();
+      if (current !== undefined && current !== locale) {
+        applyLocale(current);
+      }
+    }
+  });
 
   // 2. 새 화면도 명시적 UI 표식만 번역하며 메시지·닉네임·PNG·입력은 해석하지 않는다.
   const observer = new MutationObserver(records => {

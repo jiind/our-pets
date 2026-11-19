@@ -95,6 +95,11 @@ func (s *Server) registeredAuth(handler authenticated) endpoint {
 
 // Handler는 버전 API와 내부망 접근·출처 제한을 구성한다.
 func (s *Server) Handler() http.Handler {
+	return s.HandlerForCIDRs(s.Config.AllowedCIDRs)
+}
+
+// HandlerForCIDRs는 같은 서버의 로컬 및 LAN 리스너에 각각 허용 범위를 적용한다.
+func (s *Server) HandlerForCIDRs(allowedCIDRs []netip.Prefix) http.Handler {
 	// 1. 역할별 HTTP API를 등록한다.
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/gatherings", wrap(s.registeredAuth(s.liveGatherings)))
@@ -107,6 +112,8 @@ func (s *Server) Handler() http.Handler {
 	}))
 	mux.HandleFunc("POST /api/v1/register", wrap(s.register))
 	mux.HandleFunc("POST /api/v1/login", wrap(s.login))
+	mux.HandleFunc("POST /api/v1/device/session", wrap(s.deviceSession))
+	mux.HandleFunc("PUT /api/v1/me/device-key", wrap(s.auth(s.rememberDevice)))
 	mux.HandleFunc("POST /api/v1/logout", wrap(s.auth(func(w http.ResponseWriter, r *http.Request, p model.Principal) error {
 		return s.Identity.Logout(bearer(r))
 	})))
@@ -119,6 +126,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/me/pet", wrap(s.auth(s.currentPet)))
 	mux.HandleFunc("POST /api/v1/me/pet/registration", wrap(s.auth(s.registerPet)))
 	mux.HandleFunc("GET /api/v1/me/designs", wrap(s.auth(s.ownDesigns)))
+	mux.HandleFunc("GET /api/v1/designs", wrap(s.auth(s.sharedDesigns)))
 	mux.HandleFunc("POST /api/v1/designs", wrap(s.auth(s.upload)))
 	mux.HandleFunc("GET /api/v1/designs/{id}", wrap(s.auth(s.design)))
 	mux.HandleFunc("PUT /api/v1/designs/{id}", wrap(s.auth(s.updateDesign)))
@@ -143,7 +151,7 @@ func (s *Server) Handler() http.Handler {
 		address, parseErr := netip.ParseAddr(host)
 		allowed := false
 		if err == nil && parseErr == nil {
-			for _, prefix := range s.Config.AllowedCIDRs {
+			for _, prefix := range allowedCIDRs {
 				if prefix.Contains(address.Unmap()) {
 					allowed = true
 				}
@@ -263,6 +271,36 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) error {
 	return respond(w, 200, result)
 }
 
+// deviceSession은 초대 가입과 같은 기기의 재접속에 일반 세션을 발급한다.
+func (s *Server) deviceSession(w http.ResponseWriter, r *http.Request) error {
+	if !s.allowLogin(r) {
+		return model.Bad(429, "잠시 후 다시 시도하세요")
+	}
+	var in identity.DeviceAccess
+	if err := decode(r, &in); err != nil {
+		return err
+	}
+	login, err := s.Identity.AccessDevice(in)
+	if err != nil {
+		return err
+	}
+	return respond(w, 200, login)
+}
+
+// rememberDevice는 암호 입력으로 가입했던 유효한 세션을 이 기기의 인증 방식으로 옮긴다.
+func (s *Server) rememberDevice(w http.ResponseWriter, r *http.Request, p model.Principal) error {
+	var in struct {
+		Key string `json:"key"`
+	}
+	if err := decode(r, &in); err != nil {
+		return err
+	}
+	if err := s.Identity.RememberDevice(p, in.Key); err != nil {
+		return err
+	}
+	return respond(w, 200, map[string]string{"status": "saved"})
+}
+
 // listPets는 인증된 로컬망 사용자가 선택할 수 있는 펫 목록을 반환한다.
 func (s *Server) listPets(w http.ResponseWriter, r *http.Request, p model.Principal) error {
 	result, err := s.Pets.List()
@@ -284,6 +322,15 @@ func (s *Server) currentPet(w http.ResponseWriter, r *http.Request, p model.Prin
 // ownDesigns는 등록 전에 저장한 디자인을 포함해 본인의 선택 목록을 반환한다.
 func (s *Server) ownDesigns(w http.ResponseWriter, r *http.Request, p model.Principal) error {
 	designs, err := s.Pets.OwnDesigns(p)
+	if err != nil {
+		return err
+	}
+	return respond(w, 200, designs)
+}
+
+// sharedDesigns는 로그인한 서버 멤버에게 공용 펫 선택 목록을 제공한다.
+func (s *Server) sharedDesigns(w http.ResponseWriter, r *http.Request, p model.Principal) error {
+	designs, err := s.Pets.SharedDesigns()
 	if err != nil {
 		return err
 	}

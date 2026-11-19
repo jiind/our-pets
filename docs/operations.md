@@ -19,6 +19,8 @@ The [release guide](releasing.md) defines PR checks, three-OS packaging, and dra
 
 ## Client deployment
 
+Give users an invite link in the form `ourpets://join?server=<address>&invite=<code>`. URL-encode both values using the server origin reachable by clients and the server's `OURPETS_INVITE`. For example, use `ourpets://join?server=https%3A%2F%2Fpets.example.test%3A9377&invite=example-code-1234` with your actual values. Users can open the link or paste it into **Join with an invite link**.
+
 Prepare Rust, Node, and Tauri prerequisites on the target OS, then run `npm ci` and `npm run tauri -- build --ci -- --locked` from `desktop`. Distribute the native package with fonts and notices. Prepare Windows WebView2 and Linux WebKitGTK/GTK/AppIndicator/X11/compositor dependencies through OS packages or offline installers before entering a disconnected network. macOS uses system WKWebView. See [Tauri WebView versions](https://v2.tauri.app/reference/webview-versions/).
 
 Core operation has no external authentication, CDN, cloud, font-server, or broker dependency. Initial build downloads are separate from installed LAN runtime. Personal Slack collection requires outbound HTTPS/WSS from that PC; the LAN server does not proxy it.
@@ -27,11 +29,11 @@ On Linux, personal Slack token storage requires an unlocked Secret Service, such
 
 ## Retention and backups
 
-Every hour, the server removes expired sessions, messages/notifications beyond retention, and orphan receipts. Expired messages are excluded from delivery even before cleanup. Accounts and referenced designs do not expire automatically. Users can delete their own account after password confirmation. Hourly maintenance retries deletion of unreferenced PNGs older than one hour; referenced or identical shared images are retained.
+Every hour, the server removes expired sessions, messages/notifications beyond retention, and orphan receipts. Expired messages are excluded from delivery even before cleanup. Accounts and referenced designs do not expire automatically. Users can confirm deletion of their own account in **Settings** on an authenticated device. Hourly maintenance retries deletion of unreferenced PNGs older than one hour; referenced or identical shared images are retained.
 
 Copying only the main SQLite file while WAL is active can lose recent transactions. Stop the server and back up the entire data directory, or use a consistent SQLite backup together with a design-directory snapshot. A backup CLI and automatic restore tool are not included.
 
-Logout revokes the token, and its socket closes at the next validation interval. Password changes in Account revoke other sessions; account deletion revokes all sessions. Per-invite approval management has no UI yet. LAN session tokens use the OS WebView's local storage, not the OS credential store. Protect the OS account and browser profile permissions.
+Logout revokes the token, and its socket closes at the next validation interval. Account deletion revokes all sessions and device credentials. Per-invite approval management has no UI yet. LAN session tokens and device credentials use the OS WebView's local storage. Protect the OS account and browser profile permissions.
 
 ## Privacy requests
 

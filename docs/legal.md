@@ -4,7 +4,7 @@ Our Pets project code remains Apache-2.0. This document describes implemented di
 
 ## Where users find notices
 
-Account → Information and notices provides a separate button for each privacy, project license, third-party, character, font, GSAP, and code-dependency document. Each button opens only its document, without a second selector, leaving the app, or using a CDN. The PNG registration form contains a short rights reminder beside the file guidance. Account deletion is placed separately at the bottom of Account and requires the current password plus confirmation of the deletion scope. No blanket-consent checkbox is added to ordinary setup.
+Settings → Information and notices provides a separate button for each privacy, project license, third-party, character, font, GSAP, and code-dependency document. Each button opens only its document, without a second selector, leaving the app, or using a CDN. The PNG registration form contains a short rights reminder beside the file guidance. Account deletion is at the bottom of Settings and requires device authentication and confirmation of the deletion scope. No blanket-consent checkbox is added to ordinary setup.
 
 [PRIVACY.md](../PRIVACY.md) is publicly available with the repository and included in packages. An independently hosted server must publish its own actual operator/contact, purposes, lawful basis, configured retention, backup procedure, and request handling. Use the [operator template](server-privacy-template.md); do not publish placeholders as a completed policy. In Korea, applicability depends on the operator's processing and the Personal Information Protection Act, including Articles 2, 21, 29 and 30. Free software and private network addresses do not determine exemption.
 

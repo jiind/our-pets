@@ -1,20 +1,17 @@
 import { expect, type Page } from '@playwright/test';
 import path from 'node:path';
 import { test } from './isolated-server';
+import { testInvitation } from './test-invitation';
 
 // 실제 가입과 대표 펫 등록을 마친다.
 async function createWorkspace(page: Page, server: string): Promise<void> {
   // 1. 서버를 선택하고 새 계정으로 가입한다.
   await page.goto('/');
-  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
-  await page.getByRole('textbox', { name: '서버 주소' }).fill(server);
-  await page.getByRole('button', { name: '서버 연결', exact: true }).click();
-  await page.getByRole('link', { name: '계정 만들기', exact: true }).click();
+  await page.getByRole('button', { name: '초대 링크로 참여하기', exact: true }).click();
+  await page.getByLabel('초대 링크', { exact: true }).fill(testInvitation(server));
+  await page.getByRole('button', { name: '방 참여', exact: true }).click();
   await page.getByRole('textbox', { name: '닉네임', exact: true }).fill('수정 취소 검사');
-  await page.getByRole('textbox', { name: '아이디', exact: true }).fill(`cancel-update-${Date.now()}`);
-  await page.getByLabel('비밀번호', { exact: true }).fill('test-password-123');
-  await page.getByLabel('서버 가입 코드', { exact: true }).fill('test-only-invite');
-  await page.getByRole('button', { name: /계정 만들고 펫 등록하기/ }).click();
+  await page.getByRole('button', { name: '참여하기' }).click();
 
   // 2. 기본 펫을 등록해 실제 인증 상태를 준비한다.
   await page.getByRole('button', { name: '등록 완료', exact: true }).click();

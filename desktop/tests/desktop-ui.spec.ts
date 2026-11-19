@@ -1,31 +1,20 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
+import { testInvitation } from './test-invitation';
 
 test('계정과 펫 등록·즉시 선택·PNG 추가·설정 탐색', async ({ page }) => {
   // 1. 격리 서버에 새 계정을 만들고 펫 등록을 별도 단계로 완료한다.
-  const username = `ui-${Date.now()}`;
   await page.goto('/');
   await expect(page.getByRole('button', { name: /내 PC의 Docker/ })).toHaveCount(0);
   await expect(page.getByText('데스크톱 앱은 트레이에서 계속 실행됩니다.')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: '친구와 함께 시작하기' })).toBeVisible();
-  await page.getByRole('link', { name: '서버에 직접 연결', exact: true }).click();
-  await page.getByRole('textbox', { name: '서버 주소' }).fill('http://127.0.0.1:19377');
-  await page.getByRole('button', { name: '서버 연결', exact: true }).click();
-  await page.getByRole('link', { name: '계정 만들기', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '우리 펫 시작하기' })).toBeVisible();
+  await page.getByRole('button', { name: '초대 링크로 참여하기', exact: true }).click();
+  await page.getByLabel('초대 링크', { exact: true }).fill(testInvitation('http://127.0.0.1:19377'));
+  await page.getByRole('button', { name: '방 참여', exact: true }).click();
   await expect(page.getByRole('textbox', { name: '서버 주소' })).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: '닉네임' })).toBeFocused();
   await page.getByRole('textbox', { name: '닉네임' }).fill('설정 테스트');
-  await page.getByRole('textbox', { name: '아이디', exact: true }).fill(username);
-  const password = page.getByLabel('비밀번호', { exact: true });
-  await password.fill('test-password-123');
-  await expect(password).toHaveAttribute('type', 'password');
-  await page.getByRole('button', { name: '비밀번호 보기', exact: true }).click();
-  await expect(password).toHaveAttribute('type', 'text');
-  await expect(password).toHaveValue('test-password-123');
-  await page.getByRole('button', { name: '비밀번호 숨기기', exact: true }).click();
-  await expect(password).toHaveAttribute('type', 'password');
-  await page.getByLabel('서버 가입 코드', { exact: true }).fill('test-only-invite');
-  await page.getByRole('button', { name: /계정 만들고 펫 등록하기/ }).click();
+  await page.getByRole('button', { name: '참여하기' }).click();
   await expect(page.getByRole('heading', { name: '펫', exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: '펫 이름', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '등록 완료', exact: true }).click();

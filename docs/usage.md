@@ -1,22 +1,22 @@
 # User guide
 
-The app supports Korean and English. On first launch it follows the OS's preferred language: Korean uses Korean, English uses English, and any other or unavailable language uses English. This uses the OS locale, with no IP lookup or location request.
+The app supports Korean and English. On first launch it saves Korean if the OS prefers Korean and English otherwise. It reads the OS locale locally.
 
-Choose **App language** on the sign-in screen or account page to override the language for this PC. **Follow system settings** restores automatic selection; restart the app after changing the OS language. The setting also controls pet menus, app-generated notifications, and tray commands. Changing language preserves unsaved inputs and current real-time connections. Nicknames, messages, uploaded design names, and provider event content remain in their original language. License documents retain their original wording.
+Open **App language** with the flag button in the upper-right corner of the app window, then select Korean or English. The app applies the language immediately and uses the saved choice on future launches. The setting also controls pet menus, app-generated notifications, and tray commands. Changing language preserves unsaved inputs and current real-time connections. Nicknames, messages, uploaded design names, and provider event content remain in their original language. License documents retain their original wording.
 
 ## Invite friends and register a pet
 
-1. On the PC hosting the room, open the app and select **Invite friends**, then **Copy invite link**. Share it with friends connected to the same local network.
-2. Open the invite link to join, or paste it into **Join with an invite link** in the app. Create an account or sign in. Your nickname appears on your pet's nameplate.
+1. Select **Get started** to open a personal pet. The app starts its server on this PC for private use. Under **Settings → Server information**, select **Allow external access** and **Copy invite link**. Send the link to friends on the same local network.
+2. Open the invite link or paste it into **Join with an invite link**. On your first visit, enter a nickname and select **Join**. The app remembers your account on that device, and your nickname appears on your pet's nameplate.
 3. On the pet page, choose a built-in character or an uploaded PNG and complete registration. Changing appearance preserves the pet's recipient ID.
 
-The room is available while the host app is running. On the host, **Account → Copy invite link** shares it again. The app-hosted room uses HTTP on the local network. Allow the app's host process on the private network if the OS requests firewall access. If the host moves to a different network, restart the app and share its current link.
+The room is available while the host app is running with external access enabled. **Block external access** disconnects friends and leaves your personal pet running. The app-hosted room uses HTTP on the local network. Allow the app's host process on the private network if the OS requests firewall access. If the host moves to a different network, restart the app and share its current link.
 
-To use a separately managed server, select **Connect directly to a server** and enter the operator's address and registration code. See [deployment](operations.md) for standalone server setup, TLS, and access restrictions.
+To use a separately managed server, ask its operator for an invite link. See [deployment](operations.md) for the link format, standalone server setup, TLS, and access restrictions.
 
 ## Account settings
 
-Open the account menu to view your username and edit your nickname or password. Usernames cannot be changed. Saving a nickname updates your pet's displayed name while preserving user and pet IDs. Password changes require the current password and matching new-password fields. The current login remains active; other login sessions are revoked and their real-time connections close when the server next checks session validity. Password fields are masked, support a visibility toggle, and are cleared after a successful change.
+Open **Settings → Account information** to change your nickname. Saving it updates your pet's name while preserving its ID. The start screen shows the most recently used pet. The app stores each server's device credentials in the local app profile. Use **Reconnect** after signing out to return to the same pet. Clearing that app profile or using a different PC requires joining again.
 
 ## Pet controls
 

@@ -2,9 +2,9 @@
 
 ## Registration and display
 
-Choose a cat, dog, Gopher, Ferris, or your own design on the pet page. Initial registration requires selecting a character and completing registration. Subsequent character selections are saved immediately. Each user has one representative pet; appearance changes preserve its ID. Nameplates, messages, and gatherings use the account nickname.
+Choose a cat, dog, Gopher, Ferris, or an uploaded design on the pet page. Everyone signed in to the same server can view and select from the shared list. Initial registration requires selecting a character and completing registration. Subsequent character selections are saved immediately. Each user has one representative pet and can change its appearance while keeping its ID. Nameplates, messages, and gatherings use the account nickname.
 
-The add-pet dialog takes a name and one PNG file. Added designs appear in the selection list. For a registered pet, the chosen design can be applied immediately; before initial registration, add it to the list and then complete registration. Visibility, peer visibility, and size are PC-local settings shared with the tray. Size ranges from 80 to 240px.
+The add-pet dialog takes a name and one PNG file. Uploading adds the design to the server's shared list immediately. Members can select it even before the uploader applies it. The uploader controls editing and deletion. Visibility, peer visibility, and size are PC-local settings shared with the tray. Size ranges from 80 to 240px.
 
 The character-prompt section offers text for a single-image PNG or a sprite sheet. Copy the read-only text and customize the character description in your image tool. The app does not send prompts to an external generation service. Built-in character attribution is available in the pet page's character credits section and [asset documentation](character-assets.md).
 

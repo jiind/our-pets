@@ -10,17 +10,20 @@ Base URL: `http://127.0.0.1:9377/api/v1`. JSON uses camelCase; times are UTC Uni
 | --- | --- |
 | `GET /healthz` (outside prefix) | `{status:"ok",service:"our-pets"}` |
 | `POST /register` | `{username,password,displayName,invite,deviceName}` → `{token,principal}` |
-| `DELETE /me/account` | `{currentPassword}` → `{status:"deleted",pendingFileCleanup}`; password-confirmed, rate-limited self-deletion |
+| `DELETE /me/account` | `{deviceKey}` or legacy `{currentPassword}` → `{status:"deleted",pendingFileCleanup}`; rate-limited self-deletion |
 | `POST /login` | `{username,password,deviceId?,deviceName?}` → `{token,principal}` |
+| `POST /device/session` | `{key,displayName?,invite?,deviceName?}` → session. Fresh 256-bit keys require a nickname and invite; known keys resume the same device and account |
+| `PUT /me/device-key` | Authenticated association of `{key}` with the current device for existing sessions |
 | `POST /logout` | Revoke the current session |
 | `GET /me` | Current user/device/pet IDs and `petRegistered` |
 | `GET /me/account` | Own `{username,displayName}`; excludes password hashes and credentials |
 | `PUT /me/account` | `{displayName}` → updated own account; username and user-ID fields are rejected |
 | `PUT /me/password` | `{currentPassword,newPassword}` → 200 `{status:"changed"}`; verifies the current password and revokes other sessions while keeping the current session |
 | `GET /me/pet` | Own Pet plus `registered`; available before registration |
-| `POST /me/pet/registration` | `{designId:"default"|"builtin:dog"|"builtin:gopher"|"builtin:ferris" or an owned design ID}` → 200 registered Pet, preserving ID |
+| `POST /me/pet/registration` | `{designId:"default"|"builtin:dog"|"builtin:gopher"|"builtin:ferris" or a shared design ID}` → 200 registered Pet, preserving ID |
 | `GET /me/designs` | Owned designs, including unapplied drafts, excluding deleted or superseded versions |
 | `GET /pets` | `{id,userId,ownerName,name,design,online}[]` |
+| `GET /designs` | Shared uploaded designs from all accounts, including designs nobody has applied, excluding deleted or superseded versions |
 | `POST /designs` | Multipart `image`, `name`, `manifest`, optional `draft="true"`; registration UI uploads a draft and then confirms through registration |
 | `GET /designs/{id}` | Design metadata |
 | `PUT /designs/{id}` | Owner only: `{name,manifest}` → 200 new immutable Design version using the same PNG; replaces the old entry in the owner's list and their active appearance if selected |
@@ -41,7 +44,7 @@ Base URL: `http://127.0.0.1:9377/api/v1`. JSON uses camelCase; times are UTC Uni
 | `POST /connectors/{id}/test-events` | `{idempotencyKey:UUID}` → 202 `{status:"accepted"}`; explicitly emit one owned sample |
 | `DELETE /connectors/{id}` | Delete own sample → 200 `{deleted:true}` |
 
-A session is required except for registration, login, health, and the WebSocket authentication handshake. CIDR/Origin checks apply before authentication. Usernames contain 3–32 lowercase ASCII letters, digits, `_`, or `-`; passwords are 10–256 bytes. Display/design names are at most 80 bytes. Sessions expire after 30 days. Optional registration `petName` is a compatibility field; pet registration is separate. Signup sets `active=0`; pet registration sets `active=1`.
+A session is required except for registration, login, device session issuance, health, and the WebSocket authentication handshake. CIDR/Origin checks apply before authentication. Usernames contain 3–32 lowercase ASCII letters, digits, `_`, or `-`; passwords are 10–256 bytes. Display/design names are at most 80 bytes. Sessions expire after 30 days. Optional registration `petName` is a compatibility field; pet registration is separate. Signup sets `active=0`; pet registration sets `active=1`.
 
 Design editing accepts JSON metadata only; PNG/image-hash replacement fields are rejected. Only uploaded PNG designs can be edited or deleted. Built-in pets are protected. Repeated edits/deletes of an old version return 409. Retired designs remain retrievable for existing message snapshots and other pets already using them, but cannot be newly selected. Physical PNG files are retained, including content shared by other designs.
 
@@ -196,4 +199,4 @@ Personal external notifications optionally include `connectionName`. New local e
 
 ## PC language preference
 
-`get_locale` returns `{preference:"system"|"ko"|"en",locale:"ko"|"en"}`. Settings-only `set_locale({locale:"system"|"ko"|"en"})` persists the preference and returns the resolved state. The payload of `locale-changed` has the same shape and reaches existing windows. This preference is local to the OS profile and does not change the LAN protocol or user data. System selection maps Korean to `ko`, English to `en`, and unsupported or missing locales to `en`.
+`get_locale` returns `{preference:"ko"|"en",locale:"ko"|"en"}`, with both fields set to the saved language. Settings-only `set_locale({locale:"ko"|"en"})` saves the selected language and returns the same state as the `locale-changed` event. The app initializes the preference from the OS on first launch and uses English for unsupported or missing OS locales. Subsequent launches restore the saved value from the OS user profile.

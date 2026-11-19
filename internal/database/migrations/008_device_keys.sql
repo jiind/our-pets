@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS device_keys (
+ device_id TEXT PRIMARY KEY REFERENCES devices(id) ON DELETE CASCADE,
+ key_hash TEXT UNIQUE NOT NULL
+);
+INSERT OR IGNORE INTO schema_versions VALUES(8);

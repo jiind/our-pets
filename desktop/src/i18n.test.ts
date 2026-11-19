@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getLocale, getLocalePreference, resolveLocale, html, msg, setLocale, t, translateError } from './i18n';
+import { resolveLocale, html, msg, setLocale, t, translateError } from './i18n';
 import english from './locales/en.json';
 
 afterEach(async () => {
@@ -7,18 +7,13 @@ afterEach(async () => {
 });
 
 describe('PC별 한국어·영어 표시', () => {
-  it('OS 언어를 따르고 미지원·누락 언어는 영어로 대체한다', async () => {
+  it('첫 실행에 OS 언어를 읽고 미지원·누락 언어는 영어로 대체한다', () => {
     for (const language of ['ko-KR', 'ko_KR.UTF-8', 'KO']) {
-      expect(resolveLocale('system', language)).toBe('ko');
+      expect(resolveLocale(language)).toBe('ko');
     }
     for (const language of ['en-US', 'ja-JP', 'fr-FR', 'C', '', undefined]) {
-      expect(resolveLocale('system', language)).toBe('en');
+      expect(resolveLocale(language)).toBe('en');
     }
-    expect(resolveLocale('ko', 'en-US')).toBe('ko');
-    expect(resolveLocale('en', 'ko-KR')).toBe('en');
-    await setLocale('system');
-    expect(getLocalePreference()).toBe('system');
-    expect(getLocale()).toBe('en');
   });
 
   it('앱 문구만 번역하고 사용자 값과 중괄호는 원문 그대로 보존한다', async () => {

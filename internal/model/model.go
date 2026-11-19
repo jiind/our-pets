@@ -54,9 +54,19 @@ type Manifest struct {
 	WalkAnimation string                    `json:"walkAnimation,omitempty"`
 }
 
+// MarshalJSON은 이전에 null로 저장된 동작 목록도 빈 객체로 보낸다.
+func (m Manifest) MarshalJSON() ([]byte, error) {
+	type manifestJSON Manifest
+	if m.Animations == nil {
+		m.Animations = map[string]FrameAnimation{}
+	}
+	return json.Marshal(manifestJSON(m))
+}
+
 type Design struct {
 	ID        string   `json:"id"`
 	OwnerID   string   `json:"ownerId"`
+	OwnerName string   `json:"ownerName,omitempty"`
 	Version   int      `json:"version"`
 	Name      string   `json:"name"`
 	ImageHash string   `json:"imageHash"`

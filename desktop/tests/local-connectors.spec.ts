@@ -1,13 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('로그인한 알림 설정 · IPC 모의: 비밀값을 일반 저장소와 서버에 남기지 않는다', async ({ page }) => {
-  // 1. 실제 브라우저 UI에 Tauri 공식 IPC 모의를 연결하고 서버 전송을 관찰한다.
-  const serverRequests: string[] = [];
-  page.on('request', request => {
-    if (request.method() !== 'GET' && request.url().includes('/api/v1/')) {
-      serverRequests.push(request.url());
-    }
-  });
+  // 1. 실제 브라우저 UI에 Tauri 공식 IPC 모의를 연결한다.
   const response = await page.request.post('http://127.0.0.1:19377/api/v1/register', {
     data: { username: `ipc-${Date.now()}`, password: 'test-password-123', displayName: '개인 연결 테스트', invite: 'test-only-invite' },
   });
@@ -70,6 +64,12 @@ test('로그인한 알림 설정 · IPC 모의: 비밀값을 일반 저장소와
   });
   await page.getByRole('button', { name: '알림', exact: true }).click();
   await expect(page.locator('#personal-history')).toHaveCount(0);
+  const serverRequests: string[] = [];
+  page.on('request', request => {
+    if (request.method() !== 'GET' && request.url().includes('/api/v1/')) {
+      serverRequests.push(request.url());
+    }
+  });
   await page.getByRole('button', { name: '연결 추가', exact: true }).click();
 
   // 2. 자기 Docker를 설정하고 중지·재개·수정을 실제 폼과 버튼으로 수행한다.

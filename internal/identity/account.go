@@ -85,5 +85,8 @@ func (s *Service) ChangePassword(p model.Principal, current, next string) error 
 	if _, err = tx.Exec(`DELETE FROM sessions WHERE user_id=? AND token_hash<>?`, p.UserID, p.SessionHash); err != nil {
 		return err
 	}
+	if _, err = tx.Exec(`DELETE FROM device_keys WHERE device_id IN (SELECT id FROM devices WHERE user_id=?)`, p.UserID); err != nil {
+		return err
+	}
 	return tx.Commit()
 }

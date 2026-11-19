@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -20,7 +19,8 @@ import (
 func main() {
 	var host desktopHost
 	var listener net.Listener
-	if len(os.Args) == 3 && os.Args[1] == "--desktop-host" {
+	managed := len(os.Args) == 3 && (os.Args[1] == "--desktop-local" || os.Args[1] == "--desktop-host")
+	if managed {
 		var err error
 		host, err = desktopConfig(os.Args[2])
 		if err != nil {
@@ -50,16 +50,22 @@ func main() {
 	defer cancel()
 	app := server.New(ctx, db, config)
 	go app.Maintain(ctx)
-	httpServer := &http.Server{Addr: config.Bind, Handler: app.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
+	httpServer := newHTTPServer(config.Bind, app.Handler())
 	if listener != nil {
-		if err := host.ready(); err != nil {
+		initial := host
+		var lan *desktopLAN
+		if os.Args[1] == "--desktop-host" {
+			initial, lan, err = openDesktopLAN(app, host)
+			if err != nil {
+				slog.Error("데스크톱 LAN 시작 실패", "error", err)
+				os.Exit(1)
+			}
+		}
+		if err := initial.ready(); err != nil {
 			slog.Error("데스크톱 호스트 시작 알림 실패", "error", err)
 			os.Exit(1)
 		}
-		go func() {
-			_, _ = io.Copy(io.Discard, os.Stdin)
-			cancel()
-		}()
+		go controlDesktop(app, host, initial, lan, cancel)
 	}
 
 	// 2. 새 요청을 중단하고 진행 중인 HTTP 요청을 마무리한다.
@@ -85,4 +91,9 @@ func main() {
 		slog.Error("서버 실행 실패", "error", err)
 		os.Exit(1)
 	}
+}
+
+// 개인 및 공유 리스너에 같은 HTTP 제한을 적용한다.
+func newHTTPServer(address string, handler http.Handler) *http.Server {
+	return &http.Server{Addr: address, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 }

@@ -21,12 +21,33 @@
   width: 100%;
   min-width: 0;
 }
-.account-settings input[readonly] {
-  background: var(--paper);
-  color: var(--muted);
+.nickname-row {
+  --control-height: 40px;
+  --control-padding: var(--space-1) var(--space-3);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
 }
-.account-settings .auth-password-input input {
-  padding-right: calc(var(--control-height) + var(--space-2));
+.nickname-row label {
+  font-size: var(--text-subheading);
+  font-weight: var(--weight-bold);
+}
+.nickname-row button {
+  white-space: nowrap;
+}
+.account-server {
+  display: grid;
+  gap: var(--space-3);
+}
+.account-server p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.account-server-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 .account-settings .account-actions {
   display: flex;
@@ -39,7 +60,7 @@
   display: none;
 }
 /* 개인정보·고지는 계정의 보조 영역으로 모으고 위험 동작은 별도 경계로 구분한다. */
-.account-info, .account-delete {
+.account-server, .account-info, .account-delete {
   padding: var(--space-5);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
