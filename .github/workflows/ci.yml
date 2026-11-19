@@ -2,6 +2,11 @@ name: Recover v0.1.0 Linux packages
 
 on:
   workflow_dispatch:
+    inputs:
+      assemble:
+        description: Assemble the verified v0.1.0 artifacts as a release draft
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -11,6 +16,7 @@ env:
 
 jobs:
   desktop:
+    if: ${{ !inputs.assemble }}
     name: Package desktop (${{ matrix.name }})
     strategy:
       fail-fast: false
@@ -32,7 +38,7 @@ jobs:
       - name: Verify tagged application source
         working-directory: .
         run: |
-          git diff --exit-code v0.1.0 HEAD -- . ':(exclude).github/workflows/ci.yml' ':(exclude)scripts/linux_distribution_sources.py'
+          git diff --exit-code v0.1.0 HEAD -- . ':(exclude).github/workflows/ci.yml' ':(exclude)scripts/linux_distribution_sources.py' ':(exclude).github/stage-v0.1.0.py' ':(exclude).github/release-v0.1.0.md'
           python3 scripts/check_versions.py --tag v0.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -79,3 +85,46 @@ jobs:
           path: release-out/*
           if-no-files-found: error
           retention-days: 14
+
+  draft:
+    name: Assemble v0.1.0 release draft
+    if: inputs.assemble
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify successful packages and unchanged release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse 'v0.1.0^{commit}')" = 3a1a838db4fd0b31277f90f7d59022cf4a06ae74
+          test "$(gh run view 44527139019 --json conclusion,headSha --jq '[.conclusion, .headSha] | join(" ")')" = 'success e8ae7e2255db163111dbb22c8f9a3adf1da67796'
+          gh run view 44491239708 --json jobs --jq '.jobs[] | [.name, .conclusion] | join("=")' > original-jobs.txt
+          for job in 'Validate release' 'checks / CI required' 'Package desktop (windows-x64)' 'Package desktop (macos-universal)' 'Package server'; do
+            grep -Fx "$job=success" original-jobs.txt
+          done
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          github-token: ${{ github.token }}
+          run-id: 44491239708
+          path: original
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          github-token: ${{ github.token }}
+          run-id: 44527139019
+          name: desktop-linux-x64
+          path: linux
+      - name: Verify and attach all assets to a release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir release-out
+          python3 .github/stage-v0.1.0.py
+          python3 scripts/package_release.py notes
+          gh release create v0.1.0 release-out/* --verify-tag --draft --title 'Our Pets v0.1.0' --notes-file .github/release-v0.1.0.md
