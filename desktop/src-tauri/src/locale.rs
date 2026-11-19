@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{LazyLock, Mutex};
 use tauri::{Emitter, Manager};
@@ -12,22 +13,12 @@ pub enum Locale {
     En,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Preference {
-    #[default]
-    System,
-    Ko,
-    En,
-}
-
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct LocaleState {
-    preference: Preference,
+    preference: Locale,
     locale: Locale,
 }
 
-static PREFERENCE: AtomicU8 = AtomicU8::new(0);
 static CURRENT: AtomicU8 = AtomicU8::new(0);
 static CHANGE: Mutex<()> = Mutex::new(());
 static ENGLISH: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
@@ -35,53 +26,58 @@ static ENGLISH: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
         .expect("embedded locale catalogue must be valid JSON")
 });
 
-// 저장한 선택이 없으면 OS의 우선 언어를 읽고 미지원 언어는 영어로 시작한다.
+// 첫 실행에 OS 언어로 초기값을 정하고 이후에는 저장된 언어를 복원한다.
 pub fn install(app: &tauri::AppHandle) {
-    let preference = app
+    let locale = app
         .path()
         .app_data_dir()
-        .ok()
-        .and_then(|directory| std::fs::read(directory.join("locale.json")).ok())
-        .and_then(|raw| serde_json::from_slice::<Preference>(&raw).ok())
-        .unwrap_or_default();
-    update(preference);
+        .map(|directory| load_locale(&directory, sys_locale::get_locale))
+        .unwrap_or_else(|_| resolve_system(sys_locale::get_locale().as_deref()));
+    update(locale);
     apply_window_titles(app);
 }
 
+// 이전의 자동 설정 값은 첫 실행처럼 처리하고 현재 OS 언어로 한 번만 초기화한다.
+fn load_locale(directory: &Path, system: impl FnOnce() -> Option<String>) -> Locale {
+    if let Some(saved) = std::fs::read(directory.join("locale.json"))
+        .ok()
+        .and_then(|raw| serde_json::from_slice::<Locale>(&raw).ok())
+    {
+        return saved;
+    }
+    let initial = resolve_system(system().as_deref());
+    let _ = save_locale(directory, initial);
+    initial
+}
+
 // 시스템 언어의 지역·인코딩 접미사와 관계없이 지원 언어만 선택한다.
-fn resolve(preference: Preference, system: Option<&str>) -> Locale {
-    match preference {
-        Preference::Ko => Locale::Ko,
-        Preference::En => Locale::En,
-        Preference::System => {
-            let language = system
-                .unwrap_or("")
-                .trim()
-                .split(['-', '_', '.', '@'])
-                .next()
-                .unwrap_or("");
-            if language.eq_ignore_ascii_case("ko") {
-                Locale::Ko
-            } else {
-                Locale::En
-            }
-        }
+fn resolve_system(system: Option<&str>) -> Locale {
+    let language = system
+        .unwrap_or("")
+        .trim()
+        .split(['-', '_', '.', '@'])
+        .next()
+        .unwrap_or("");
+    if language.eq_ignore_ascii_case("ko") {
+        Locale::Ko
+    } else {
+        Locale::En
     }
 }
 
-// 같은 프로세스의 창·트레이·커넥터가 사용하는 선택 방식과 표시 언어를 갱신한다.
-fn update(preference: Preference) -> LocaleState {
-    let locale = resolve(preference, sys_locale::get_locale().as_deref());
-    PREFERENCE.store(
-        match preference {
-            Preference::System => 0,
-            Preference::Ko => 1,
-            Preference::En => 2,
-        },
-        Ordering::Relaxed,
-    );
+// 저장 중 실패해도 이전 언어 설정 파일을 유지한다.
+fn save_locale(directory: &Path, locale: Locale) -> Result<(), &'static str> {
+    const SAVE_ERROR: &str = "언어 설정을 저장하지 못했습니다";
+    std::fs::create_dir_all(directory).map_err(|_| SAVE_ERROR)?;
+    let next = directory.join("locale.next");
+    let raw = serde_json::to_vec(&locale).map_err(|_| SAVE_ERROR)?;
+    std::fs::write(&next, raw).map_err(|_| SAVE_ERROR)?;
+    std::fs::rename(next, directory.join("locale.json")).map_err(|_| SAVE_ERROR)
+}
+
+// 같은 프로세스의 창·트레이·커넥터가 사용하는 언어를 갱신한다.
+fn update(locale: Locale) {
     CURRENT.store(u8::from(locale == Locale::En), Ordering::Relaxed);
-    LocaleState { preference, locale }
 }
 
 // 모든 창과 로컬 커넥터가 공유하는 현재 프로세스의 언어를 반환한다.
@@ -137,15 +133,10 @@ pub fn message(source: &str, values: &[String]) -> String {
 // 각 창이 같은 PC의 언어를 조회하도록 공개한다.
 #[tauri::command]
 pub fn get_locale() -> LocaleState {
-    let _change = CHANGE.lock().ok();
-    let preference = match PREFERENCE.load(Ordering::Relaxed) {
-        1 => Preference::Ko,
-        2 => Preference::En,
-        _ => Preference::System,
-    };
+    let locale = current();
     LocaleState {
-        preference,
-        locale: current(),
+        preference: locale,
+        locale,
     }
 }
 
@@ -154,7 +145,7 @@ pub fn get_locale() -> LocaleState {
 pub fn set_locale(
     window: tauri::WebviewWindow,
     app: tauri::AppHandle,
-    locale: Preference,
+    locale: Locale,
 ) -> Result<LocaleState, String> {
     // 1. 펫 창은 앱 언어를 바꾸지 못하고 저장 실패 시 현재 언어도 유지한다.
     if window.label() != "settings" {
@@ -165,18 +156,11 @@ pub fn set_locale(
         .path()
         .app_data_dir()
         .map_err(|_| "언어 설정 경로를 읽지 못했습니다")?;
-    std::fs::create_dir_all(&directory).map_err(|_| "언어 설정을 저장하지 못했습니다")?;
-    let next = directory.join("locale.next");
-    std::fs::write(
-        &next,
-        serde_json::to_vec(&locale).map_err(|_| "언어 설정을 저장하지 못했습니다")?,
-    )
-    .map_err(|_| "언어 설정을 저장하지 못했습니다")?;
-    std::fs::rename(next, directory.join("locale.json"))
-        .map_err(|_| "언어 설정을 저장하지 못했습니다")?;
+    save_locale(&directory, locale)?;
 
     // 2. 트레이·창 제목과 웹뷰만 갱신하며 WebSocket·모집·커넥터는 재시작하지 않는다.
-    let state = update(locale);
+    update(locale);
+    let state = get_locale();
     let _ = crate::desktop_controls::refresh_locale(&app);
     apply_window_titles(&app);
     app.emit("locale-changed", state)
@@ -198,27 +182,39 @@ fn apply_window_titles(app: &tauri::AppHandle) {
 mod tests {
     use super::*;
 
-    // 기본 선택·이전 저장 값·미지원 언어의 영어 대체와 명시적 우선순위를 확인한다.
+    // 처음 설정할 때 OS 언어를 읽고 미지원·누락 언어는 영어로 지정한다.
     #[test]
-    fn follows_system_language_with_english_fallback() {
-        assert_eq!(Preference::default(), Preference::System);
-        assert_eq!(
-            serde_json::from_str::<Preference>("\"en\"").unwrap(),
-            Preference::En
-        );
-        assert_eq!(
-            serde_json::from_str::<Preference>("\"ko\"").unwrap(),
-            Preference::Ko
-        );
-        assert!(serde_json::from_str::<Preference>("\"ja\"").is_err());
+    fn resolves_initial_system_language_with_english_fallback() {
         for system in [Some("ko-KR"), Some("ko_KR.UTF-8"), Some("KO")] {
-            assert_eq!(resolve(Preference::System, system), Locale::Ko);
+            assert_eq!(resolve_system(system), Locale::Ko);
         }
         for system in [None, Some("en-US"), Some("ja-JP"), Some("fr-FR"), Some("C")] {
-            assert_eq!(resolve(Preference::System, system), Locale::En);
+            assert_eq!(resolve_system(system), Locale::En);
         }
-        assert_eq!(resolve(Preference::Ko, Some("en-US")), Locale::Ko);
-        assert_eq!(resolve(Preference::En, Some("ko-KR")), Locale::En);
+    }
+
+    // 저장 값이 없거나 이전 버전의 자동 설정이면 한 번만 초기화한다.
+    #[test]
+    fn persists_initial_and_explicit_language() {
+        for previous in [None, Some("\"system\"")] {
+            let directory = tempfile::tempdir().unwrap();
+            if let Some(raw) = previous {
+                std::fs::write(directory.path().join("locale.json"), raw).unwrap();
+            }
+            assert_eq!(
+                load_locale(directory.path(), || Some("ko-KR".into())),
+                Locale::Ko
+            );
+            assert_eq!(
+                load_locale(directory.path(), || panic!("saved locale should win")),
+                Locale::Ko
+            );
+            save_locale(directory.path(), Locale::En).unwrap();
+            assert_eq!(
+                load_locale(directory.path(), || panic!("saved locale should win")),
+                Locale::En
+            );
+        }
     }
 
     // 번역 문구 안의 보간 값은 언어 사전과 재귀 치환을 거치지 않는다.

@@ -9,13 +9,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/jiind/our-pets/releases"><img src="https://img.shields.io/badge/status-beta-eab308" alt="Beta"></a>
   <a href="https://github.com/jiind/our-pets/actions/workflows/ci.yml"><img src="https://github.com/jiind/our-pets/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Project code: Apache 2.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/jiind/our-pets/releases"><strong>Download beta</strong></a> ·
+  <a href="https://github.com/jiind/our-pets/releases"><strong>Download</strong></a> ·
   <a href="docs/usage.md">User guide</a> ·
   <a href="https://github.com/jiind/our-pets/issues">Report an issue</a> ·
   <a href="CONTRIBUTING.md">Contribute</a>
@@ -23,18 +22,18 @@
 
 Our Pets is a desktop companion app for **Windows, macOS, and Linux**. Your pet can walk over to a friend's pet, exchange greetings and messages, or gather everyone for coffee, a meal, or a walk. It can also bring you updates from Docker, Slack, and development tools.
 
-Connect each desktop app to one server on your local network. Use it at home, with friends, or at work. Core pet features and messages work without internet access or cloud accounts.
+Start with a personal pet on your PC, invite friends on your local network, or join their server. Core pet features and messages work without internet access or cloud accounts.
 
 ## Download
 
-Get the beta package for your OS from [GitHub Releases](https://github.com/jiind/our-pets/releases). You also need one server instance on your shared local network.
+Get the desktop app for your OS from [GitHub Releases](https://github.com/jiind/our-pets/releases). Use the app to invite people on your local network or open a friend's invite link.
 
 | Windows | macOS | Linux |
 | --- | --- | --- |
 | [x64 installer · NSIS](https://github.com/jiind/our-pets/releases) | [Intel & Apple Silicon · DMG](https://github.com/jiind/our-pets/releases) | [x64 · DEB / AppImage](https://github.com/jiind/our-pets/releases) |
 | WebView2 runtime | System WKWebView | GTK 3, WebKitGTK 4.1, AppIndicator, X11, and a compositor |
 
-> **Beta status:** Windows, macOS, and Linux are the target platforms. Successful builds do not establish that desktop behavior has been verified on every OS. Native Wayland window control is not supported; Wayland sessions need XWayland and environment-specific validation. Windows code signing and macOS signing/notarization are not configured. See [platform requirements and limitations](docs/platforms.md).
+> Linux needs X11 or XWayland. Windows and macOS may show installation warnings for packages without publisher signing or notarization. See [platform requirements](docs/platforms.md).
 
 Server packaging targets Linux amd64/arm64, Windows amd64, and macOS amd64/arm64.
 
@@ -53,11 +52,11 @@ Messages and notifications are shown in real time. There is no inbox or offline 
 
 ## Quick start
 
-1. **Run a server.** Configure the registration code, bind address, and allowed CIDRs using the [configuration example](examples/server.env.example).
-2. **Connect your apps.** Enter the server address on each PC, create an account or sign in, then choose a character to register your pet.
+1. **Get started.** Open the desktop app and select **Get started**. Your pet opens with a private server on your PC.
+2. **Play with friends.** Under **Settings → Server information**, select **Allow external access**, then **Copy invite link**. Friends on your network open the link or paste it into **Join with an invite link**, enter a nickname, and join. Their app remembers the account on that device.
 3. **Meet your friends.** Right-click an online friend's pet to send a message or interact.
 
-The server defaults to `127.0.0.1:9377` and accepts loopback connections only. To connect other PCs, configure the LAN address, access range, and firewall. The server does not automatically load `.env` files: supply environment variables or use the example service's environment file. See the [deployment guide](docs/operations.md) for setup, TLS, and backups, and the [user guide](docs/usage.md) for pet controls.
+Standalone server operators share an invite link from their server address and registration code. See the [deployment guide](docs/operations.md) for the link format, setup, TLS, and backups, and the [user guide](docs/usage.md) for hosting and pet controls.
 
 ## Personal notifications
 
@@ -108,7 +107,7 @@ npm ci
 npm run tauri dev
 ```
 
-Connect to `http://127.0.0.1:9377` in the app. `npm run dev` serves the settings UI for development; run the Tauri app to use the actual desktop pets.
+Create an invite link for `http://127.0.0.1:9377` using the registration code and the [link format](docs/operations.md#client-deployment). Paste it into **Join with an invite link**. `npm run dev` serves the settings UI for development. Run the Tauri app to use the desktop pets.
 
 </details>
 
@@ -125,7 +124,7 @@ Bug fixes, new connectors, pet designs, and documentation improvements are welco
 
 ## Documentation
 
-Project documentation is in English. The app supports Korean and English, follows the OS language by default, and uses English for unsupported languages. Choose a different app language on the sign-in screen or account page.
+Project documentation is in English. On first launch the app sets its language from the OS, using English if the OS language is unsupported. Use the flag button in the upper-right corner to choose Korean or English. The app keeps your choice across launches.
 
 | Usage and operations | Development and extensions |
 | --- | --- |
@@ -137,7 +136,7 @@ Project documentation is in English. The app supports Korean and English, follow
 
 ## Privacy
 
-Account → Information and notices provides local privacy and license documents. Server operators provide their own contact, retention and request policy. See [data handling](PRIVACY.md), the [operator policy template](docs/server-privacy-template.md), and [distribution requirements](docs/legal.md).
+Settings → Information and notices provides local privacy and license documents. Server operators provide their own contact, retention and request policy. See [data handling](PRIVACY.md), the [operator policy template](docs/server-privacy-template.md), and [distribution requirements](docs/legal.md).
 
 ## License
 

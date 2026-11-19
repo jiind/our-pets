@@ -2,6 +2,8 @@ package identity
 
 import (
 	"crypto/subtle"
+	"database/sql"
+	"time"
 
 	"github.com/jiind/our-pets/internal/model"
 )
@@ -12,20 +14,48 @@ func (s *Service) DeleteAccount(p model.Principal, password string) ([]string, e
 	if len(password) > 256 {
 		return nil, model.Bad(400, "현재 비밀번호를 확인하세요")
 	}
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
 	var hash, salt []byte
-	if err := s.DB.QueryRow(`SELECT password_hash,salt FROM users WHERE id=?`, p.UserID).Scan(&hash, &salt); err != nil {
+	if err = tx.QueryRow(`SELECT password_hash,salt FROM users WHERE id=?`, p.UserID).Scan(&hash, &salt); err != nil {
 		return nil, err
 	}
 	if subtle.ConstantTimeCompare(passwordHash(password, salt), hash) != 1 {
 		return nil, model.Bad(400, "현재 비밀번호가 올바르지 않습니다")
+	}
+	return deleteAccount(tx, p)
+}
+
+// DeleteDeviceAccount는 현재 세션과 이 기기에 등록한 키를 함께 확인한 뒤 계정을 삭제한다.
+func (s *Service) DeleteDeviceAccount(p model.Principal, key string) ([]string, error) {
+	hash, err := deviceKeyHash(key)
+	if err != nil {
+		return nil, err
 	}
 	tx, err := s.DB.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
+	var allowed bool
+	err = tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM sessions s JOIN device_keys k ON k.device_id=s.device_id
+		WHERE s.token_hash=? AND s.user_id=? AND s.device_id=? AND s.expires_at>? AND k.key_hash=?)`,
+		p.SessionHash, p.UserID, p.DeviceID, time.Now().UnixMilli(), hash).Scan(&allowed)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return nil, model.Bad(403, "이 기기의 계정 삭제 권한을 확인하지 못했습니다")
+	}
+	return deleteAccount(tx, p)
+}
 
-	// 2. 공유 파일의 참조를 먼저 정리할 수 있도록 삭제할 이미지 지문을 모은다.
+// deleteAccount는 검증된 소유자의 데이터와 파일 참조를 같은 트랜잭션에서 정리한다.
+func deleteAccount(tx *sql.Tx, p model.Principal) ([]string, error) {
+	// 1. 공유 파일의 참조를 먼저 정리할 수 있도록 삭제할 이미지 지문을 모은다.
 	rows, err := tx.Query(`SELECT DISTINCT image_hash FROM designs WHERE owner_id=?`, p.UserID)
 	if err != nil {
 		return nil, err
@@ -45,7 +75,7 @@ func (s *Service) DeleteAccount(p model.Principal, password string) ([]string, e
 		return nil, err
 	}
 
-	// 3. 외래 키 순서에 따라 모임·수신 기록·발신 메시지와 서버 연결을 제거한다.
+	// 2. 외래 키 순서에 따라 모임·수신 기록·발신 메시지와 서버 연결을 제거한다.
 	statements := []struct {
 		query string
 		args  []any
@@ -74,8 +104,7 @@ func (s *Service) DeleteAccount(p model.Principal, password string) ([]string, e
 		}
 	}
 
-	// 4. 병행 비밀번호 변경이 있으면 전체 삭제를 취소하고 기존 계정을 보존한다.
-	result, err := tx.Exec(`DELETE FROM users WHERE id=? AND password_hash=?`, p.UserID, hash)
+	result, err := tx.Exec(`DELETE FROM users WHERE id=?`, p.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +113,7 @@ func (s *Service) DeleteAccount(p model.Principal, password string) ([]string, e
 		return nil, err
 	}
 	if count != 1 {
-		return nil, model.Bad(409, "계정 정보가 변경됐어요. 현재 비밀번호를 다시 확인하세요")
+		return nil, model.Bad(409, "계정 정보가 변경됐어요. 다시 시도해 주세요")
 	}
 	return images, tx.Commit()
 }

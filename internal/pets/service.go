@@ -65,8 +65,22 @@ func (s *Service) Current(p model.Principal) (model.Pet, error) {
 
 // OwnDesigns는 등록 전에 올려 둔 디자인도 다시 선택할 수 있도록 본인 버전을 조회한다.
 func (s *Service) OwnDesigns(p model.Principal) ([]model.Design, error) {
-	// 1. 미적용 디자인을 포함한 본인 버전만 추가된 순서로 조회한다.
-	rows, err := s.DB.Query(`SELECT id,owner_id,version,name,image_hash,manifest FROM designs WHERE owner_id=? AND NOT EXISTS(SELECT 1 FROM design_retirements WHERE design_id=designs.id) ORDER BY version ASC`, p.UserID)
+	return s.listDesigns(&p.UserID)
+}
+
+// SharedDesigns는 같은 서버에서 누구나 선택할 수 있는 업로드 목록을 반환한다.
+func (s *Service) SharedDesigns() ([]model.Design, error) {
+	return s.listDesigns(nil)
+}
+
+// listDesigns는 추가된 순서대로 현재 선택 가능한 디자인만 읽는다.
+func (s *Service) listDesigns(ownerID *string) ([]model.Design, error) {
+	// 1. 목록에서 교체하거나 삭제한 버전을 제외한다.
+	rows, err := s.DB.Query(`SELECT d.id,d.owner_id,u.display_name,d.version,d.name,d.image_hash,d.manifest
+		FROM designs d JOIN users u ON u.id=d.owner_id
+		WHERE d.owner_id=COALESCE(?,d.owner_id)
+		AND NOT EXISTS(SELECT 1 FROM design_retirements WHERE design_id=d.id)
+		ORDER BY d.rowid`, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +91,7 @@ func (s *Service) OwnDesigns(p model.Principal) ([]model.Design, error) {
 	for rows.Next() {
 		var design model.Design
 		var manifest string
-		if err = rows.Scan(&design.ID, &design.OwnerID, &design.Version, &design.Name, &design.ImageHash, &manifest); err != nil {
+		if err = rows.Scan(&design.ID, &design.OwnerID, &design.OwnerName, &design.Version, &design.Name, &design.ImageHash, &manifest); err != nil {
 			return nil, err
 		}
 		if err = json.Unmarshal([]byte(manifest), &design.Manifest); err != nil {
@@ -111,25 +125,16 @@ func (s *Service) Register(p model.Principal, in Registration) (model.Pet, error
 	builtinID, builtin := builtinSelection(in.DesignID)
 	if !builtin {
 		builtinID = "cat"
-		var owner string
-		err = tx.QueryRow(`SELECT owner_id FROM designs WHERE id=?`, in.DesignID).Scan(&owner)
+		var retired bool
+		err = tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM design_retirements WHERE design_id=designs.id) FROM designs WHERE id=?`, in.DesignID).Scan(&retired)
 		if err == sql.ErrNoRows {
 			return model.Pet{}, model.Bad(404, "등록할 디자인을 찾을 수 없습니다")
 		}
 		if err != nil {
 			return model.Pet{}, err
 		}
-		if owner != p.UserID && !(registered && previousDesign.Valid && previousDesign.String == in.DesignID) {
-			return model.Pet{}, model.Bad(403, "내가 올린 디자인으로만 펫을 등록할 수 있습니다")
-		}
-		if !previousDesign.Valid || previousDesign.String != in.DesignID {
-			var retired int
-			if err = tx.QueryRow(`SELECT COUNT(*) FROM design_retirements WHERE design_id=?`, in.DesignID).Scan(&retired); err != nil {
-				return model.Pet{}, err
-			}
-			if retired > 0 {
-				return model.Pet{}, model.Bad(409, "목록에서 삭제되거나 수정된 펫입니다. 목록을 새로고침하세요")
-			}
+		if retired && !(registered && previousDesign.Valid && previousDesign.String == in.DesignID) {
+			return model.Pet{}, model.Bad(409, "목록에서 삭제되거나 수정된 펫입니다. 목록을 새로고침하세요")
 		}
 		designID = in.DesignID
 	}

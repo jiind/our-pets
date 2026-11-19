@@ -54,19 +54,26 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request, p model.
 	return respond(w, 200, map[string]string{"status": "changed"})
 }
 
-// deleteAccount는 비밀번호 재확인 후 본인 계정과 사용하지 않는 PNG를 삭제한다.
+// deleteAccount는 기기 인증 또는 기존 비밀번호를 검증한 뒤 본인 계정을 삭제한다.
 func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request, p model.Principal) error {
-	// 1. 인증된 본인과 현재 비밀번호만 받으며 반복 추측을 제한한다.
+	// 1. 반복 추측을 제한하고 클라이언트가 사용하는 인증 방식을 확인한다.
 	if !s.allowLogin(r) {
 		return model.Bad(429, "잠시 후 다시 시도하세요")
 	}
 	var in struct {
 		CurrentPassword string `json:"currentPassword"`
+		DeviceKey       string `json:"deviceKey"`
 	}
 	if err := decode(r, &in); err != nil {
 		return err
 	}
-	images, err := s.Identity.DeleteAccount(p, in.CurrentPassword)
+	var images []string
+	var err error
+	if in.DeviceKey != "" {
+		images, err = s.Identity.DeleteDeviceAccount(p, in.DeviceKey)
+	} else {
+		images, err = s.Identity.DeleteAccount(p, in.CurrentPassword)
+	}
 	if err != nil {
 		return err
 	}

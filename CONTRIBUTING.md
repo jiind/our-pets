@@ -22,6 +22,7 @@ npm test
 npm run build
 npm run check:ui-types
 npm run test:ui
+npm run build:host
 npm run tauri -- build --debug --no-bundle --ci -- --locked
 cd src-tauri
 cargo test --locked

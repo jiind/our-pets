@@ -3,6 +3,13 @@ import type { Design, Gathering, GatheringActivity, PetEvent, Session } from './
 
 const sessionKey = 'ourpets.session';
 
+// 서버 버전에 따라 지원 여부를 확인할 수 있도록 HTTP 상태를 보존한다.
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
 // 주소 형식 오류는 번역된 문구 대신 안정적인 이름으로 구분한다.
 class InvalidServerAddress extends Error {
   // 주소 원문이나 자격증명 없이 사용자가 고칠 수 있는 형식만 안내한다.
@@ -70,17 +77,17 @@ export function saveServer(value: string): void {
 }
 
 // 인증 토큰을 URL에 노출하지 않고 API를 호출한다.
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function api<T>(path: string, init: RequestInit = {}, origin = serverURL()): Promise<T> {
   // 1. 등록된 서버와 현재 세션으로 요청을 구성한다.
   const headers = new Headers(init.headers);
-  const current = session();
+  const current = origin === serverURL() ? session() : null;
   if (current) {
     headers.set('Authorization', `Bearer ${current.token}`);
   }
   if (init.body && !(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
-  const result = await fetch(`${serverURL()}/api/v1${path}`, { ...init, headers, signal: AbortSignal.timeout(15000) });
+  const result = await fetch(`${origin}/api/v1${path}`, { ...init, headers, signal: init.signal || AbortSignal.timeout(15000) });
 
   // 2. 서버 오류는 사용자용 설명으로 변환한다.
   if (!result.ok) {
@@ -90,7 +97,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
         return t('서버에 연결할 수 없습니다.');
       }
     }));
-    throw new Error(error.error ? translateError(error.error) : msg`요청 실패 (${result.status})`);
+    throw new ApiError(error.error ? translateError(error.error) : msg`요청 실패 (${result.status})`, result.status);
   }
   return result.json() as Promise<T>;
 }
@@ -164,38 +171,72 @@ function imageDB(): Promise<IDBDatabase> {
   });
 }
 
+// PNG 바이트와 이전 버전이 Blob으로 저장한 캐시를 모두 읽는다.
+function readDesignBlob(db: IDBDatabase, key: string): Promise<Blob | undefined> {
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('images').objectStore('images').get(key);
+    request.onsuccess = () => {
+      const saved = request.result;
+      if (saved instanceof ArrayBuffer) {
+        resolve(new Blob([saved], { type: 'image/png' }));
+      } else {
+        resolve(saved instanceof Blob ? saved : undefined);
+      }
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// WebKit에서도 저장할 수 있도록 Blob 대신 PNG 바이트를 기록한다.
+async function writeDesignBlob(db: IDBDatabase, key: string, blob: Blob): Promise<void> {
+  const bytes = await blob.arrayBuffer();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').put(bytes, key);
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+// 시작 화면에서는 세션 없이 이 PC에 이미 저장된 이미지만 읽는다.
+export async function cachedDesignImage(design: Design, origin: string): Promise<string | null> {
+  const db = await imageDB();
+  try {
+    const blob = await readDesignBlob(db, `${origin}/${design.id}/${design.imageHash}`);
+    return blob ? URL.createObjectURL(blob) : null;
+  } finally {
+    db.close();
+  }
+}
+
 // 불변 디자인 버전의 PNG를 캐시에서 읽거나 인증하여 내려받는다.
 export async function designImage(design: Design): Promise<string> {
   // 1. 서버·버전·내용 지문으로 캐시를 분리한다.
-  const db = await imageDB();
-  const key = `${serverURL()}/${design.id}/${design.imageHash}`;
+  const origin = serverURL();
+  const token = session()?.token || '';
+  const db = await imageDB().catch(() => null);
+  const key = `${origin}/${design.id}/${design.imageHash}`;
   try {
-    const cached = await new Promise<Blob | undefined>((resolve, reject) => {
-      const request = db.transaction('images').objectStore('images').get(key);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    const cached = db && await readDesignBlob(db, key).catch(() => undefined);
     if (cached) {
       return URL.createObjectURL(cached);
     }
 
     // 2. 토큰을 헤더로 전달하고 성공한 PNG만 영속 캐시에 넣는다.
-    const result = await fetch(`${serverURL()}/api/v1/designs/${design.id}/image`, {
-      headers: { Authorization: `Bearer ${session()?.token || ''}` }, signal: AbortSignal.timeout(15000),
+    const result = await fetch(`${origin}/api/v1/designs/${design.id}/image`, {
+      headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000),
     });
     if (!result.ok) {
       throw new Error(t('펫 이미지를 내려받지 못했습니다.'));
     }
     const blob = await result.blob();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('images', 'readwrite');
-      tx.objectStore('images').put(blob, key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+    if (db) {
+      // 캐시를 기록하지 못해도 다운로드한 원화는 현재 화면에 표시한다.
+      await writeDesignBlob(db, key, blob).catch(() => undefined);
+    }
     return URL.createObjectURL(blob);
   } finally {
-    db.close();
+    db?.close();
   }
 }
 

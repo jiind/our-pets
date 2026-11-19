@@ -71,6 +71,7 @@ export function mountLegalInfo(root: HTMLElement): () => void {
   const summary = root.querySelector<HTMLElement>('[data-legal-summary]')!;
   let revision = 0;
   let disposed = false;
+  let opener: HTMLButtonElement | undefined;
 
   // 개인정보 안내는 제목·문단으로 읽기 좋게 표시하고 라이선스 원문은 그대로 보존한다.
   function writeDocument(text: string, kind: string): void {
@@ -131,6 +132,7 @@ export function mountLegalInfo(root: HTMLElement): () => void {
   root.querySelectorAll<HTMLButtonElement>('[data-legal-open]').forEach(button => {
     button.onclick = () => {
       const document = documents.find(document => document.key === button.dataset.legalOpen)!;
+      opener = button;
       void showDocument(document);
       dialog.showModal();
     };
@@ -142,7 +144,14 @@ export function mountLegalInfo(root: HTMLElement): () => void {
       dialog.close();
     }
   };
-  dialog.onclose = () => revision += 1;
+  dialog.onclose = () => {
+    if (!dialog.open) {
+      revision += 1;
+      if (!disposed) {
+        opener?.focus({ preventScroll: true });
+      }
+    }
+  };
   return () => {
     disposed = true;
     revision += 1;

@@ -16,7 +16,7 @@ async function accountPage(page: Page, server: string): Promise<void> {
     localStorage.setItem('ourpets.session', JSON.stringify(login));
   }, { login, server });
   await page.goto('/');
-  await page.getByRole('button', { name: '계정', exact: true }).click();
+  await page.getByRole('button', { name: '설정', exact: true }).click();
   await expect(page.getByRole('heading', { name: '계정 정보', exact: true })).toBeVisible();
 }
 
@@ -68,29 +68,25 @@ test('계정의 정보 및 고지는 로컬 원문·키보드 닫기·포커스 
   expect(failures).toEqual([]);
 });
 
-test('계정 삭제는 취소·현재 비밀번호 재확인과 삭제 후 로그아웃을 제공한다', async ({ page, isolatedServer }) => {
-  // 1. 취소는 계정을 보존하고 비밀번호 입력을 다음 진입까지 남기지 않는다.
+test('계정 삭제는 별도 확인을 받고 이 기기의 접속 정보도 정리한다', async ({ page, isolatedServer }) => {
   await accountPage(page, isolatedServer);
   await page.getByRole('button', { name: '계정 삭제…', exact: true }).click();
   const dialog = page.locator('.account-delete-dialog');
   await expect(dialog).toContainText('이 PC의 외부 연결과 OS 알림 기록');
-  await dialog.getByLabel('현재 비밀번호', { exact: true }).fill('temporary-cancelled-password');
+  await expect(dialog.locator('input[type=password]')).toHaveCount(0);
+  await dialog.getByRole('checkbox').check();
   await dialog.getByRole('button', { name: '취소', exact: true }).click();
   await expect(dialog).toBeHidden();
   await page.getByRole('button', { name: '계정 삭제…', exact: true }).click();
-  await expect(dialog.getByLabel('현재 비밀번호', { exact: true })).toHaveValue('');
   await expect(dialog.getByRole('checkbox')).not.toBeChecked();
   await page.screenshot({ path: '/tmp/our-pets-account-delete-dialog.png', fullPage: true });
 
-  // 2. 잘못된 비밀번호는 삭제를 거부하고 올바른 비밀번호로만 로그인 상태를 해제한다.
-  await dialog.getByLabel('현재 비밀번호', { exact: true }).fill('wrong-password');
   await dialog.getByRole('checkbox').check();
   await dialog.getByRole('button', { name: '계정 영구 삭제', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('현재 비밀번호가 올바르지 않습니다');
-  await expect(dialog.getByLabel('현재 비밀번호', { exact: true })).toHaveValue('');
-  await dialog.getByLabel('현재 비밀번호', { exact: true }).fill('test-password-123');
-  await dialog.getByRole('button', { name: '계정 영구 삭제', exact: true }).click();
-  await expect(page.getByRole('button', { name: '접속하기 ↗', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '시작하기', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  expect(await page.evaluate(() => localStorage.getItem('ourpets.session'))).toBeNull();
+  expect(await page.evaluate(origin => ({
+    session: localStorage.getItem('ourpets.session'),
+    key: localStorage.getItem(`ourpets.device-key.${origin}`),
+  }), isolatedServer)).toEqual({ session: null, key: null });
 });

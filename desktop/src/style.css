@@ -443,9 +443,15 @@ textarea {
   overflow: hidden;
 }
 .login-shell {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   min-height: 100vh;
+}
+.login-shell > .language-settings {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
 }
 .login-art {
   display: flex;
@@ -1326,35 +1332,23 @@ dialog::backdrop {
   color: var(--primary-hover);
 }
 
-/* 보기 버튼은 비밀번호 입력 안쪽에 두고 입력 내용과 겹치지 않게 한다. */
-.auth-password-input {
-  position: relative;
+#incoming-invitation [role="status"] {
+  margin: 0;
 }
-.auth-password-input #auth-password {
-  padding-right: calc(var(--control-height) + var(--space-2));
+#incoming-invitation {
+  width: min(420px, calc(100vw - 48px));
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink);
 }
-.auth-password-input .password-visibility {
-  position: absolute;
-  top: 50%;
-  right: var(--space-1);
-  display: grid;
-  place-items: center;
-  width: var(--control-icon-size);
-  height: var(--control-icon-size);
-  min-height: var(--control-icon-size);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-  transform: translateY(-50%);
+#incoming-invitation::backdrop {
+  background: rgb(23 33 17 / 45%);
 }
-.auth-password-input .password-visibility:hover,
-.auth-password-input .password-visibility:focus-visible {
-  background: var(--control-hover);
-  color: var(--accent);
-}
-.auth-password-input .password-visibility .ui-icon {
-  display: block;
-  pointer-events: none;
+.invite-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }

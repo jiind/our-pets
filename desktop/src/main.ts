@@ -5,7 +5,6 @@ import { api, checkServer, removeLegacyHistory, saveServer, saveSession, serverU
 import { mountPet } from './pet';
 import { icon } from './icons';
 import { viewMotion } from './motion';
-import { drawPet } from './render';
 import type { RegisteredPet, Session } from './types';
 import './style.css';
 import './workspace.css';
@@ -17,6 +16,9 @@ import { mountAccountSettings } from './account-settings';
 import { mountLanguageSettings } from './language-settings';
 import { mountSystemNotificationToggle } from './system-notifications';
 import { connectedAlertsMuted, setConnectedAlertsMuted } from './notification-preferences';
+import { invitationLink, parseInvitation, type HostInvitation, type RoomInvitation } from './room-invite';
+import { deviceKey, forgetDevice, joinDevice, rememberDevice, restoreDevice } from './device-session';
+import { drawStartPet, forgetStartPet, rememberStartPet } from './start-pet';
 
 const app = document.querySelector<HTMLElement>('#app')!;
 let view = 'studio';
@@ -30,6 +32,21 @@ let ownPet: RegisteredPet | undefined;
 let sidebarCleanup: (() => void) | undefined;
 let serverAttempt: AbortController | undefined;
 let languageCleanup: (() => void) | undefined;
+let hostedRoom: HostInvitation | undefined;
+let hostingBusy = false;
+let refreshServerSettings: (() => void) | undefined;
+const hostingKey = 'ourpets.hosting';
+const sharingPausedKey = 'ourpets.sharingPaused';
+const joinMethodKey = 'ourpets.joinMethod';
+const localDeviceKey = 'ourpets.localDevice';
+const pauseReconnectKey = 'ourpets.pauseReconnect';
+
+type EntryView = 'choose' | 'invite' | 'nickname' | 'reconnect';
+
+// 입력 없이 시작한 이 PC의 계정인지 확인한다.
+function usesLocalAccount(): boolean {
+  return localStorage.getItem(joinMethodKey) === 'local';
+}
 
 // 사용자 입력을 HTML로 해석하지 않고 텍스트로 삽입할 수 있게 변환한다.
 function escape(value: string): string {
@@ -82,17 +99,18 @@ function showConnectionProblem(state: string): void {
   // 2. 실시간으로만 표시되는 정책과 현재 상태에 맞는 복구 방법을 안내한다.
   const expired = state.includes('세션') || state.includes('로그인');
   const message = document.createElement('p');
-  setText(message, () => expired ? t('기기 연결을 다시 확인해야 해요. 로그인하면 실시간 소식을 다시 받을 수 있어요.') : t('실시간 소식이 잠시 연결되지 않았어요. 자동으로 다시 연결하며, 연결이 끊긴 동안의 소식은 나중에 표시하지 않아요.'));
+  const local = usesLocalAccount();
+  setText(message, () => expired && !local ? t('기기 연결을 다시 확인해야 해요. 로그인하면 실시간 소식을 다시 받을 수 있어요.') : t('실시간 소식이 잠시 연결되지 않았어요. 자동으로 다시 연결하며, 연결이 끊긴 동안의 소식은 나중에 표시하지 않아요.'));
   const button = document.createElement('button');
   button.type = 'button';
-  setText(button, () => expired ? t('다시 로그인') : t('다시 연결'));
+  setText(button, () => expired && !local ? t('다시 로그인') : t('다시 연결'));
   button.onclick = () => run(async () => {
     button.disabled = true;
     try {
-      if (expired) {
-        saveSession(null);
-        await changed();
-        showLogin();
+      if (local) {
+        await openLocalPet();
+      } else if (expired) {
+        await reconnectCurrentDevice();
       } else if (isTauri()) {
         await emit('retry-pet-connection');
       } else {
@@ -105,8 +123,16 @@ function showConnectionProblem(state: string): void {
   target.append(message, button);
 }
 
-// 대표 펫의 실제 실시간 연결 상태를 색과 접근성 설명으로 표시한다.
+// 사이드바에 현재 공개 주소와 대표 펫의 실시간 연결 상태를 표시한다.
 function showServerStatus(state = connectionState): void {
+  const address = document.querySelector<HTMLElement>('.sidebar-server-address');
+  if (address) {
+    const origin = serverURL();
+    const visibleAddress = hostedRoomFor(origin)?.url ?? origin;
+    address.textContent = visibleAddress;
+    address.title = visibleAddress;
+  }
+
   // 1. 설정 화면에만 표시하고 등록 전에는 연결 성공으로 표시하지 않는다.
   const led = document.querySelector<HTMLElement>('.sidebar-server-led');
   if (!led) {
@@ -141,8 +167,263 @@ async function changed(): Promise<void> {
   }
 }
 
-// 로컬망 서버와 로컬 계정으로 접속하는 화면을 표시한다.
-function showLogin(register = false, chooseServer = false): void {
+// 앱이 열린 동안 호스트를 유지하고 다음 실행에서 복원할 주소를 기록한다.
+async function startHosting(): Promise<HostInvitation> {
+  if (!isTauri()) {
+    throw new Error(t('친구를 초대하려면 우리 펫 데스크톱 앱을 열어 주세요.'));
+  }
+  const room = await invoke<HostInvitation>('start_host');
+  hostedRoom = room;
+  localStorage.setItem(hostingKey, room.localUrl);
+  localStorage.removeItem(sharingPausedKey);
+  return room;
+}
+
+function hostedRoomFor(origin: string): HostInvitation | undefined {
+  return hostedRoom?.localUrl === origin ? hostedRoom : undefined;
+}
+
+// 기존 앱 데이터에서 이 PC의 펫을 열고 현재 창에 세션을 적용한다.
+async function connectLocalPet(generation: number): Promise<boolean> {
+  if (!isTauri()) {
+    throw new Error(t('우리 펫을 시작하려면 데스크톱 앱을 열어 주세요.'));
+  }
+  const local = await invoke<{ localUrl: string; session: Session }>('start_local', {
+    displayName: t('내 펫'),
+    deviceId: localStorage.getItem(localDeviceKey) || '',
+  });
+  if (generation !== viewGeneration) {
+    return false;
+  }
+  saveServer(local.localUrl);
+  localStorage.setItem(joinMethodKey, 'local');
+  localStorage.removeItem(pauseReconnectKey);
+  localStorage.setItem(localDeviceKey, local.session.principal.deviceId);
+  saveSession(local.session);
+  await changed();
+  return generation === viewGeneration;
+}
+
+// 사용자가 별도 가입 없이 바로 자신의 펫을 사용할 수 있게 표시한다.
+async function openLocalPet(): Promise<void> {
+  if (await connectLocalPet(viewGeneration)) {
+    await showHome();
+    await invoke('pet_control', { action: 'restore' });
+  }
+}
+
+// 초대 링크를 클립보드에 쓰고 클립보드 접근이 제한되면 직접 복사할 수 있게 한다.
+async function copyHostLink(button: HTMLButtonElement, room: HostInvitation): Promise<string> {
+  const link = invitationLink(room);
+  try {
+    await navigator.clipboard.writeText(link);
+    return t('초대 링크를 복사했어요.');
+  } catch {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.readOnly = true;
+    input.value = link;
+    setAttribute(input, 'aria-label', () => t('초대 링크'));
+    button.insertAdjacentElement('afterend', input);
+    input.focus();
+    input.select();
+    input.addEventListener('blur', () => input.remove(), { once: true });
+    return t('선택된 초대 링크를 복사해 주세요.');
+  }
+}
+
+// 앱이 관리하는 서버만 이 PC에서 외부 접속을 열거나 닫을 수 있다.
+function mountServerSettings(root: HTMLElement): () => void {
+  const origin = serverURL();
+  const canManage = isTauri() && (usesLocalAccount() || localStorage.getItem(hostingKey) === origin);
+  const room = () => hostedRoomFor(origin);
+  root.innerHTML = html`<section class="account-server" aria-labelledby="server-settings-title">
+    <h2 id="server-settings-title">서버 정보</h2>
+    <div><p data-server-address></p><p class="fine" data-sharing-status></p></div>
+    <div class="account-server-actions"><button type="button" data-toggle-sharing></button><button type="button" class="quiet" data-copy-invite>초대 링크 복사</button></div>
+    <p data-server-notice role="status" aria-live="polite"></p>
+  </section>`;
+  const copy = root.querySelector<HTMLButtonElement>('[data-copy-invite]')!;
+  const toggle = root.querySelector<HTMLButtonElement>('[data-toggle-sharing]')!;
+  const feedback = root.querySelector<HTMLElement>('[data-server-notice]')!;
+  function update(): void {
+    const shared = room();
+    setText(root.querySelector('[data-server-address]')!, () => shared?.url || origin);
+    setText(root.querySelector('[data-sharing-status]')!, () => shared ? t('같은 네트워크에서 접속할 수 있어요.') : canManage ? t('이 PC에서만 사용 중이에요.') : t('서버 운영자가 외부 접속과 초대 링크를 관리해요.'));
+    setText(toggle, () => shared ? t('외부 접속 차단') : t('외부 접속 허용'));
+    toggle.disabled = !canManage || hostingBusy;
+    copy.disabled = !canManage || !shared || hostingBusy;
+  }
+  copy.onclick = async () => {
+    const shared = room();
+    if (shared) {
+      const message = await copyHostLink(copy, shared);
+      setText(feedback, () => message);
+      feedback.classList.remove('error');
+    }
+  };
+  toggle.onclick = async () => {
+    hostingBusy = true;
+    setText(feedback, () => '');
+    update();
+    try {
+      if (room()) {
+        await invoke('stop_host');
+        hostedRoom = undefined;
+        localStorage.setItem(sharingPausedKey, 'true');
+        root.querySelector('.account-server-actions input')?.remove();
+      } else {
+        await startHosting();
+      }
+    } catch (error) {
+      setText(feedback, () => translateError(error instanceof Error ? error.message : String(error)));
+      feedback.classList.add('error');
+    } finally {
+      hostingBusy = false;
+      showServerStatus();
+      refreshServerSettings?.();
+    }
+  };
+  refreshServerSettings = update;
+  update();
+  return () => {
+    if (refreshServerSettings === update) {
+      refreshServerSettings = undefined;
+    }
+  };
+}
+
+// 로그인 정보를 보내기 전에 대상 서버의 응답을 확인한다.
+async function verifyServer(address: string, signal: AbortSignal): Promise<string> {
+  try {
+    return await checkServer(address, signal);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'InvalidServerAddress') {
+      throw error;
+    }
+    throw new Error(t('서버에 연결할 수 없어요. 주소·서버 실행 상태·접속 허용 범위를 확인해 주세요.'));
+  }
+}
+
+// 확인한 서버에서 같은 기기의 계정을 먼저 찾고 첫 참여에만 닉네임을 받는다.
+async function enterServer(origin: string, code: string, signal: AbortSignal): Promise<void> {
+  const generation = viewGeneration;
+  const existing = origin === serverURL() ? session() : null;
+  if (existing && existing.principal.expiresAt > Date.now()) {
+    await showHome();
+    return;
+  }
+  const login = await restoreDevice(origin, signal);
+  if (generation !== viewGeneration || signal.aborted) {
+    return;
+  }
+  saveServer(origin);
+  localStorage.setItem(joinMethodKey, 'invite');
+  if (login) {
+    await finishDeviceLogin(login);
+    return;
+  }
+  saveSession(null);
+  await changed();
+  if (generation === viewGeneration) {
+    showLogin('nickname', code);
+    document.querySelector<HTMLInputElement>('[name=displayName]')?.focus();
+  }
+}
+
+// 가입 및 재접속에 성공하면 같은 세션을 설정 창과 펫에 적용한다.
+async function finishDeviceLogin(login: Session): Promise<void> {
+  localStorage.removeItem(pauseReconnectKey);
+  saveSession(login);
+  await changed();
+  if (isTauri()) {
+    await invoke('pet_control', { action: 'restore' });
+  }
+  await showHome();
+}
+
+// 만료된 세션은 기기 키로 갱신하고 키를 잃은 경우에는 참여 화면으로 돌아간다.
+async function reconnectCurrentDevice(): Promise<void> {
+  const generation = viewGeneration;
+  const origin = serverURL();
+  const restored = await restoreDevice(origin);
+  if (generation !== viewGeneration || origin !== serverURL()) {
+    return;
+  }
+  if (restored) {
+    await finishDeviceLogin(restored);
+  } else {
+    saveSession(null);
+    localStorage.setItem(pauseReconnectKey, 'true');
+    await changed();
+    showLogin('invite');
+    notice(t('이 기기의 계정에 연결하지 못했어요. 새로 참여하려면 초대 링크를 열어 주세요.'), true);
+  }
+}
+
+// 운영체제에서 연 링크는 사용자가 참여를 확인한 뒤에만 연결한다.
+function openInvitation(raw: string): void {
+  let invitation: RoomInvitation;
+  try {
+    invitation = parseInvitation(raw);
+  } catch (error) {
+    notice((error as Error).message, true);
+    return;
+  }
+  if (document.querySelector('#incoming-invitation')) {
+    return;
+  }
+  const dialog = document.createElement('dialog');
+  dialog.id = 'incoming-invitation';
+  dialog.setAttribute('aria-labelledby', 'incoming-invitation-title');
+  dialog.innerHTML = html`<form>
+    <h2 id="incoming-invitation-title">친구의 방에 참여하기</h2>
+    <p class="muted">링크를 보낸 친구와 같은 네트워크에 연결해 주세요.</p>
+    <p>${escape(new URL(invitation.url).host)}</p>
+    <div class="invite-dialog-actions"><button type="button">취소</button><button type="submit" class="primary">방 참여</button></div>
+    <p role="status" aria-live="polite"></p>
+  </form>`;
+  let attempt: AbortController | undefined;
+  const form = dialog.querySelector('form')!;
+  const submit = dialog.querySelector<HTMLButtonElement>('[type=submit]')!;
+  const feedback = dialog.querySelector<HTMLElement>('[role=status]')!;
+  dialog.addEventListener('close', () => {
+    attempt?.abort();
+    dialog.remove();
+  });
+  dialog.querySelector<HTMLButtonElement>('[type=button]')!.onclick = () => dialog.close();
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const request = new AbortController();
+    attempt = request;
+    submit.disabled = true;
+    const timeout = setTimeout(() => request.abort(), 8000);
+    try {
+      const origin = await verifyServer(invitation.url, request.signal);
+      if (dialog.open && dialog.isConnected) {
+        await enterServer(origin, invitation.invite, request.signal);
+        if (dialog.isConnected) {
+          dialog.close();
+        }
+      }
+    } catch (error) {
+      if (dialog.open) {
+        setText(feedback, () => translateError((error as Error).message));
+        feedback.classList.add('error');
+      } else if (!request.signal.aborted) {
+        notice((error as Error).message, true);
+      }
+    } finally {
+      clearTimeout(timeout);
+      submit.disabled = false;
+    }
+  };
+  app.append(dialog);
+  dialog.showModal();
+}
+
+// 개인 시작, 초대 참여, 기기 재접속 화면을 표시한다.
+function showLogin(requestedView?: EntryView, joinCode = ''): void {
   // 1. 현재 화면의 연결과 미리보기 리소스를 해제한다.
   serverAttempt?.abort();
   languageCleanup?.();
@@ -166,64 +447,67 @@ function showLogin(register = false, chooseServer = false): void {
   accountCleanup?.();
   accountCleanup = undefined;
   app.className = 'login-shell';
-  const needsServer = chooseServer || !localStorage.getItem('ourpets.server');
-  const title = (): string => needsServer ? t('함께할 서버에 연결하기') : register ? t('우리 펫에 합류하기') : t('오늘도 만나서 반가워요');
-  const description = (): string => needsServer ? t('먼저 사용할 서버를 연결해 주세요.') : register ? t('사용할 계정을 만들어 주세요.') : '';
-  const serverFields = html`<label>서버 주소<input name="server" type="url" value="${fragment(() => escape(serverURL()))}" placeholder="http://192.168.0.10:9377" required></label><button type="submit" class="primary">서버 연결</button>`;
-  const accountFields = html`${fragment(() => register ? htmlString('<label>닉네임<input name="displayName" maxlength="80" autocomplete="nickname" required></label>') : '')}<label>아이디<input name="username" autocomplete="username" minlength="3" maxlength="32" required></label><div class="auth-password-field"><label for="auth-password">비밀번호</label><div class="auth-password-input"><input id="auth-password" name="password" type="password" minlength="10" maxlength="256" autocomplete="${fragment(() => register ? 'new-password' : 'current-password')}" spellcheck="false" autocapitalize="off" required><button type="button" class="password-visibility" aria-label="비밀번호 보기" title="비밀번호 보기" aria-controls="auth-password" aria-pressed="false">${fragment(() => icon('eye'))}</button></div></div>${fragment(() => register ? htmlString('<label>서버 가입 코드<input name="invite" type="password" autocomplete="off" required></label>') : '')}<button type="submit" class="primary">${fragment(() => register ? t('계정 만들고 펫 등록하기') : t('접속하기'))} <span>↗</span></button>`;
+  const origin = serverURL();
+  const returning = Boolean(localStorage.getItem('ourpets.server') && deviceKey(origin) && !usesLocalAccount());
+  const entry = requestedView || (returning ? 'reconnect' : 'choose');
+  const titles: Record<EntryView, () => string> = {
+    choose: () => t('우리 펫 시작하기'),
+    invite: () => t('초대 링크로 참여하기'),
+    nickname: () => t('친구의 방에 참여하기'),
+    reconnect: () => t('오늘도 만나서 반가워요'),
+  };
+  const formFields: Record<EntryView, string> = {
+    choose: html`<button id="start-local" type="button" class="primary">시작하기</button><button id="join-room" type="button">초대 링크로 참여하기</button>`,
+    invite: html`<label>초대 링크<input name="link" type="url" placeholder="받은 초대 링크를 붙여넣으세요" autocomplete="off" spellcheck="false" required></label><button type="submit" class="primary">방 참여</button>`,
+    nickname: html`<label>닉네임<input name="displayName" maxlength="80" autocomplete="nickname" required></label><button type="submit" class="primary">참여하기</button>`,
+    reconnect: html`<button type="submit" class="primary">다시 접속</button>`,
+  };
   app.innerHTML = html`<section class="login-art"><span class="brand"><img src="/favicon.svg" alt="">우리 펫</span><div class="login-copy"><h1>각자의 화면에서,<br>함께 노는 우리 펫.</h1><p>내 데스크톱에 작은 친구를 데려오세요.<br>친구에게 보내는 메시지도, 반가운 인사도 펫과 함께.</p><div id="login-pet"></div></div><small>같은 네트워크에서 친구와 실시간으로 만나요.</small></section>
-  <section class="login-form"><h2>${fragment(() => title())}</h2>${fragment(() => description() ? html`<p class="muted">${fragment(() => description())}</p>` : '')}
-  ${fragment(() => needsServer ? '' : html`<div class="auth-server"><span title="${fragment(() => escape(serverURL()))}">${fragment(() => escape(serverURL()))}</span><a class="auth-server-change" href="#server">서버 변경</a></div>`)}
-  <form id="auth">${fragment(() => needsServer ? serverFields : accountFields)}</form><p id="notice" role="status" aria-live="polite"></p>
-  ${fragment(() => needsServer ? (localStorage.getItem('ourpets.server') ? htmlString('<a id="back-to-auth" class="auth-switch" href="#login">돌아가기</a>') : '') : html`<a id="switch-auth" class="auth-switch" href="${fragment(() => register ? '#login' : '#create-account')}">${fragment(() => register ? t('로그인') : t('계정 만들기'))}</a>`)}</section>`;
+  <section class="login-form"><h2>${fragment(titles[entry])}</h2>
+  ${fragment(() => entry === 'reconnect' ? html`<div class="auth-server"><span>${escape(origin)}</span><a id="back-to-auth" class="auth-server-change" href="#start">시작 화면으로</a></div>` : '')}
+  <form id="auth">${formFields[entry]}</form><p id="notice" role="status" aria-live="polite"></p>
+  ${fragment(() => entry === 'invite' || entry === 'nickname' ? htmlString('<a id="back-to-auth" class="auth-switch" href="#start">돌아가기</a>') : '')}</section>`;
   const loginCanvas = document.createElement('canvas');
   const language = document.createElement('div');
-  document.querySelector('.login-form')!.append(language);
-  languageCleanup = mountLanguageSettings(language, true);
+  app.prepend(language);
+  languageCleanup = mountLanguageSettings(language);
   loginCanvas.width = loginCanvas.height = 180;
   document.querySelector('#login-pet')!.append(loginCanvas);
-  drawPet(loginCanvas, null, null, 'idle', 0);
-  const switchAuth = document.querySelector<HTMLAnchorElement>('#switch-auth');
-  if (switchAuth) {
-    switchAuth.onclick = event => {
-      event.preventDefault();
-      showLogin(!register);
-    };
-  }
-  const changeServer = document.querySelector<HTMLAnchorElement>('.auth-server-change');
-  if (changeServer) {
-    changeServer.onclick = event => {
-      event.preventDefault();
-      showLogin(register, true);
-    };
-  }
+  void drawStartPet(loginCanvas);
   const back = document.querySelector<HTMLAnchorElement>('#back-to-auth');
   if (back) {
     back.onclick = event => {
       event.preventDefault();
-      showLogin(register);
+      showLogin(entry === 'nickname' ? 'invite' : 'choose');
     };
   }
 
-  // 2. 서버 확인이 끝난 뒤에만 계정 정보를 입력하고 전송한다.
+  // 2. 개인 시작과 초대 입력을 같은 첫 화면에서 제공한다.
   const form = document.querySelector<HTMLFormElement>('#auth')!;
-  const submit = form.querySelector<HTMLButtonElement>('[type=submit]')!;
-  const password = form.querySelector<HTMLInputElement>('[name=password]');
-  const visibility = form.querySelector<HTMLButtonElement>('.password-visibility');
-  if (password && visibility) {
-    visibility.onclick = () => {
-      const visible = password.type === 'password';
-      password.type = visible ? 'text' : 'password';
-      visibility.innerHTML = icon(visible ? 'eye-off' : 'eye');
-      visibility.setAttribute('aria-pressed', String(visible));
-      const description = (): string => visible ? t('비밀번호 숨기기') : t('비밀번호 보기');
-      setAttribute(visibility, 'aria-label', description);
-      setAttribute(visibility, 'title', description);
+  if (entry === 'choose') {
+    const start = form.querySelector<HTMLButtonElement>('#start-local')!;
+    start.onclick = () => run(async () => {
+      if (start.disabled) {
+        return;
+      }
+      start.disabled = true;
+      setText(start, () => t('펫을 불러오는 중…'));
+      notice('');
+      try {
+        await openLocalPet();
+      } finally {
+        start.disabled = false;
+        setText(start, () => t('시작하기'));
+      }
+    });
+    form.querySelector<HTMLButtonElement>('#join-room')!.onclick = () => {
+      showLogin('invite');
+      document.querySelector<HTMLInputElement>('[name=link]')?.focus();
     };
+    return;
   }
-  if (register && !needsServer) {
-    form.querySelector<HTMLInputElement>('[name=displayName]')!.focus({ preventScroll: true });
-  }
+  // 3. 가입·재접속 요청은 저장한 키를 사용하며 늦은 응답은 현재 화면을 바꾸지 않는다.
+  const submit = form.querySelector<HTMLButtonElement>('[type=submit]')!;
   form.onsubmit = event => {
     event.preventDefault();
     if (submit.disabled) {
@@ -234,58 +518,37 @@ function showLogin(register = false, chooseServer = false): void {
     submit.setAttribute('aria-busy', 'true');
     notice('');
     run(async () => {
-      let timeout: ReturnType<typeof setTimeout> | undefined;
       try {
-        if (needsServer) {
-          // 1. 인증 없는 연결 확인이 성공하기 전에는 저장한 서버를 바꾸지 않는다.
+        const values = new FormData(form);
+        if (entry === 'nickname') {
+          const name = String(values.get('displayName')).trim();
+          if (!name || new TextEncoder().encode(name).length > 80) {
+            throw new Error(t('닉네임은 1~80바이트로 입력하세요.'));
+          }
+          const login = await joinDevice(origin, name, joinCode);
+          if (generation === viewGeneration && origin === serverURL()) {
+            await finishDeviceLogin(login);
+          }
+        } else if (entry === 'reconnect') {
+          await reconnectCurrentDevice();
+        } else {
           const attempt = new AbortController();
           serverAttempt = attempt;
-          timeout = setTimeout(() => attempt.abort(), 8000);
-          setText(submit, () => t('연결 확인 중…'));
-          let origin: string;
+          const timeout = setTimeout(() => attempt.abort(), 8000);
           try {
-            origin = await checkServer(String(new FormData(form).get('server')), attempt.signal);
-          } catch (error) {
-            if (generation !== viewGeneration) {
-              return;
+            const invitation = parseInvitation(String(values.get('link')));
+            const selected = await verifyServer(invitation.url, attempt.signal);
+            if (generation === viewGeneration && form.isConnected) {
+              await enterServer(selected, invitation.invite, attempt.signal);
             }
-            throw new Error(error instanceof Error && error.name === 'InvalidServerAddress' ? error.message : t('서버에 연결할 수 없어요. 주소·서버 실행 상태·접속 허용 범위를 확인해 주세요.'));
+          } finally {
+            clearTimeout(timeout);
           }
-          if (generation !== viewGeneration || !form.isConnected) {
-            return;
-          }
-          saveServer(origin);
-          await changed();
-          if (generation === viewGeneration && form.isConnected) {
-            showLogin(register);
-            document.querySelector<HTMLInputElement>(register ? '[name=displayName]' : '[name=username]')?.focus();
-          }
-          return;
         }
-
-        // 2. 계정 요청 도중 화면이나 서버가 바뀌면 늦은 응답으로 로그인하지 않는다.
-        const origin = serverURL();
-        const body = Object.fromEntries(new FormData(form).entries());
-        const login = await api<Session>(register ? '/register' : '/login', {
-          method: 'POST', body: JSON.stringify({ ...body, deviceId: localStorage.getItem(`ourpets.device.${origin}`) || '', deviceName: navigator.platform }),
-        });
-        if (generation !== viewGeneration || !form.isConnected || origin !== serverURL()) {
-          return;
-        }
-        saveSession(login);
-        await changed();
-        if (isTauri()) {
-          await invoke('pet_control', { action: 'restore' });
-        }
-        await showHome();
       } finally {
-        clearTimeout(timeout);
         if (generation === viewGeneration && form.isConnected) {
           submit.disabled = false;
           submit.removeAttribute('aria-busy');
-          if (needsServer) {
-            setText(submit, () => t('서버 연결'));
-          }
         }
       }
     });
@@ -310,8 +573,11 @@ async function showHome(): Promise<void> {
   accountCleanup?.();
   accountCleanup = undefined;
   app.className = 'workspace';
-  app.innerHTML = html`<aside class="sidebar"><a class="brand" href="#" aria-label="우리 펫"><img src="/favicon.svg" alt=""><span>우리 펫</span></a><nav aria-label="주 메뉴"><div class="sidebar-server" role="group" aria-label="서버 정보"><span class="sidebar-server-led" role="img" data-state="connecting" aria-label="실시간 연결 확인 중" title="실시간 연결 확인 중"></span><span class="sidebar-server-address fine" title="${fragment(() => escape(serverURL()))}">${fragment(() => escape(serverURL()))}</span></div><button data-view="studio" title="펫" aria-label="펫">${fragment(() => icon('paw'))} <span>펫</span></button><button data-view="connections" title="알림" aria-label="알림">${fragment(() => icon('bell'))} <span>알림</span></button><button data-view="account" title="계정" aria-label="계정">${fragment(() => icon('account'))} <span>계정</span></button></nav><div class="sidebar-bottom"><button id="logout" class="quiet" title="로그아웃" aria-label="로그아웃">${fragment(() => icon('logout'))}<span>로그아웃</span></button><small class="sidebar-copyright">© ${fragment(() => new Date().getFullYear())} 우리 펫</small></div></aside>
-  <main class="content" id="main-content" tabindex="-1"><header><div><h1 id="page-title">펫</h1></div><div class="page-actions" id="page-actions"></div></header><p id="notice" role="status"></p><section id="connection-problem" class="connection-problem" role="status" hidden></section><div id="view"></div></main>`;
+  const local = usesLocalAccount();
+  const logoutLabel = (): string => local ? t('시작 화면으로') : t('로그아웃');
+  app.innerHTML = html`<aside class="sidebar"><a class="brand" href="#" aria-label="우리 펫"><img src="/favicon.svg" alt=""><span>우리 펫</span></a><nav aria-label="주 메뉴"><div class="sidebar-server" role="group" aria-label="서버 정보"><span class="sidebar-server-led" role="img" data-state="connecting" aria-label="실시간 연결 확인 중" title="실시간 연결 확인 중"></span><span class="sidebar-server-address fine"></span></div><button data-view="studio" title="펫" aria-label="펫">${fragment(() => icon('paw'))} <span>펫</span></button><button data-view="connections" title="알림" aria-label="알림">${fragment(() => icon('bell'))} <span>알림</span></button><button data-view="settings" title="설정" aria-label="설정">${fragment(() => icon('settings'))} <span>설정</span></button></nav><div class="sidebar-bottom"><button id="logout" class="quiet" title="${fragment(() => logoutLabel())}" aria-label="${fragment(() => logoutLabel())}">${fragment(() => icon('logout'))}<span>${fragment(() => logoutLabel())}</span></button><small class="sidebar-copyright">© ${fragment(() => new Date().getFullYear())}</small></div></aside>
+  <main class="content" id="main-content" tabindex="-1"><header><div><h1 id="page-title">펫</h1></div><div class="page-controls"><div class="page-actions" id="page-actions"></div><div data-language-settings></div></div></header><p id="notice" role="status"></p><section id="connection-problem" class="connection-problem" role="status" hidden></section><div id="view"></div></main>`;
+  languageCleanup = mountLanguageSettings(app.querySelector<HTMLElement>('[data-language-settings]')!);
   sidebarCleanup = mountSidebar(app);
   showServerStatus();
   document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button => {
@@ -332,10 +598,15 @@ async function showHome(): Promise<void> {
       // 만료되거나 서버가 끊긴 세션도 로컬에서 종료할 수 있게 한다.
     }
     saveSession(null);
+    localStorage.setItem(pauseReconnectKey, 'true');
     await changed();
     if (isTauri()) {
       // 로그아웃은 등록 상태만 해제하고 사용자가 고른 표시 설정은 보존한다.
       await invoke('set_pet_registered', { registered: false });
+    }
+    if (local) {
+      localStorage.removeItem(joinMethodKey);
+      localStorage.removeItem('ourpets.server');
     }
     showLogin();
   });
@@ -359,6 +630,7 @@ async function refreshOwnPet(): Promise<void> {
     return;
   }
   ownPet = own;
+  rememberStartPet(own, serverURL());
   showServerStatus();
   saveSession({ ...current, principal: { ...current.principal, petRegistered: own.registered } });
 
@@ -404,20 +676,25 @@ async function renderView(): Promise<void> {
       return t('알림');
     },
     // 선택한 앱 언어로 고정 표시 문구를 계산한다.
-    get account() {
-      return t('계정');
+    get settings() {
+      return t('설정');
     }
   };
   setText(document.querySelector('#page-title')!, () => titles[view]);
   if (view === 'studio') {
     await renderStudio();
 
-  } else if (view === 'account') {
+  } else if (view === 'settings') {
     const target = document.querySelector<HTMLElement>('#view')!;
     const cleanup = await mountAccountSettings(target, async () => {
       await changed();
       await refreshOwnPet();
     }, async pendingFileCleanup => {
+      const userId = session()?.principal.userId;
+      if (userId) {
+        forgetStartPet(serverURL(), userId);
+      }
+      forgetDevice(serverURL());
       localStorage.removeItem(`ourpets.device.${serverURL()}`);
       saveSession(null);
       try {
@@ -429,8 +706,8 @@ async function renderView(): Promise<void> {
         showLogin();
         notice(pendingFileCleanup ? t('계정은 삭제됐어요. 일부 PNG 파일 정리가 지연되어 서버 운영자 확인이 필요합니다.') : t('계정을 삭제했어요.'));
       }
-    });
-    if (generation !== viewGeneration || view !== 'account') {
+    }, usesLocalAccount(), mountServerSettings);
+    if (generation !== viewGeneration || view !== 'settings') {
       cleanup();
     } else {
       accountCleanup = cleanup;
@@ -452,7 +729,8 @@ async function renderStudio(): Promise<void> {
   const target = document.querySelector<HTMLElement>('#view')!;
   const generation = viewGeneration;
   const cleanup = await mountPetRegistration(target, {
-    onRegistered: async () => {
+    onRegistered: async pet => {
+      rememberStartPet(pet, serverURL());
       await changed();
       await refreshOwnPet();
     },
@@ -517,23 +795,92 @@ async function main(): Promise<void> {
   // 2. 사용자 동작과 수신 상태를 창 사이에서 전달한다.
   connectionState = storedConnectionState();
   window.addEventListener('connection-state', event => showConnectionProblem(String((event as CustomEvent).detail)));
+  let ready = false;
+  let startupInvitation: string | undefined;
+  let hostingError: string | undefined;
   if (isTauri()) {
     await listen<string>('connection-state', event => showConnectionProblem(event.payload));
     await listen('request-sign-in', () => run(async () => {
-      saveSession(null);
-      await changed();
-      showLogin();
-      document.querySelector<HTMLInputElement>('[name=username]')?.focus();
+      if (usesLocalAccount()) {
+        await openLocalPet();
+        return;
+      }
+      await reconnectCurrentDevice();
     }));
-  }
-  if (session() && session()!.principal.expiresAt > Date.now()) {
-    await showHome();
-    if (isTauri()) {
-      await invoke('pet_control', { action: 'restore' });
+    await listen<string>('room-invitation', event => {
+      if (ready) {
+        openInvitation(event.payload);
+      } else {
+        startupInvitation = event.payload;
+      }
+    });
+    const previouslyHosted = localStorage.getItem(hostingKey);
+    if (previouslyHosted && !localStorage.getItem(sharingPausedKey)) {
+      try {
+        await startHosting();
+      } catch (error) {
+        if (!usesLocalAccount() && serverURL() === previouslyHosted) {
+          hostingError = String(error);
+        }
+      }
+    } else if (previouslyHosted === serverURL() && !usesLocalAccount()) {
+      // 이전 버전에서 이 PC의 서버에 계정으로 접속한 경우 비공개로 다시 연다.
+      try {
+        await invoke('stop_host');
+      } catch (error) {
+        hostingError = String(error);
+      }
     }
-  } else {
-    saveSession(null);
-    showLogin();
+    if (usesLocalAccount()) {
+      try {
+        await connectLocalPet(viewGeneration);
+      } catch (error) {
+        hostingError = String(error);
+      }
+    }
+  }
+  try {
+    let current = session();
+    if (!usesLocalAccount() && !hostingError) {
+      if (current && current.principal.expiresAt > Date.now()) {
+        // 앱을 업데이트하기 전부터 연결돼 있던 계정의 소유권을 그대로 이어간다.
+        await rememberDevice(serverURL()).catch(() => undefined);
+      } else if (!localStorage.getItem(pauseReconnectKey)) {
+        try {
+          const restored = await restoreDevice(serverURL());
+          if (restored) {
+            current = restored;
+            saveSession(restored);
+            await changed();
+          }
+        } catch (error) {
+          hostingError = error instanceof Error ? error.message : String(error);
+        }
+      }
+    }
+    if (current && current.principal.expiresAt > Date.now() && !hostingError) {
+      await showHome();
+      if (isTauri()) {
+        await invoke('pet_control', { action: 'restore' });
+      }
+    } else {
+      if (!hostingError) {
+        saveSession(null);
+      }
+      showLogin(usesLocalAccount() ? 'choose' : undefined);
+      if (hostingError) {
+        notice(hostingError, true);
+      }
+    }
+  } finally {
+    if (isTauri()) {
+      const launchInvitation = await invoke<string | null>('launch_invitation').catch(() => null);
+      ready = true;
+      const invitation = startupInvitation || launchInvitation;
+      if (invitation) {
+        openInvitation(invitation);
+      }
+    }
   }
 }
 void main().catch(error => notice(error.message, true));

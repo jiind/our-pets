@@ -32,6 +32,9 @@ var builtinPets string
 //go:embed migrations/007_design_catalogue.sql
 var designCatalogue string
 
+//go:embed migrations/008_device_keys.sql
+var deviceKeys string
+
 // Open은 단일 서버용 SQLite 연결과 멱등적인 초기 마이그레이션을 준비한다.
 func Open(directory string) (*sql.DB, error) {
 	// 1. 서버 전용 데이터 디렉터리와 연결을 만든다.
@@ -93,6 +96,9 @@ func Open(directory string) (*sql.DB, error) {
 				if err == nil && version < 7 {
 					_, err = tx.Exec(designCatalogue)
 				}
+			}
+			if err == nil {
+				_, err = tx.Exec(deviceKeys)
 			}
 			if err == nil {
 				err = tx.Commit()

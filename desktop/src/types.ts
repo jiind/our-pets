@@ -24,6 +24,7 @@ export interface Design {
   id: string;
   version: number;
   ownerId: string;
+  ownerName?: string;
   name: string;
   imageHash: string;
   manifest: Manifest;

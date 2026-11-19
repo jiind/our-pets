@@ -1,5 +1,5 @@
 import { fragment, html, msg, setAttribute, setText, t } from './i18n';
-import { api, designImage, serverURL, session } from './api';
+import { ApiError, api, designImage, serverURL, session } from './api';
 import { drawPet, loadImage } from './render';
 import { watchDisplay } from './preferences';
 import { icon } from './icons';
@@ -266,17 +266,29 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
 
   // 기본 캐릭터와 저장된 펫을 같은 라디오 목록으로 표시하고 현재 선택을 유지한다.
   function updateCatalogue(): void {
-    // 1. 내 목록과 현재 사용 중인 외형을 안정적인 디자인 ID로 합친다.
+    // 1. 공유 목록에 없는 현재 외형도 선택 상태를 표시할 수 있게 남긴다.
     const choices = new Map(designs.map(design => [design.id, design]));
-    if (pet?.design) {
-      choices.set(pet.design.id, pet.design);
+    const current = pet?.design;
+    const currentOnly = current && !choices.has(current.id) ? current : undefined;
+    if (currentOnly) {
+      choices.set(currentOnly.id, currentOnly);
     }
     if (!builtinPets.some(option => option.selection === selectedDesignID) && !choices.has(selectedDesignID)) {
       selectedDesignID = 'default';
     }
     const counts = new Map<string, number>(builtinPets.map(option => [option.name, 1]));
     choices.forEach(design => counts.set(design.name, (counts.get(design.name) || 0) + 1));
-    const entries = [...builtinPets.map(option => ({ id: option.selection, label: option.name })), ...Array.from(choices.values()).sort((first, second) => first.version - second.version).map(design => ({ id: design.id, label: `${design.name}${(counts.get(design.name) || 0) > 1 ? ` · v${design.version}` : ''}${design.ownerId !== pet?.userId ? t(' · 현재 외형') : ''}` }))];
+    const entries: { id: string; label: string }[] = builtinPets.map(option => ({ id: option.selection, label: option.name }));
+    for (const design of choices.values()) {
+      let label = design.name;
+      if ((counts.get(design.name) || 0) > 1) {
+        label += design.ownerName ? ` · ${design.ownerName} · v${design.version}` : ` · v${design.version}`;
+      }
+      if (design.id === currentOnly?.id) {
+        label += t(' · 현재 외형');
+      }
+      entries.push({ id: design.id, label });
+    }
 
     // 2. 사용자 이름은 HTML이 아닌 텍스트로 넣고 선택과 필수 입력을 연결한다.
     const target = root.querySelector<HTMLElement>('[data-characters]')!;
@@ -492,7 +504,20 @@ export async function mountPetRegistration(root: HTMLElement, options: PetRegist
     button.setAttribute('aria-busy', 'true');
     try {
       assertAccount();
-      const latest = await api<Design[]>('/me/designs');
+      let latest: Design[];
+      try {
+        latest = await api<Design[]>('/designs');
+      } catch (error) {
+        if (disposed || version !== catalogueVersion) {
+          return;
+        }
+        if (!(error instanceof ApiError) || (error.status !== 404 && error.status !== 405)) {
+          throw error;
+        }
+        // 공용 목록을 지원하기 전의 서버는 기존 계정별 목록을 사용한다.
+        assertAccount();
+        latest = await api<Design[]>('/me/designs');
+      }
       if (disposed || version !== catalogueVersion) {
         return;
       }

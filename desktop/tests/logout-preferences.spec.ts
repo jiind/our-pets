@@ -1,19 +1,16 @@
 import { expect } from '@playwright/test';
 import { test } from './isolated-server';
+import { testInvitation } from './test-invitation';
 
 for (const initialVisible of [true, false]) {
   test(`로그아웃·재로그인 시 펫 표시 ${initialVisible} 보존 · IPC 계약`, async ({ page, isolatedServer }) => {
     // 1. 실제 가입 및 대표 펫 등록을 마치고 표시 설정만 Tauri 공식 IPC로 모의한다.
-    const username = `logout-${initialVisible}-${Date.now()}`;
     await page.goto('/');
-    await page.getByLabel('서버 주소').fill(isolatedServer);
-    await page.getByRole('button', { name: '서버 연결', exact: true }).click();
-    await page.getByRole('link', { name: '계정 만들기', exact: true }).click();
+    await page.getByRole('button', { name: '초대 링크로 참여하기', exact: true }).click();
+    await page.getByLabel('초대 링크', { exact: true }).fill(testInvitation(isolatedServer));
+    await page.getByRole('button', { name: '방 참여', exact: true }).click();
     await page.getByLabel('닉네임').fill('표시 설정 테스트');
-    await page.getByLabel('아이디', { exact: true }).fill(username);
-    await page.getByLabel('비밀번호', { exact: true }).fill('test-password-123');
-    await page.getByLabel('서버 가입 코드').fill('test-only-invite');
-    await page.getByRole('button', { name: '계정 만들고 펫 등록하기' }).click();
+    await page.getByRole('button', { name: '참여하기' }).click();
     await page.getByRole('button', { name: '등록 완료', exact: true }).click();
     await expect(page.getByRole('button', { name: '펫 숨기기', exact: true })).toBeEnabled();
     await page.evaluate(async () => {
@@ -69,7 +66,7 @@ for (const initialVisible of [true, false]) {
       (window as unknown as { logoutTest: { calls: unknown[] } }).logoutTest.calls.length = 0;
     });
     await page.getByRole('button', { name: '로그아웃', exact: true }).click();
-    await expect(page.getByRole('button', { name: /접속하기/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: '다시 접속' })).toBeVisible();
     const afterLogout = await page.evaluate(() => (window as unknown as {
       logoutTest: { preferences: { visible: boolean }; calls: { cmd: string; args: { action?: string; registered?: boolean } }[] };
     }).logoutTest);
@@ -78,9 +75,7 @@ for (const initialVisible of [true, false]) {
     expect(afterLogout.calls.some(call => call.cmd === 'pet_control' && call.args.action === 'hide')).toBe(false);
 
     // 3. 실제 로그인 요청 후에도 같은 표시 상태와 버튼을 유지한다.
-    await page.getByLabel('아이디', { exact: true }).fill(username);
-    await page.getByLabel('비밀번호', { exact: true }).fill('test-password-123');
-    await page.getByRole('button', { name: /접속하기/ }).click();
+    await page.getByRole('button', { name: '다시 접속' }).click();
     await expect(page.getByRole('heading', { name: '펫', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: initialVisible ? '펫 숨기기' : '펫 표시', exact: true })).toBeEnabled();
     const afterLogin = await page.evaluate(() => (window as unknown as {

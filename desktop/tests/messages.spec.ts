@@ -2,15 +2,18 @@ import { test, expect, type Page } from '@playwright/test';
 
 const server = 'http://127.0.0.1:19377';
 
-// 준비한 계정에 실제 서버 연결·로그인 UI로 접속한 뒤 WebSocket 펫 화면을 연다.
+// 실제 서버에서 준비한 계정으로 인증한 뒤 WebSocket 펫 화면을 연다.
 async function openPet(page: Page, username: string): Promise<void> {
-  // 1. 세션을 주입하지 않고 로그인 폼을 통해 인증한다.
+  // 1. 실제 서버가 발급한 세션을 해당 브라우저 프로필에서 연다.
+  const response = await page.request.post(`${server}/api/v1/login`, { data: { username, password: 'test-password-123' } });
+  expect(response.ok()).toBe(true);
+  await page.addInitScript(({ origin, login }) => {
+    if (!localStorage.getItem('ourpets.session')) {
+      localStorage.setItem('ourpets.server', origin);
+      localStorage.setItem('ourpets.session', JSON.stringify(login));
+    }
+  }, { origin: server, login: await response.json() });
   await page.goto('/');
-  await page.getByRole('textbox', { name: '서버 주소' }).fill(server);
-  await page.getByRole('button', { name: '서버 연결', exact: true }).click();
-  await page.getByRole('textbox', { name: '아이디', exact: true }).fill(username);
-  await page.getByLabel('비밀번호', { exact: true }).fill('test-password-123');
-  await page.getByRole('button', { name: /접속하기/ }).click();
   await expect(page.getByRole('heading', { name: '펫', exact: true })).toBeVisible();
 
   // 2. 실제 WebSocket 준비를 기다리며 네이티브의 창별 라우팅과는 구분한다.
@@ -19,7 +22,7 @@ async function openPet(page: Page, username: string): Promise<void> {
 }
 
 test('실제 메시지·이모지·답장 대상과 마릿수 없는 전송 확인', async ({ browser, request }) => {
-  // 1. 계정 생성만 API로 준비하고 두 브라우저의 로그인·전송·답장은 UI로 수행한다.
+  // 1. 실제 서버에서 계정을 준비하고 두 브라우저에서 전송과 답장을 수행한다.
   const suffix = Date.now();
   const fixtures: { username: string; petId: string }[] = [];
   for (const role of ['a', 'b']) {

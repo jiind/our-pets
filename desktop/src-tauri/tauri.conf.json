@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Our Pets",
-  "version": "0.1.0-beta.7",
+  "version": "0.1.0",
   "identifier": "com.ourpets.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run build:host && npm run dev",
     "devUrl": "http://127.0.0.1:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build:host && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -41,9 +41,17 @@
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' ipc: http: https: ws: wss:; object-src 'none'; base-uri 'none'; frame-src 'none'"
     }
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["ourpets"]
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": ["binaries/our-pets-host"],
     "icon": [
       "icons/icon.png",
       "icons/icon.ico",

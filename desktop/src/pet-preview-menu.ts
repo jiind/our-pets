@@ -142,7 +142,7 @@ export function mountPetPreviewMenu(canvas: HTMLCanvasElement, stage: HTMLElemen
 
   // 메뉴 밖으로 키보드 포커스가 이동하면 입력을 가로막지 않고 닫는다.
   function focusOut(event: FocusEvent): void {
-    if (!menu.contains(event.relatedTarget as Node | null)) {
+    if (event.relatedTarget instanceof Node && !menu.contains(event.relatedTarget)) {
       close();
     }
   }
